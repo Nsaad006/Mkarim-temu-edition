@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // GET /api/suppliers - List all suppliers
-router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
     try {
         const suppliers = await prisma.supplier.findMany({
             orderBy: { name: 'asc' },
@@ -23,7 +24,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, 
 });
 
 // GET /api/suppliers/:id - Get supplier details including history
-router.get('/:id', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
     try {
         const { id } = req.params;
         const supplier = await prisma.supplier.findUnique({
@@ -73,7 +74,7 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor']), async (re
 });
 
 // POST /api/suppliers - Create supplier
-router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { name, phone, email, city, notes } = req.body;
 
@@ -93,7 +94,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req,
 });
 
 // PUT /api/suppliers/:id - Update supplier
-router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { id } = req.params;
         const { name, phone, email, city, notes } = req.body;
@@ -111,7 +112,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (re
 });
 
 // DELETE /api/suppliers/:id - Delete supplier
-router.delete('/:id', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { id } = req.params;
 

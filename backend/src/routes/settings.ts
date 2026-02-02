@@ -31,6 +31,8 @@ router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: 
             storeName,
             storeAvailability,
             codEnabled,
+            freeShippingEnabled,
+            freeShippingThreshold,
             whatsappNumber,
             currency,
             contactAddress,
@@ -62,6 +64,13 @@ router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: 
             lowStockThreshold
         } = req.body;
 
+        // Debug logging for free shipping
+        console.log('Received free shipping settings:', {
+            freeShippingEnabled,
+            freeShippingThreshold,
+            rawBody: { freeShippingEnabled: req.body.freeShippingEnabled, freeShippingThreshold: req.body.freeShippingThreshold }
+        });
+
         // Get existing settings or create if none exist
         let settings = await prisma.settings.findFirst();
 
@@ -78,6 +87,8 @@ router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: 
                 ...(storeName !== undefined && { storeName }),
                 ...(storeAvailability !== undefined && { storeAvailability }),
                 ...(codEnabled !== undefined && { codEnabled }),
+                ...(freeShippingEnabled !== undefined && { freeShippingEnabled: Boolean(freeShippingEnabled) }),
+                ...(freeShippingThreshold !== undefined && { freeShippingThreshold: Number(freeShippingThreshold) }),
                 ...(whatsappNumber !== undefined && { whatsappNumber }),
                 ...(currency !== undefined && { currency }),
                 ...(contactAddress !== undefined && { contactAddress }),
@@ -131,6 +142,11 @@ router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: 
                 ...(req.body.logo !== undefined && { logo: req.body.logo }),
                 ...(req.body.aboutValues !== undefined && { aboutValues: req.body.aboutValues })
             }
+        });
+
+        console.log('Updated settings (free shipping):', {
+            freeShippingEnabled: updatedSettings.freeShippingEnabled,
+            freeShippingThreshold: updatedSettings.freeShippingThreshold
         });
 
         res.json(updatedSettings);

@@ -5,11 +5,16 @@ import { authenticate, authorize } from './auth';
 
 const router = Router();
 
-// GET /api/cities - List all active cities
+// GET /api/cities - List cities (default: active only)
 router.get('/', async (req, res) => {
     try {
+        const { includeInactive } = req.query;
+
+        const whereClause = includeInactive === 'true' ? {} : { active: true };
+
         const cities = await prisma.city.findMany({
-            where: { active: true }
+            where: whereClause,
+            orderBy: { name: 'asc' }
         });
         res.json(cities);
     } catch (error) {

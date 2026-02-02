@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // GET /api/procurements - List all procurements
-router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
     try {
         const procurements = await prisma.procurement.findMany({
             include: {
@@ -25,7 +26,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, 
 });
 
 // POST /api/procurements - Create procurement and update stock
-router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req: any, res) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: any, res) => {
     try {
         const { supplierId, productId, quantityPurchased, unitCostPrice, purchaseDate } = req.body;
         const adminId = req.user?.id;

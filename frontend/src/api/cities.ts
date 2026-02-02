@@ -4,9 +4,9 @@ import { City } from "@/data/mock-admin-data";
 export { type City };
 
 export const citiesApi = {
-    // Get all active cities
-    getAll: async (): Promise<City[]> => {
-        const { data } = await apiClient.get<City[]>('/api/cities');
+    // Get all cities
+    getAll: async (params?: { includeInactive?: boolean }): Promise<City[]> => {
+        const { data } = await apiClient.get<City[]>('/api/cities', { params });
         return data;
     },
 

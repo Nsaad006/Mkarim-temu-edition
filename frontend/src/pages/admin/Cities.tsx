@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Search, MapPin, Loader2 } from "lucide-react";
 import {
     Table,
@@ -26,12 +26,20 @@ import { City } from "@/api/cities";
 import { toast } from "@/hooks/use-toast";
 import { useSettings } from "@/context/SettingsContext";
 
+import { settingsApi } from "@/api/settings";
+
 const Cities = () => {
     const { currency } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCity, setSelectedCity] = useState<City | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const queryClient = useQueryClient();
+
+    // Free Shipping State
+    const [freeShippingSettings, setFreeShippingSettings] = useState({
+        enabled: false,
+        threshold: 0
+    });
 
     const [formData, setFormData] = useState({
         name: "",
@@ -40,10 +48,42 @@ const Cities = () => {
         active: true,
     });
 
+    // Fetch global settings
+    const { data: globalSettings } = useQuery({
+        queryKey: ['settings'],
+        queryFn: settingsApi.get,
+    });
+
+    // Update local state when settings load
+    useEffect(() => {
+        if (globalSettings) {
+            setFreeShippingSettings({
+                enabled: globalSettings.freeShippingEnabled || false,
+                threshold: globalSettings.freeShippingThreshold || 0
+            });
+        }
+    }, [globalSettings]);
+
+    // Update settings mutation
+    const settingsMutation = useMutation({
+        mutationFn: (data: any) => settingsApi.update(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['settings'] });
+            toast({ title: "Paramètres mis à jour" });
+        }
+    });
+
+    const handleSaveSettings = () => {
+        settingsMutation.mutate({
+            freeShippingEnabled: freeShippingSettings.enabled,
+            freeShippingThreshold: freeShippingSettings.threshold
+        });
+    };
+
     // Fetch cities
     const { data: cities = [], isLoading } = useQuery({
         queryKey: ['admin-cities'],
-        queryFn: () => citiesApi.getAll(),
+        queryFn: () => citiesApi.getAll({ includeInactive: true }),
     });
 
     // Create mutation
@@ -191,7 +231,11 @@ const Cities = () => {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="free-shipping">Livraison Gratuite</Label>
-                                <Switch id="free-shipping" />
+                                <Switch
+                                    id="free-shipping"
+                                    checked={freeShippingSettings.enabled}
+                                    onCheckedChange={(checked) => setFreeShippingSettings(prev => ({ ...prev, enabled: checked }))}
+                                />
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Activer la livraison gratuite pour toutes les commandes au-dessus d'un certain montant.
@@ -199,10 +243,22 @@ const Cities = () => {
 
                             <div className="space-y-2">
                                 <Label>Montant minimum ({currency})</Label>
-                                <Input type="number" placeholder="500" />
+                                <Input
+                                    type="number"
+                                    placeholder="500"
+                                    value={freeShippingSettings.threshold}
+                                    onChange={(e) => setFreeShippingSettings(prev => ({ ...prev, threshold: parseFloat(e.target.value) || 0 }))}
+                                />
                             </div>
 
-                            <Button className="w-full">Sauvegarder</Button>
+                            <Button
+                                className="w-full"
+                                onClick={handleSaveSettings}
+                                disabled={settingsMutation.isPending}
+                            >
+                                {settingsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Sauvegarder
+                            </Button>
                         </div>
                     </div>
                 </div>

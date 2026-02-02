@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.get('/summary', async (req: Request, res: Response) => {
 });
 
 // GET /api/stats - Dashboard statistics (admin/editor/viewer)
-router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer']), async (req: Request, res: Response) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.ANALYTICS_VIEW), async (req: Request, res: Response) => {
     try {
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -73,7 +74,10 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer']), as
         const totalRevenue = (retailRevenueResult._sum.total || 0) + (wholesaleRevenueResult._sum.advanceAmount || 0);
 
         // Financial Intelligence (Admin/Editor Only)
-        const isStaff = ['super_admin', 'editor'].includes((req as any).user.role);
+        // Check legacy roles or permissions
+        const user = (req as any).user;
+        const isStaff = ['super_admin', 'editor'].includes(user.role) || user.permissions?.includes(PERMISSIONS.ANALYTICS_VIEW);
+
         let financialStats = {};
 
         if (isStaff) {
@@ -163,7 +167,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer']), as
 });
 
 // GET /api/stats/analytics - Detailed analytics (admin/editor)
-router.get('/analytics', authenticate, authorize(['super_admin', 'editor', 'viewer']), async (req: Request, res: Response) => {
+router.get('/analytics', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.ANALYTICS_VIEW), async (req: Request, res: Response) => {
     try {
         const { days = 30, from, to, year } = req.query;
 

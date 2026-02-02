@@ -18,6 +18,8 @@ import { productsApi } from "@/api/products";
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
+import { settingsApi } from "@/api/settings";
+
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { currency } = useSettings();
@@ -25,6 +27,12 @@ const CheckoutPage = () => {
   const { state: cartState, getTotal, clearCart, addItem } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+
+  // Fetch global settings for free shipping
+  const { data: globalSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: settingsApi.get,
+  });
 
   // Get product ID from query parameter
   const productId = searchParams.get('product');
@@ -53,7 +61,7 @@ const CheckoutPage = () => {
   // Use mocked API
   const { data: cities = [] } = useQuery({
     queryKey: ['cities'],
-    queryFn: citiesApi.getAll,
+    queryFn: () => citiesApi.getAll(),
   });
 
   const [formData, setFormData] = useState({
@@ -183,8 +191,28 @@ const CheckoutPage = () => {
   };
 
   const selectedCity = cities.find(c => c.name === formData.city);
-  const shippingFee = selectedCity?.shippingFee || 0;
-  const total = getTotal() + shippingFee;
+  const cartTotal = getTotal();
+
+  // Calculate shipping fee with free shipping logic
+  let shippingFee = selectedCity?.shippingFee || 0;
+
+  // Check if free shipping applies
+  const freeShippingEnabled = globalSettings?.freeShippingEnabled ?? false;
+  const freeShippingThreshold = globalSettings?.freeShippingThreshold ?? 0;
+
+  // Free shipping applies if:
+  // 1. Free shipping is enabled
+  // 2. Cart total is greater than or equal to threshold
+  // 3. Threshold is greater than 0 (to avoid applying free shipping when threshold is not set)
+  const qualifiesForFreeShipping = freeShippingEnabled &&
+    freeShippingThreshold > 0 &&
+    cartTotal >= freeShippingThreshold;
+
+  if (qualifiesForFreeShipping) {
+    shippingFee = 0;
+  }
+
+  const total = cartTotal + shippingFee;
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
@@ -391,6 +419,25 @@ const CheckoutPage = () => {
                       {shippingFee > 0 ? `+${shippingFee} ${currency}` : shippingFee === 0 && formData.city ? 'OFFERTE' : 'À définir'}
                     </span>
                   </div>
+
+                  {/* Free Shipping Messages */}
+                  {freeShippingEnabled && freeShippingThreshold > 0 && (
+                    <>
+                      {qualifiesForFreeShipping && formData.city ? (
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2 sm:p-3">
+                          <p className="text-[9px] sm:text-[10px] font-bold text-green-500 uppercase tracking-wide text-center">
+                            🎉 Livraison Gratuite Appliquée (Total ≥ {freeShippingThreshold.toLocaleString()} {currency})
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 sm:p-3">
+                          <p className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wide text-center">
+                            💡 Livraison Gratuite Si Total Commande ≥ {freeShippingThreshold.toLocaleString()} {currency}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
 
                   <div className="pt-5 mt-2 border-t border-white/10 flex flex-row md:flex-col justify-between items-end md:items-start md:gap-2">
                     <span className="font-display text-lg sm:text-xl lg:text-2xl font-black text-foreground italic uppercase tracking-tighter leading-none">Total Net</span>

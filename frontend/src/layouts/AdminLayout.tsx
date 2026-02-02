@@ -16,27 +16,31 @@ import {
     Mail,
     Search,
     Truck,
-    Briefcase
+    Briefcase,
+    BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { authApi } from "@/api/auth";
 
+import { PERMISSIONS } from "@/constants/permissions";
+
 const sidebarItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["super_admin", "editor", "viewer"] },
-    { icon: ShoppingBag, label: "Commandes", path: "/admin/orders", roles: ["super_admin", "editor", "viewer", "commercial", "magasinier"] },
-    { icon: Briefcase, label: "Grossistes", path: "/admin/wholesalers", roles: ["super_admin", "editor"] },
-    { icon: Package, label: "Produits", path: "/admin/products", roles: ["super_admin", "editor", "viewer"] },
-    { icon: Truck, label: "Fournisseurs", path: "/admin/suppliers", roles: ["super_admin", "editor"] },
-    { icon: Package, label: "Approvisionnements", path: "/admin/procurements", roles: ["super_admin", "editor"] },
-    { icon: FolderOpen, label: "Catégories", path: "/admin/categories", roles: ["super_admin", "editor", "viewer"] },
-    { icon: MapPin, label: "Livraison", path: "/admin/cities", roles: ["super_admin", "editor", "viewer"] },
-    { icon: Users, label: "Clients", path: "/admin/customers", roles: ["super_admin", "editor", "viewer"] },
-    { icon: Mail, label: "Messages", path: "/admin/messages", roles: ["super_admin", "editor", "viewer"] },
-    { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["super_admin", "editor", "viewer"] },
-    { icon: ShieldCheck, label: "Utilisateurs", path: "/admin/users", roles: ["super_admin"] },
-    { icon: Settings, label: "Paramètres", path: "/admin/settings", roles: ["super_admin"] },
+    { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
+    { icon: ShoppingBag, label: "Commandes", path: "/admin/orders", roles: ["super_admin", "editor", "viewer", "commercial", "magasinier"], permission: PERMISSIONS.ORDERS_VIEW },
+    { icon: Briefcase, label: "Grossistes", path: "/admin/wholesalers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
+    { icon: Package, label: "Produits", path: "/admin/products", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.PRODUCTS_VIEW },
+    { icon: Truck, label: "Fournisseurs", path: "/admin/suppliers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
+    { icon: Package, label: "Approvisionnements", path: "/admin/procurements", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
+    { icon: FolderOpen, label: "Catégories", path: "/admin/categories", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.PRODUCTS_VIEW },
+    { icon: MapPin, label: "Livraison", path: "/admin/cities", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.LOGISTICS_VIEW },
+    { icon: Users, label: "Clients", path: "/admin/customers", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.CUSTOMERS_VIEW },
+    { icon: Mail, label: "Messages", path: "/admin/messages", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.MESSAGES_VIEW },
+    { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
+    { icon: ShieldCheck, label: "Utilisateurs", path: "/admin/users", roles: ["super_admin"], permission: PERMISSIONS.USERS_VIEW },
+    { icon: ShieldCheck, label: "Rôles", path: "/admin/roles", roles: ["super_admin"], permission: PERMISSIONS.ROLES_VIEW },
+    { icon: Settings, label: "Paramètres", path: "/admin/settings", roles: ["super_admin"], permission: PERMISSIONS.SETTINGS_VIEW },
 ];
 
 const AdminLayout = () => {
@@ -55,16 +59,20 @@ const AdminLayout = () => {
 
     // Get current user from localStorage
     const userStr = localStorage.getItem("user");
-    const user = userStr ? JSON.parse(userStr) : { name: "Admin", role: "super_admin" };
+    const user = userStr ? JSON.parse(userStr) : { name: "Admin", role: "super_admin", permissions: [] };
 
     const handleLogout = () => {
         authApi.logout();
         navigate("/login");
     };
 
-    const filteredSidebarItems = sidebarItems.filter(item =>
-        item.roles.includes(user.role)
-    );
+    const filteredSidebarItems = sidebarItems.filter(item => {
+        // Legacy Role Match
+        if (item.roles.includes(user.role)) return true;
+        // Permission Match
+        if (item.permission && user.permissions?.includes(item.permission)) return true;
+        return false;
+    });
 
     return (
         <div className="min-h-screen bg-gaming-admin flex">

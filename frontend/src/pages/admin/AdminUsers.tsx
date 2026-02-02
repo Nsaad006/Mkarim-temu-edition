@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AxiosError } from "axios";
 import { Plus, Trash2, Mail, Shield, Pencil } from "lucide-react";
+import apiClient from "@/lib/api-client";
 import {
     Table,
     TableBody,
@@ -50,6 +51,15 @@ const AdminUsers = () => {
     const { data: admins = [], isLoading } = useQuery({
         queryKey: ['admin-users'],
         queryFn: () => adminsApi.getAll(),
+    });
+
+    // Fetch dynamic roles
+    const { data: dynamicRoles = [] } = useQuery({
+        queryKey: ['roles'],
+        queryFn: async () => {
+            const { data } = await apiClient.get<any[]>('/api/roles');
+            return data;
+        },
     });
 
     // Create admin
@@ -149,7 +159,8 @@ const AdminUsers = () => {
 
         try {
             // Update role
-            await updateRoleMutation.mutateAsync({ id: editingUser.id, role: editingUser.role });
+            const rolePayload = editingUser.roleId || editingUser.role;
+            await updateRoleMutation.mutateAsync({ id: editingUser.id, role: rolePayload });
 
             // Update password if provided
             if (newPassword.trim()) {
@@ -214,7 +225,7 @@ const AdminUsers = () => {
                                         <TableCell className="whitespace-nowrap">
                                             <Badge variant="outline" className="gap-1 capitalize">
                                                 <Shield className="w-3 h-3" />
-                                                {user.role.replace('_', ' ')}
+                                                {user.assignedRole ? user.assignedRole.name : user.role.replace('_', ' ')}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
@@ -319,6 +330,10 @@ const AdminUsers = () => {
                                     <SelectItem value="viewer">Observateur (Lecture seule)</SelectItem>
                                     <SelectItem value="commercial">Commercial (Confirmer/Annuler Commandes)</SelectItem>
                                     <SelectItem value="magasinier">Magasinier (Expédier/Livrer Commandes)</SelectItem>
+                                    {dynamicRoles.length > 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground font-semibold">Rôles Personnalisés</div>}
+                                    {dynamicRoles.map((role: any) => (
+                                        <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -370,8 +385,8 @@ const AdminUsers = () => {
                             <div className="space-y-2">
                                 <Label>Nouveau Rôle</Label>
                                 <Select
-                                    value={editingUser.role}
-                                    onValueChange={(val) => setEditingUser({ ...editingUser, role: val })}
+                                    value={editingUser.roleId || editingUser.role}
+                                    onValueChange={(val) => setEditingUser({ ...editingUser, role: val, roleId: null })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
@@ -382,6 +397,10 @@ const AdminUsers = () => {
                                         <SelectItem value="viewer">Observateur (Lecture seule)</SelectItem>
                                         <SelectItem value="commercial">Commercial (Confirmer/Annuler Commandes)</SelectItem>
                                         <SelectItem value="magasinier">Magasinier (Expédier/Livrer Commandes)</SelectItem>
+                                        {dynamicRoles.length > 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground font-semibold">Rôles Personnalisés</div>}
+                                        {dynamicRoles.map((role: any) => (
+                                            <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

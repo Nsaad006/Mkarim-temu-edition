@@ -6,6 +6,8 @@ export interface GlobalSettings {
     storeName: string;
     storeAvailability: boolean;
     codEnabled: boolean;
+    freeShippingEnabled?: boolean;
+    freeShippingThreshold?: number;
     whatsappNumber: string;
     currency: string;
     logo?: string;

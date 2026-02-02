@@ -5,6 +5,7 @@ export interface AuthenticatedRequest extends Request {
         id: string;
         email: string;
         role: string;
+        permissions?: string[];
     };
 }
 import { z } from 'zod';
@@ -25,9 +26,10 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = loginSchema.parse(req.body);
 
-        // Find user in database
+        // Find user in database with assigned role and permissions
         const admin = await prisma.admin.findUnique({
-            where: { email }
+            where: { email },
+            include: { assignedRole: true }
         });
 
         // Check if admin exists and is active
@@ -42,9 +44,16 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Identifiants invalides ou compte désactivé' });
         }
 
+        const permissions = admin.assignedRole?.permissions || [];
+
         // Generate JWT token
         const token = jwt.sign(
-            { id: admin.id, email: admin.email, role: admin.role },
+            {
+                id: admin.id,
+                email: admin.email,
+                role: admin.role,
+                permissions: permissions
+            },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
@@ -55,7 +64,8 @@ router.post('/login', async (req, res) => {
                 id: admin.id,
                 email: admin.email,
                 name: admin.name,
-                role: admin.role
+                role: admin.role,
+                permissions: permissions
             }
         });
     } catch (error) {
@@ -76,7 +86,12 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
+        const decoded = jwt.verify(token, JWT_SECRET) as {
+            id: string;
+            email: string;
+            role: string;
+            permissions?: string[];
+        };
         (req as AuthenticatedRequest).user = decoded;
         next();
     } catch (error) {
@@ -84,14 +99,26 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
-// Middleware to authorize roles
-export const authorize = (roles: string[]) => {
+// Middleware to authorize roles OR permissions
+export const authorize = (allowedRoles: string[], requiredPermission?: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = (req as AuthenticatedRequest).user;
-        if (!user || !roles.includes(user.role)) {
-            return res.status(403).json({ error: 'Accès refusé - Privilèges insuffisants' });
+
+        if (!user) {
+            return res.status(403).json({ error: 'Accès refusé' });
         }
-        next();
+
+        // 1. Check Legacy/Static Role match
+        if (allowedRoles.includes(user.role)) {
+            return next();
+        }
+
+        // 2. Check Permission (if this route requires one and user has it)
+        if (requiredPermission && user.permissions?.includes(requiredPermission)) {
+            return next();
+        }
+
+        return res.status(403).json({ error: 'Accès refusé - Privilèges insuffisants' });
     };
 };
 
@@ -100,7 +127,8 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = (req as AuthenticatedRequest).user?.id;
         const admin = await prisma.admin.findUnique({
-            where: { id: userId }
+            where: { id: userId },
+            include: { assignedRole: true }
         });
 
         if (admin) {
@@ -108,7 +136,8 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
                 id: admin.id,
                 email: admin.email,
                 name: admin.name,
-                role: admin.role
+                role: admin.role,
+                permissions: admin.assignedRole?.permissions || []
             });
         }
 

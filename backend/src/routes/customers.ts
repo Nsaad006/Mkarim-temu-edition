@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // GET /api/customers - Get all persistent customers
-router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial']), async (req: Request, res: Response) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial'], PERMISSIONS.CUSTOMERS_VIEW), async (req: Request, res: Response) => {
     try {
         const customers = await prisma.customer.findMany({
             include: {
@@ -51,7 +52,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'com
 });
 
 // GET /api/customers/:customerId/orders - Get all orders for a specific customer
-router.get('/:customerId/orders', authenticate, authorize(['super_admin', 'editor', 'viewer']), async (req: Request, res: Response) => {
+router.get('/:customerId/orders', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.CUSTOMERS_VIEW), async (req: Request, res: Response) => {
     try {
         const { customerId } = req.params;
 

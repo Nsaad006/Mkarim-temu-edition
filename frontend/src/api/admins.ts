@@ -5,6 +5,12 @@ export interface AdminUser {
     email: string;
     name: string;
     role: string;
+    roleId?: string | null;
+    assignedRole?: {
+        id: string;
+        name: string;
+        permissions: string[];
+    };
     active: boolean;
 }
 

@@ -32,6 +32,8 @@ const Analytics = () => {
     const [days, setDays] = useState(30);
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedRevenueMonth, setSelectedRevenueMonth] = useState(new Date().getMonth());
+    const [selectedProfitMonth, setSelectedProfitMonth] = useState(new Date().getMonth());
 
     const { data: summary, isLoading } = useQuery({
         queryKey: ['stats-summary', days, dateRange, selectedYear],
@@ -122,7 +124,7 @@ const Analytics = () => {
                 <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-xl font-bold tracking-tight">Santé Financière : Stock vs Profit</h3>
+                            <h3 className="text-xl font-bold tracking-tight">Santé Financière : Stock vs Profit ({selectedYear})</h3>
                             <p className="text-sm text-muted-foreground mt-1">Comparaison entre la valeur immobilisée en stock et les bénéfices générés.</p>
                         </div>
                     </div>
@@ -151,60 +153,95 @@ const Analytics = () => {
             )}
 
             <div className="grid lg:grid-cols-2 gap-6">
-                {/* Monthly Performance Tables */}
+                {/* Monthly Revenue Card */}
                 <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
                     <div className="p-6 border-b border-border bg-muted/30">
                         <h3 className="font-bold flex items-center gap-2 text-blue-500">
-                            📊 Revenu Mensuel (CA)
+                            📊 Revenu Mensuel (CA) - {selectedYear}
                         </h3>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/10 text-muted-foreground uppercase text-[10px] font-bold">
-                                <tr>
-                                    <th className="px-6 py-4 text-left">Mois</th>
-                                    <th className="px-6 py-4 text-right">Chiffre d'Affaire</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {monthlyStats.filter(m => m.revenue > 0).map((m) => (
-                                    <tr key={m.name} className="hover:bg-muted/5 transition-colors">
-                                        <td className="px-6 py-4 font-medium">{m.name}</td>
-                                        <td className="px-6 py-4 text-right font-bold text-foreground">
-                                            {m.revenue.toLocaleString()} {currency}
-                                        </td>
-                                    </tr>
+                    <div className="p-6">
+                        <Select
+                            value={String(selectedRevenueMonth)}
+                            onValueChange={(value) => setSelectedRevenueMonth(Number(value))}
+                        >
+                            <SelectTrigger className="w-full mb-4">
+                                <SelectValue>
+                                    {monthlyStats[selectedRevenueMonth]?.name || 'Sélectionner un mois'} - {monthlyStats[selectedRevenueMonth]?.revenue.toLocaleString() || 0} {currency}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {monthlyStats.map((m, index) => (
+                                    <SelectItem key={m.name} value={String(index)}>
+                                        <div className="flex justify-between items-center w-full gap-8">
+                                            <span className="font-medium">{m.name}</span>
+                                            <span className={`font-bold ${m.revenue === 0 ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                                {m.revenue.toLocaleString()} {currency}
+                                            </span>
+                                        </div>
+                                    </SelectItem>
                                 ))}
-                            </tbody>
-                        </table>
+                            </SelectContent>
+                        </Select>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Mois sélectionné:</span>
+                                <span className="font-bold">{monthlyStats[selectedRevenueMonth]?.name}</span>
+                            </div>
+                            <div className="flex justify-between text-lg">
+                                <span className="text-muted-foreground">Chiffre d'Affaire:</span>
+                                <span className="font-bold text-blue-500">
+                                    {monthlyStats[selectedRevenueMonth]?.revenue.toLocaleString() || 0} {currency}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                {/* Monthly Profit Card */}
                 <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
                     <div className="p-6 border-b border-border bg-muted/30">
                         <h3 className="font-bold flex items-center gap-2 text-green-500">
-                            💰 Profit Mensuel Estimé
+                            💰 Profit Mensuel Estimé - {selectedYear}
                         </h3>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/10 text-muted-foreground uppercase text-[10px] font-bold">
-                                <tr>
-                                    <th className="px-6 py-4 text-left">Mois</th>
-                                    <th className="px-6 py-4 text-right">Bénéfice Net Est.</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {monthlyStats.filter(m => m.profit > 0).map((m) => (
-                                    <tr key={m.name} className="hover:bg-muted/5 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-green-500">{m.name}</td>
-                                        <td className="px-6 py-4 text-right font-bold text-green-400">
-                                            +{m.profit.toLocaleString()} {currency}
-                                        </td>
-                                    </tr>
+                    <div className="p-6">
+                        <Select
+                            value={String(selectedProfitMonth)}
+                            onValueChange={(value) => setSelectedProfitMonth(Number(value))}
+                        >
+                            <SelectTrigger className="w-full mb-4">
+                                <SelectValue>
+                                    {monthlyStats[selectedProfitMonth]?.name || 'Sélectionner un mois'} - {monthlyStats[selectedProfitMonth]?.profit > 0 ? '+' : ''}{monthlyStats[selectedProfitMonth]?.profit.toLocaleString() || 0} {currency}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {monthlyStats.map((m, index) => (
+                                    <SelectItem key={m.name} value={String(index)}>
+                                        <div className="flex justify-between items-center w-full gap-8">
+                                            <span className={`font-medium ${m.profit > 0 ? 'text-green-500' : ''}`}>{m.name}</span>
+                                            <span className={`font-bold ${m.profit > 0 ? 'text-green-400' : 'text-muted-foreground'}`}>
+                                                {m.profit > 0 ? '+' : ''}{m.profit.toLocaleString()} {currency}
+                                            </span>
+                                        </div>
+                                    </SelectItem>
                                 ))}
-                            </tbody>
-                        </table>
+                            </SelectContent>
+                        </Select>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Mois sélectionné:</span>
+                                <span className="font-bold">{monthlyStats[selectedProfitMonth]?.name}</span>
+                            </div>
+                            <div className="flex justify-between text-lg">
+                                <span className="text-muted-foreground">Bénéfice Net Est.:</span>
+                                <span className={`font-bold ${monthlyStats[selectedProfitMonth]?.profit > 0 ? 'text-green-400' : 'text-muted-foreground'}`}>
+                                    {monthlyStats[selectedProfitMonth]?.profit > 0 ? '+' : ''}{monthlyStats[selectedProfitMonth]?.profit.toLocaleString() || 0} {currency}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

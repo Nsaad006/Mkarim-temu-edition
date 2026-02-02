@@ -230,45 +230,9 @@ const AdminProducts = () => {
     };
 
     const validateSpecs = (specsString: string, categoryId: string): { valid: boolean; error?: string } => {
-        if (!specsString || !specsString.trim()) return { valid: true };
-
-        const category = categories.find(c => c.id === categoryId);
-        if (!category) return { valid: true };
-
-        const slug = category.slug?.toLowerCase() || "";
-        const name = category.name?.toLowerCase() || "";
-
-        // Identify Category Type
-        const isPc = ['laptop', 'desktop', 'gaming-pc', 'pc portable', 'pc bureau', 'pc gamer'].some(k => slug.includes(k) || name.includes(k));
-        const isAccessory = ['monitor', 'mouse', 'keyboard', 'headset', 'souris', 'clavier', 'casque', 'ecran'].some(k => slug.includes(k) || name.includes(k));
-
-        // Format Validation
-        const specs = specsString.split(',').map(s => s.trim()).filter(s => s);
-        const formatRegex = /^\{[^}]+\}:.+/;
-
-
-
-        // Required Keys Validation
-        const keys = specs.map(s => s.match(/^\{([^}]+)\}/)?.[1]?.toLowerCase().trim() || "");
-
-        if (isPc) {
-            const requiredPcSpecs = ['marque_pc', 'cpu', 'gpu', 'ram', 'stockage', 'carte_mere', 'systeme_exploitation'];
-            const missing = requiredPcSpecs.filter(req => !keys.includes(req));
-            if (missing.length > 0) {
-                return {
-                    valid: false,
-                    error: `Spécifications PC manquantes : {${missing.join('}, {')}}`
-                };
-            }
-        } else if (isAccessory) {
-            if (!keys.includes('marque')) {
-                return {
-                    valid: false,
-                    error: "La spécification {marque} est obligatoire pour les accessoires."
-                };
-            }
-        }
-
+        // ✅ Specs are now completely optional - no validation required
+        // Specs without {key} will automatically go to "Hardware Global"
+        // Specs with {key}: value will be categorized for filtering (GPU, CPU, RAM, etc.)
         return { valid: true };
     };
 
@@ -732,17 +696,17 @@ const AdminProducts = () => {
                                 <Textarea
                                     value={formData.specs}
                                     onChange={(e) => setFormData({ ...formData, specs: e.target.value })}
-                                    placeholder="Ex: {cpu}: Intel i7, {ram}: 16GB, {gpu}: RTX 4070"
+                                    placeholder="Ex: {gpu}: RTX 5090, {ram}: 32GB, Écran OLED, Clavier RGB"
                                     rows={4}
                                 />
                                 <div className="text-[11px] text-muted-foreground mt-1.5 p-2 bg-muted/40 rounded border border-border space-y-1">
-                                    <p className="font-semibold text-primary">Format recommandé : <code className="bg-background px-1 rounded border overflow-hidden">{'\{clé\}: valeur'}</code></p>
-                                    <p className="text-[10px] italic">Les spécifications sans clé sont acceptées comme "Options Spéciales".</p>
-                                    <p>
-                                        <span className="font-semibold">PC :</span> {'\{marque_pc\}, \{cpu\}, \{gpu\}, \{ram\}, \{stockage\}, \{carte_mere\}, \{systeme_exploitation\}'}
+                                    <p className="font-semibold text-primary">✅ Clés optionnelles : <code className="bg-background px-1 rounded border">{'\{clé\}: valeur'}</code></p>
+                                    <p className="text-[10px] italic">
+                                        • <strong>Avec clé</strong> (ex: {'{gpu}: RTX 5090'}) → Utilisé pour le filtrage avancé (GPU, CPU, RAM, etc.)<br />
+                                        • <strong>Sans clé</strong> (ex: "Écran OLED") → Ajouté à "Hardware Global"
                                     </p>
-                                    <p>
-                                        <span className="font-semibold">Accessoires :</span> {'\{marque\}'} obligatoire
+                                    <p className="text-[10px] text-muted-foreground">
+                                        <span className="font-semibold">Clés disponibles :</span> {'\{gpu\}, \{cpu\}, \{ram\}, \{stockage\}, \{marque\}, \{marque_pc\}, etc.'}
                                     </p>
                                 </div>
                             </div>

@@ -3,19 +3,39 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 import bcrypt from 'bcryptjs';
 
 const router = Router();
 
+// Validate against legacy roles OR allow any string (UUID for dynamic roles)
 const createAdminSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
     password: z.string().min(6),
-    role: z.enum(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier']),
+    role: z.string(), // Can be legacy role name OR role UUID
 });
 
-// GET /api/admins - List all admins (super_admin only)
-router.get('/', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+const LEGACY_ROLES = ['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'];
+
+// Helper to determine role fields
+async function resolveRole(roleInput: string) {
+    if (LEGACY_ROLES.includes(roleInput)) {
+        return { role: roleInput, roleId: null };
+    }
+
+    // Check if it's a dynamic role ID
+    // We could validate UUID format but finding it is safer
+    const dynamicRole = await prisma.role.findUnique({ where: { id: roleInput } });
+    if (dynamicRole) {
+        return { role: dynamicRole.name, roleId: roleInput };
+    }
+
+    throw new Error("Rôle invalide");
+}
+
+// GET /api/admins - List all admins
+router.get('/', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_VIEW), async (req: Request, res: Response) => {
     try {
         const admins = await prisma.admin.findMany({
             select: {
@@ -24,7 +44,11 @@ router.get('/', authenticate, authorize(['super_admin']), async (req: Request, r
                 name: true,
                 role: true,
                 active: true,
-                createdAt: true
+                createdAt: true,
+                roleId: true,
+                assignedRole: {
+                    select: { id: true, name: true, permissions: true }
+                }
             }
         });
         res.json(admins);
@@ -33,8 +57,8 @@ router.get('/', authenticate, authorize(['super_admin']), async (req: Request, r
     }
 });
 
-// POST /api/admins - Create new admin (super_admin only)
-router.post('/', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+// POST /api/admins - Create new admin
+router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
     try {
         const validatedData = createAdminSchema.parse(req.body);
 
@@ -47,6 +71,13 @@ router.post('/', authenticate, authorize(['super_admin']), async (req: Request, 
             return res.status(400).json({ error: 'Email already exists' });
         }
 
+        let roleFields;
+        try {
+            roleFields = await resolveRole(validatedData.role);
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+
         const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
         const newAdmin = await prisma.admin.create({
@@ -54,14 +85,16 @@ router.post('/', authenticate, authorize(['super_admin']), async (req: Request, 
                 name: validatedData.name,
                 email: validatedData.email,
                 password: hashedPassword,
-                role: validatedData.role,
-                active: true
+                active: true,
+                ...roleFields
             },
             select: {
                 id: true,
                 email: true,
                 name: true,
                 role: true,
+                roleId: true,
+                assignedRole: { select: { name: true } },
                 active: true,
                 createdAt: true
             }
@@ -76,8 +109,8 @@ router.post('/', authenticate, authorize(['super_admin']), async (req: Request, 
     }
 });
 
-// DELETE /api/admins/:id - Delete an admin (super_admin only)
-router.delete('/:id', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+// DELETE /api/admins/:id - Delete an admin
+router.delete('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
 
@@ -104,8 +137,8 @@ router.delete('/:id', authenticate, authorize(['super_admin']), async (req: Requ
     }
 });
 
-// PATCH /api/admins/:id/status - Update admin status (super_admin only)
-router.patch('/:id/status', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+// PATCH /api/admins/:id/status - Update admin status
+router.patch('/:id/status', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const { active } = req.body;
@@ -132,38 +165,37 @@ router.patch('/:id/status', authenticate, authorize(['super_admin']), async (req
     }
 });
 
-// PATCH /api/admins/:id/role - Update admin role (super_admin only)
-router.patch('/:id/role', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+// PATCH /api/admins/:id/role - Update admin role
+router.patch('/:id/role', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const { role } = req.body;
 
-        // Validate role
-        if (!['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'].includes(role)) {
-            return res.status(400).json({ error: 'Invalid role' });
-        }
-
-        const admin = await prisma.admin.findUnique({
-            where: { id }
-        });
-
-        if (!admin) {
-            return res.status(404).json({ error: 'Admin not found' });
-        }
+        const admin = await prisma.admin.findUnique({ where: { id } });
+        if (!admin) return res.status(404).json({ error: 'Admin not found' });
 
         // Prevent changing the main admin's role
         if (admin.email === 'admin@mkarim.ma') {
             return res.status(403).json({ error: 'Cannot change main admin role' });
         }
 
+        let roleFields;
+        try {
+            roleFields = await resolveRole(role);
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+
         const updatedAdmin = await prisma.admin.update({
             where: { id },
-            data: { role },
+            data: roleFields,
             select: {
                 id: true,
                 email: true,
                 name: true,
                 role: true,
+                roleId: true,
+                assignedRole: { select: { name: true } },
                 active: true,
                 createdAt: true
             }
@@ -171,6 +203,7 @@ router.patch('/:id/role', authenticate, authorize(['super_admin']), async (req: 
 
         res.json(updatedAdmin);
     } catch (error) {
+        console.error("Error updating role:", error);
         if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2025') {
             return res.status(404).json({ error: 'Admin not found' });
         }
@@ -178,24 +211,18 @@ router.patch('/:id/role', authenticate, authorize(['super_admin']), async (req: 
     }
 });
 
-// PATCH /api/admins/:id/password - Update admin password (super_admin only)
-router.patch('/:id/password', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+// PATCH /api/admins/:id/password - Update admin password
+router.patch('/:id/password', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const { password } = req.body;
 
-        // Validate password
         if (!password || password.length < 6) {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
 
-        const admin = await prisma.admin.findUnique({
-            where: { id }
-        });
-
-        if (!admin) {
-            return res.status(404).json({ error: 'Admin not found' });
-        }
+        const admin = await prisma.admin.findUnique({ where: { id } });
+        if (!admin) return res.status(404).json({ error: 'Admin not found' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
 

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -60,14 +61,8 @@ router.post('/', async (req, res) => {
                 price: product.price
             });
 
-            // Decrement stock
-            await prisma.product.update({
-                where: { id: item.productId },
-                data: {
-                    quantity: product.quantity - item.quantity,
-                    inStock: product.quantity - item.quantity > 0
-                }
-            });
+            // NOTE: Stock is NOT decremented here anymore. 
+            // It will be decremented only when status changes to CONFIRMED.
         }
 
         // Create or update customer record for persistent tracking
@@ -112,9 +107,15 @@ router.post('/', async (req, res) => {
             }
         });
 
-        // Trigger email notification (don't await to not delay response, or await for confirmation)
-        // We'll use a detached execution or wrapped in try-catch to not break response
-        sendOrderEmails(newOrder).catch(err => console.error('Error in sendOrderEmails background task:', err));
+        // Send email notifications immediately and wait for completion
+        // This ensures emails are sent instantly before responding to the client
+        try {
+            await sendOrderEmails(newOrder);
+            console.log('✅ Order emails sent successfully');
+        } catch (emailError) {
+            console.error('❌ Error sending order emails:', emailError);
+            // Continue with order creation even if email fails
+        }
 
         res.status(201).json(newOrder);
     } catch (error) {
@@ -131,7 +132,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/orders - List all orders (admin/editor/viewer/commercial/magasinier)
-router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier']), async (req: Request, res: Response) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'], PERMISSIONS.ORDERS_VIEW), async (req: Request, res: Response) => {
     try {
         const { status, city } = req.query;
         const user = (req as any).user; // Get authenticated user
@@ -185,7 +186,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'com
 });
 
 // GET /api/orders/:id - Get order details (admin/editor/viewer/commercial/magasinier)
-router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier']), async (req: Request, res: Response) => {
+router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'], PERMISSIONS.ORDERS_VIEW), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
 
@@ -212,7 +213,7 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', '
 });
 
 // PATCH /api/orders/:id/status - Update order status (super_admin/editor/commercial/magasinier)
-router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier']), async (req: Request, res: Response) => {
+router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], PERMISSIONS.ORDERS_MANAGE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const { status } = req.body;
@@ -282,6 +283,54 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
 
         // 3. Perform Update with Stock Adjustment in transaction
         const result = await prisma.$transaction(async (tx) => {
+            // Define statuses that imply inventory deduction
+            const DEDUCT_STATUSES = ['CONFIRMED', 'SHIPPED', 'DELIVERED'];
+
+            const wasDeducted = DEDUCT_STATUSES.includes(oldStatus);
+            const shouldBeDeducted = DEDUCT_STATUSES.includes(status);
+
+            // LOGIC: Deduct Stock (Pending -> Confirmed)
+            if (!wasDeducted && shouldBeDeducted) {
+                // Check availability first
+                for (const item of currentOrder.items) {
+                    const product = await tx.product.findUnique({ where: { id: item.productId } });
+                    if (!product) throw new Error(`Product ${item.productId} not found`);
+
+                    if (product.quantity < item.quantity) {
+                        throw new Error(`Stock insuffisant pour '${product.name}' (Requis: ${item.quantity}, Dispo: ${product.quantity})`);
+                    }
+
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: {
+                            quantity: { decrement: item.quantity }
+                        }
+                    });
+
+                    // Check if out of stock
+                    if (product.quantity - item.quantity <= 0) {
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: { inStock: false }
+                        });
+                    }
+                }
+                console.log(`Order ${currentOrder.orderNumber}: Stock deducted.`);
+            }
+            // LOGIC: Restore Stock (Confirmed -> Cancelled/Returned/Pending)
+            else if (wasDeducted && !shouldBeDeducted) {
+                for (const item of currentOrder.items) {
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: {
+                            quantity: { increment: item.quantity },
+                            inStock: true // Definitely in stock now
+                        }
+                    });
+                }
+                console.log(`Order ${currentOrder.orderNumber}: Stock restored.`);
+            }
+
             // Update order status
             const updatedOrder = await tx.order.update({
                 where: { id },
@@ -295,46 +344,6 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
                 }
             });
 
-            // LOGIC: If changing TO Cancelled/Returned FROM a live status -> Return stock
-            const isCancelling = (status === 'CANCELLED' || status === 'RETURNED') &&
-                !(oldStatus === 'CANCELLED' || oldStatus === 'RETURNED');
-
-            // LOGIC: If changing FROM Cancelled/Returned TO a live status -> Deduct stock
-            const isReactivating = !(status === 'CANCELLED' || status === 'RETURNED') &&
-                (oldStatus === 'CANCELLED' || oldStatus === 'RETURNED');
-
-            if (isCancelling) {
-                for (const item of currentOrder.items) {
-                    await tx.product.update({
-                        where: { id: item.productId },
-                        data: {
-                            quantity: { increment: item.quantity },
-                            inStock: true // Definitely in stock now
-                        }
-                    });
-                }
-                console.log(`Order ${currentOrder.orderNumber}: Stock returned for ${currentOrder.items.length} items.`);
-            } else if (isReactivating) {
-                for (const item of currentOrder.items) {
-                    await tx.product.update({
-                        where: { id: item.productId },
-                        data: {
-                            quantity: { decrement: item.quantity }
-                        }
-                    });
-
-                    // Re-calculate inStock status
-                    const prod = await tx.product.findUnique({ where: { id: item.productId } });
-                    if (prod && prod.quantity <= 0) {
-                        await tx.product.update({
-                            where: { id: item.productId },
-                            data: { inStock: false }
-                        });
-                    }
-                }
-                console.log(`Order ${currentOrder.orderNumber}: Stock deducted again (reactivation).`);
-            }
-
             return updatedOrder;
         });
 
@@ -344,7 +353,7 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
         if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2025') {
             return res.status(404).json({ error: 'Order not found' });
         }
-        res.status(500).json({ error: 'Failed to update order status' });
+        res.status(500).json({ error: (error as Error).message || 'Failed to update order status' });
     }
 });
 

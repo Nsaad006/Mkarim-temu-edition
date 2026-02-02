@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -91,7 +92,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.post('/:id/adjust-cost', authenticate, authorize(['super_admin', 'editor']), async (req: any, res: Response) => {
+router.post('/:id/adjust-cost', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.PRODUCTS_EDIT), async (req: any, res: Response) => {
     try {
         const id = req.params.id;
         const { unitCostPrice, password } = req.body;
@@ -204,7 +205,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req: any, res: Response) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.PRODUCTS_CREATE), async (req: any, res: Response) => {
     try {
         const {
             name, description, price, originalPrice, image, images,
@@ -269,7 +270,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req:
 });
 
 // PUT /api/products/:id - Update product (admin)
-router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.PRODUCTS_EDIT), async (req: Request, res: Response) => {
     try {
         const id = req.params.id;
         const {
@@ -426,7 +427,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (re
 });
 
 // DELETE /api/products/:id - Delete product (admin)
-router.delete('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.PRODUCTS_DELETE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
 

@@ -2,11 +2,12 @@ import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // GET /api/wholesalers - List all wholesalers with optional search
-router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
     try {
         const { search } = req.query;
         const where: any = {};
@@ -37,7 +38,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, 
 });
 
 // GET /api/wholesalers/orders - List all orders flat
-router.get('/orders', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/orders', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
     try {
         const orders = await prisma.wholesaleOrder.findMany({
             include: {
@@ -67,7 +68,7 @@ router.get('/orders', authenticate, authorize(['super_admin', 'editor']), async 
 });
 
 // GET /api/wholesalers/:id - Get details (with orders)
-router.get('/:id', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
     try {
         const { id } = req.params;
         const wholesaler = await prisma.wholesaler.findUnique({
@@ -95,7 +96,7 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor']), async (re
 });
 
 // POST /api/wholesalers - Create wholesaler
-router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { name, address, phone, email } = req.body;
 
@@ -113,7 +114,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req,
 });
 
 // POST /api/wholesalers/:id/orders - Create Order
-router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor']), async (req: any, res: Response) => {
+router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: any, res: Response) => {
     try {
         const { id: wholesalerId } = req.params;
         // items: { productId, quantity, unitPrice }[]
@@ -183,7 +184,7 @@ router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor']), a
 });
 
 // PATCH /api/wholesalers/orders/:orderId - Update Advance / Status
-router.patch('/orders/:orderId', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.patch('/orders/:orderId', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { orderId } = req.params;
         const { advanceAmount } = req.body;
@@ -213,7 +214,7 @@ router.patch('/orders/:orderId', authenticate, authorize(['super_admin', 'editor
 });
 
 // PUT /api/wholesalers/orders/:id - Update Full Order
-router.put('/orders/:id', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.put('/orders/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { id } = req.params;
         const { items, advanceAmount } = req.body;
@@ -297,7 +298,7 @@ router.put('/orders/:id', authenticate, authorize(['super_admin', 'editor']), as
 });
 
 // DELETE /api/wholesalers/orders/:id - Cancel Order
-router.delete('/orders/:id', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.delete('/orders/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { id } = req.params;
 

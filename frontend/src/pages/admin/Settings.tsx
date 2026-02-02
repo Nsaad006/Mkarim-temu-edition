@@ -49,8 +49,14 @@ const Settings = () => {
         }
     });
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent | React.MouseEvent) => {
         e.preventDefault();
+
+        console.log('Saving settings...', {
+            freeShippingEnabled: formData.freeShippingEnabled,
+            freeShippingThreshold: formData.freeShippingThreshold,
+            fullFormData: formData
+        });
 
         // Save settings
         mutation.mutate(formData);
@@ -152,7 +158,7 @@ const Settings = () => {
                                                 type="password"
                                                 value={formData.emailClientSecret || ""}
                                                 onChange={(e) => setFormData({ ...formData, emailClientSecret: e.target.value })}
-                                                placeholder="••••••••••••••••••••"
+                                                placeholder="********************"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -160,9 +166,11 @@ const Settings = () => {
                                             <Textarea
                                                 value={formData.emailRefreshToken || ""}
                                                 onChange={(e) => setFormData({ ...formData, emailRefreshToken: e.target.value })}
-                                                placeholder="1//0abcde..."
+                                                placeholder="1//0g..."
+                                                className="font-mono text-xs"
                                                 rows={2}
                                             />
+                                            <p className="text-xs text-muted-foreground">Le token de rafraîchissement obtenu après l'autorisation OAuth2.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -171,17 +179,8 @@ const Settings = () => {
                         {/* General Tab */}
                         <TabsContent value="general" className="space-y-6 m-0">
                             <div className="bg-card rounded-xl border border-border p-6 space-y-4">
-                                <h2 className="text-xl font-semibold border-b pb-2">Informations Générales</h2>
+                                <h2 className="text-xl font-semibold border-b pb-2">Identité de la Boutique</h2>
                                 <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>Logo de la boutique</Label>
-                                        <div className="max-w-xs">
-                                            <ImageUpload
-                                                value={formData.logo || ""}
-                                                onChange={(url) => setFormData({ ...formData, logo: url })}
-                                            />
-                                        </div>
-                                    </div>
                                     <div className="space-y-2">
                                         <Label>Nom de la boutique</Label>
                                         <Input
@@ -192,10 +191,29 @@ const Settings = () => {
                                     <div className="space-y-2">
                                         <Label>Devise</Label>
                                         <Input
-                                            value={formData.currency || ""}
+                                            value={formData.currency || "DH"}
                                             onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                                            placeholder="DH"
                                         />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Numéro WhatsApp</Label>
+                                    <Input
+                                        value={formData.whatsappNumber || ""}
+                                        onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                                        placeholder="+212600000000"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Logo de la boutique</Label>
+                                    <div className="p-4 border border-border rounded-lg bg-background/50">
+                                        <ImageUpload
+                                            value={formData.logo || ""}
+                                            onChange={(url) => setFormData({ ...formData, logo: url })}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Format recommandé: PNG transparent, max 2MB. Si aucun logo n'est ajouté, le nom de la boutique sera affiché.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -269,7 +287,7 @@ const Settings = () => {
                             </div>
                         </TabsContent>
 
-                        {/* Hero Section Tab */}
+                        {/* Hero Tab */}
                         <TabsContent value="hero" className="space-y-6 m-0">
                             <div className="bg-card rounded-xl border border-border p-6 space-y-4">
                                 <h2 className="text-xl font-semibold border-b pb-2">Style Global du Hero</h2>
@@ -315,84 +333,107 @@ const Settings = () => {
                             </div>
 
                             <HeroSlideManager
-                                onSlidesChange={setHeroSlidesChanges}
+                                onSlidesChange={(newSlides) => {
+                                    setHeroSlidesChanges(prev => ({ ...prev, slides: newSlides }));
+                                }}
                             />
                         </TabsContent>
 
                         {/* Sections Content Tab */}
                         <TabsContent value="sections" className="space-y-6 m-0">
-                            {/* Categories Section */}
                             <div className="bg-card rounded-xl border border-border p-6 space-y-4">
-                                <h2 className="text-xl font-semibold border-b pb-2">Section Catégories</h2>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Titre</Label>
-                                        <Input
-                                            value={formData.categoriesTitle || ""}
-                                            onChange={(e) => setFormData({ ...formData, categoriesTitle: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Sous-titre</Label>
-                                        <Input
-                                            value={formData.categoriesSubtitle || ""}
-                                            onChange={(e) => setFormData({ ...formData, categoriesSubtitle: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-4 col-span-2">
-                                        <div className="flex justify-between">
-                                            <Label>Vitesse du défilement (ms)</Label>
-                                            <span className="text-sm text-muted-foreground">{formData.categoriesAutoPlayInterval ?? 3000}ms</span>
+                                <h2 className="text-xl font-semibold border-b pb-2">Titres des Sections</h2>
+
+                                <div className="space-y-4">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Titre "Catégories"</Label>
+                                            <Input
+                                                value={formData.categoriesTitle || "Nos Catégories"}
+                                                onChange={(e) => setFormData({ ...formData, categoriesTitle: e.target.value })}
+                                            />
                                         </div>
-                                        <Slider
-                                            value={[formData.categoriesAutoPlayInterval ?? 3000]}
-                                            min={1000}
-                                            max={10000}
-                                            step={500}
-                                            onValueChange={(vals) => setFormData({ ...formData, categoriesAutoPlayInterval: vals[0] })}
-                                        />
+                                        <div className="space-y-2">
+                                            <Label>Sous-titre "Catégories"</Label>
+                                            <Input
+                                                value={formData.categoriesSubtitle || "Explorez nos produits par catégorie"}
+                                                onChange={(e) => setFormData({ ...formData, categoriesSubtitle: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Vitesse de défilement (ms)</Label>
+                                            <Input
+                                                type="number"
+                                                value={formData.categoriesAutoPlayInterval || 3000}
+                                                onChange={(e) => setFormData({ ...formData, categoriesAutoPlayInterval: parseInt(e.target.value) || 3000 })}
+                                                placeholder="3000"
+                                            />
+                                            <p className="text-xs text-muted-foreground">Temps en millisecondes (ex: 3000 = 3 secondes). 0 pour désactiver.</p>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Featured Section */}
-                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
-                                <h2 className="text-xl font-semibold border-b pb-2">Section Produits Populaires</h2>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Titre</Label>
-                                        <Input
-                                            value={formData.featuredTitle || ""}
-                                            onChange={(e) => setFormData({ ...formData, featuredTitle: e.target.value })}
-                                        />
+                                    <div className="border-t border-border pt-4 grid md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Titre "Produits Vedettes"</Label>
+                                            <Input
+                                                value={formData.featuredTitle || "Produits Vedettes"}
+                                                onChange={(e) => setFormData({ ...formData, featuredTitle: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Sous-titre "Produits Vedettes"</Label>
+                                            <Input
+                                                value={formData.featuredSubtitle || "Nos meilleures ventes du moment"}
+                                                onChange={(e) => setFormData({ ...formData, featuredSubtitle: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Sous-titre</Label>
-                                        <Input
-                                            value={formData.featuredSubtitle || ""}
-                                            onChange={(e) => setFormData({ ...formData, featuredSubtitle: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Why Us Section */}
-                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
-                                <h2 className="text-xl font-semibold border-b pb-2">Section "Pourquoi nous"</h2>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Titre</Label>
-                                        <Input
-                                            value={formData.whyTitle || ""}
-                                            onChange={(e) => setFormData({ ...formData, whyTitle: e.target.value })}
-                                        />
+                                    <div className="border-t border-border pt-4 grid md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Titre "Pourquoi Nous"</Label>
+                                            <Input
+                                                value={formData.whyTitle || "Pourquoi Nous Choisir ?"}
+                                                onChange={(e) => setFormData({ ...formData, whyTitle: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Sous-titre "Pourquoi Nous"</Label>
+                                            <Input
+                                                value={formData.whySubtitle || "La qualité et le service avant tout"}
+                                                onChange={(e) => setFormData({ ...formData, whySubtitle: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Sous-titre</Label>
-                                        <Input
-                                            value={formData.whySubtitle || ""}
-                                            onChange={(e) => setFormData({ ...formData, whySubtitle: e.target.value })}
-                                        />
+
+                                    <div className="border-t border-border pt-4 grid md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Titre "Contact"</Label>
+                                            <Input
+                                                value={formData.ctaTitle || "Une Question ?"}
+                                                onChange={(e) => setFormData({ ...formData, ctaTitle: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Sous-titre "Contact"</Label>
+                                            <Input
+                                                value={formData.ctaSubtitle || "Notre équipe est là pour vous aider"}
+                                                onChange={(e) => setFormData({ ...formData, ctaSubtitle: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-border pt-4">
+                                        <h3 className="text-lg font-medium mb-3">Seuil de stock bas</h3>
+                                        <div className="space-y-2 max-w-xs">
+                                            <Label>Seuil d'alerte</Label>
+                                            <Input
+                                                type="number"
+                                                value={formData.lowStockThreshold || 5}
+                                                onChange={(e) => setFormData({ ...formData, lowStockThreshold: parseInt(e.target.value) || 0 })}
+                                            />
+                                            <p className="text-xs text-muted-foreground">Les produits avec un stock inférieur à ce nombre afficheront un badge "Stock Faible".</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -483,13 +524,6 @@ const Settings = () => {
                                         <Input
                                             value={formData.contactHours || ""}
                                             onChange={(e) => setFormData({ ...formData, contactHours: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Numéro WhatsApp</Label>
-                                        <Input
-                                            value={formData.whatsappNumber || ""}
-                                            onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
                                         />
                                     </div>
                                 </div>
@@ -621,6 +655,36 @@ const Settings = () => {
                         {/* Checkout Tab */}
                         <TabsContent value="checkout" className="space-y-6 m-0">
                             <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+                                <h2 className="text-xl font-semibold border-b pb-2">Paramètres Généraux</h2>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Livraison Gratuite</Label>
+                                            <p className="text-sm text-muted-foreground">Activer la livraison gratuite pour toutes les commandes au-dessus d'un certain montant.</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.freeShippingEnabled || false}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, freeShippingEnabled: checked })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Montant minimum (MAD)</Label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.freeShippingThreshold || 0}
+                                            onChange={(e) => setFormData({ ...formData, freeShippingThreshold: parseFloat(e.target.value) || 0 })}
+                                            placeholder="0"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Les commandes au-dessus de ce montant bénéficieront de la livraison gratuite (si activée).
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
                                 <h2 className="text-xl font-semibold border-b pb-2">Checkout & Paiement</h2>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
@@ -650,8 +714,17 @@ const Settings = () => {
                     </div>
                 </Tabs>
 
-                <div className="flex justify-end sticky bottom-6">
-                    <Button size="xl" className="shadow-lg" disabled={mutation.isPending}>
+                <div className="flex justify-end sticky bottom-6 z-50 bg-background/80 backdrop-blur-sm p-4 rounded-xl border border-border/50">
+                    <Button
+                        type="button"
+                        onClick={(e) => {
+                            console.log("Button clicked!");
+                            handleSave(e);
+                        }}
+                        size="xl"
+                        className="shadow-lg"
+                        disabled={mutation.isPending}
+                    >
                         {mutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
                         Enregistrer les changements
                     </Button>

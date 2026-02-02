@@ -107,12 +107,24 @@ model City {
   active       Boolean @default(true)
 }
 
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  permissions String[]
+  admins      Admin[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Admin {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
   name      String
   role      String   @default("editor")
+  roleId    String?
+  assignedRole Role?   @relation(fields: [roleId], references: [id])
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -177,6 +189,8 @@ model Settings {
   storeName         String   @default("MKARIM")
   storeAvailability Boolean  @default(true)
   codEnabled        Boolean  @default(true)
+  freeShippingEnabled Boolean @default(false)
+  freeShippingThreshold Int   @default(0)
   whatsappNumber    String   @default("+212600000000")
   currency          String   @default("DH")
   logo              String?  @default("/uploads/logo-placeholder.png")

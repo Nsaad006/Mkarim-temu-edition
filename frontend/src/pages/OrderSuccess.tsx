@@ -33,7 +33,22 @@ const OrderSuccess = () => {
         fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
         fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
         fire(0.1, { spread: 120, startVelocity: 45 });
-    }, []);
+
+        // Handle browser back button - redirect to home page
+        const handlePopState = () => {
+            navigate("/", { replace: true });
+        };
+
+        // Replace current history state to prevent going back to checkout
+        window.history.replaceState(null, "", "/order-success");
+
+        // Listen for back button
+        window.addEventListener("popstate", handlePopState);
+
+        return () => {
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, [navigate]);
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary selection:text-white">
@@ -87,23 +102,23 @@ const OrderSuccess = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-lg mx-auto">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-2xl mx-auto">
                         <Button
                             onClick={() => navigate("/")}
                             variant="outline"
                             size="xl"
-                            className="w-full sm:flex-1 border-2 border-primary/20 hover:border-primary text-foreground hover:bg-primary/5 font-black uppercase tracking-widest rounded-2xl italic"
+                            className="w-full sm:flex-1 border-2 border-primary/20 hover:border-primary text-foreground hover:bg-primary/5 font-black uppercase tracking-wide rounded-2xl italic px-6 py-6 text-sm"
                         >
-                            <Home className="w-5 h-5 mr-3 text-primary" />
-                            RETOUR ACCUEIL
+                            <Home className="w-5 h-5 mr-2 flex-shrink-0 text-primary" />
+                            <span className="whitespace-nowrap">RETOUR ACCUEIL</span>
                         </Button>
                         <Button
                             onClick={() => navigate("/products")}
                             size="xl"
-                            className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest rounded-2xl shadow-[0_0_30px_rgba(235,68,50,0.3)] hover:shadow-[0_0_40px_rgba(235,68,50,0.5)] italic"
+                            className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wide rounded-2xl shadow-[0_0_30px_rgba(235,68,50,0.3)] hover:shadow-[0_0_40px_rgba(235,68,50,0.5)] italic px-6 py-6 text-sm"
                         >
-                            <Package className="w-5 h-5 mr-3" />
-                            REVOIR LE CATALOGUE
+                            <Package className="w-5 h-5 mr-2 flex-shrink-0" />
+                            <span className="whitespace-nowrap">REVOIR LE CATALOGUE</span>
                         </Button>
                     </div>
                 </motion.div>

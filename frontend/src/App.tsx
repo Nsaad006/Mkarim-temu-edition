@@ -22,10 +22,12 @@ import Customers from "./pages/admin/Customers";
 import Analytics from "./pages/admin/Analytics";
 import Settings from "./pages/admin/Settings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import Roles from "./pages/admin/Roles";
 import Messages from "./pages/admin/Messages";
 import Suppliers from "./pages/admin/Suppliers";
 import Procurements from "./pages/admin/Procurements";
 import Wholesalers from "./pages/admin/Wholesalers";
+
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { CartProvider } from "./context/CartContext";
@@ -69,10 +71,12 @@ const App = () => (
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="users" element={<AdminUsers />} />
+                    <Route path="roles" element={<Roles />} />
                     <Route path="messages" element={<Messages />} />
                     <Route path="suppliers" element={<Suppliers />} />
                     <Route path="procurements" element={<Procurements />} />
                     <Route path="wholesalers" element={<Wholesalers />} />
+
                     {/* Other routes will be added as we implement them */}
                     <Route path="*" element={<Dashboard />} /> {/* Fallback to dashboard for now */}
                   </Route>
