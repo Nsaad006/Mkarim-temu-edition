@@ -184,7 +184,25 @@ const Orders = () => {
 
             return matchesSearch && matchesStatus && matchesDate;
         })
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        .sort((a, b) => {
+            // Role based sorting priority
+            if (userRole === 'magasinier') {
+                // Confirmed first
+                const aConfirmed = a.status === 'CONFIRMED';
+                const bConfirmed = b.status === 'CONFIRMED';
+                if (aConfirmed && !bConfirmed) return -1;
+                if (!aConfirmed && bConfirmed) return 1;
+            } else if (userRole === 'commercial') {
+                // Pending first
+                const aPending = a.status === 'PENDING';
+                const bPending = b.status === 'PENDING';
+                if (aPending && !bPending) return -1;
+                if (!aPending && bPending) return 1;
+            }
+
+            // Default sort by date
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
 
     const handleStatusChange = (orderId: string, newStatus: string) => {
         updateStatusMutation.mutate({ id: orderId, status: newStatus });

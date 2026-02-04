@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronLeft, ChevronRight, Gamepad2, Zap, Trophy, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Gamepad2, Zap, Trophy, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { heroSlidesApi } from '@/api/hero-slides';
@@ -190,7 +190,12 @@ export const HeroCarousel = () => {
                                                             </Button>
                                                         </Link>
                                                         <Link to="/products" className="w-full sm:w-auto">
-                                                            <Button size="xl" variant="outline" className="w-full sm:w-auto">
+                                                            <Button
+                                                                size="xl"
+                                                                variant="outline"
+                                                                className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-black hover:border-white transition-all duration-300 group"
+                                                            >
+                                                                <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                                                                 Découvrir la Boutique
                                                             </Button>
                                                         </Link>

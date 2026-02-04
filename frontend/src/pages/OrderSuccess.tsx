@@ -13,6 +13,12 @@ const OrderSuccess = () => {
     const orderNumber = searchParams.get("orderNumber");
 
     useEffect(() => {
+        // If no order number, redirect to home or 404
+        if (!orderNumber) {
+            navigate("/not-found", { replace: true });
+            return;
+        }
+
         // Trigger confetti animation with brand colors
         const count = 200;
         const defaults = {
@@ -40,7 +46,7 @@ const OrderSuccess = () => {
         };
 
         // Replace current history state to prevent going back to checkout
-        window.history.replaceState(null, "", "/order-success");
+        window.history.replaceState(null, "", `/order-success?orderNumber=${orderNumber}`);
 
         // Listen for back button
         window.addEventListener("popstate", handlePopState);
@@ -48,7 +54,7 @@ const OrderSuccess = () => {
         return () => {
             window.removeEventListener("popstate", handlePopState);
         };
-    }, [navigate]);
+    }, [navigate, orderNumber]);
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary selection:text-white">

@@ -56,6 +56,9 @@ router.get('/orders', authenticate, authorize(['super_admin', 'editor'], PERMISS
                             }
                         }
                     }
+                },
+                payments: {
+                    orderBy: { date: 'desc' }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -81,6 +84,9 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
                             include: {
                                 product: true
                             }
+                        },
+                        payments: {
+                            orderBy: { date: 'desc' }
                         }
                     }
                 }
@@ -173,6 +179,18 @@ router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], PE
                 include: { items: true }
             });
 
+            // 4. Record Initial Payment if Advance > 0
+            if (advance > 0) {
+                await tx.wholesalePayment.create({
+                    data: {
+                        wholesaleOrderId: order.id,
+                        amount: advance,
+                        note: 'Avance initiale',
+                        date: new Date()
+                    }
+                });
+            }
+
             return order;
         });
 
@@ -183,33 +201,59 @@ router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], PE
     }
 });
 
-// PATCH /api/wholesalers/orders/:orderId - Update Advance / Status
-router.patch('/orders/:orderId', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
+// POST /api/wholesalers/orders/:orderId/payments - Add Payment
+router.post('/orders/:orderId/payments', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { advanceAmount } = req.body;
+        const { amount, note } = req.body;
+        const paymentAmount = Number(amount);
 
-        if (advanceAmount === undefined) return res.status(400).json({ error: 'Advance amount required' });
+        if (!paymentAmount || paymentAmount <= 0) {
+            return res.status(400).json({ error: 'Valid amount is required' });
+        }
 
-        const order = await prisma.wholesaleOrder.findUnique({ where: { id: orderId } });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
+        await prisma.$transaction(async (tx) => {
+            const order = await tx.wholesaleOrder.findUnique({ where: { id: orderId } });
+            if (!order) throw new Error('Order not found');
 
-        const newAdvance = Number(advanceAmount);
-        const remaining = order.totalAmount - newAdvance;
-        const status = remaining <= 0 ? 'PAID' : 'PENDING';
+            const remaining = order.totalAmount - order.advanceAmount;
 
-        const updatedOrder = await prisma.wholesaleOrder.update({
-            where: { id: orderId },
-            data: {
-                advanceAmount: newAdvance,
-                status
+            // Allow if remaining is positive, but ensure we don't overpay significantly?
+            // User requirement: "payment added has to be <= the reste Reste à payer"
+            if (paymentAmount > remaining) {
+                throw new Error(`Le paiement (${paymentAmount}) dépasse le reste à payer (${remaining})`);
             }
+            if (remaining <= 0) {
+                throw new Error('La commande est déjà réglée');
+            }
+
+            // Create Payment
+            await tx.wholesalePayment.create({
+                data: {
+                    wholesaleOrderId: orderId,
+                    amount: paymentAmount,
+                    note: note || 'Paiement',
+                    date: new Date()
+                }
+            });
+
+            // Update Order
+            const newAdvance = order.advanceAmount + paymentAmount;
+            const newStatus = (order.totalAmount - newAdvance) <= 0 ? 'PAID' : 'PENDING';
+
+            await tx.wholesaleOrder.update({
+                where: { id: orderId },
+                data: {
+                    advanceAmount: newAdvance,
+                    status: newStatus
+                }
+            });
         });
 
-        res.json(updatedOrder);
-    } catch (error) {
-        console.error('Error updating order:', error);
-        res.status(500).json({ error: 'Failed to update order' });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Error adding payment:', error);
+        res.status(400).json({ error: error.message || 'Failed to add payment' });
     }
 });
 

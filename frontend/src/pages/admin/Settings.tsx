@@ -95,11 +95,10 @@ const Settings = () => {
                     </TabsList>
 
                     <div className="mt-6">
-                        {/* Email Tab */}
                         <TabsContent value="email" className="space-y-6 m-0">
                             <div className="bg-card rounded-xl border border-border p-6 space-y-4">
                                 <div className="flex items-center justify-between border-b pb-2">
-                                    <h2 className="text-xl font-semibold">Configuration Email (Gmail OAuth2)</h2>
+                                    <h2 className="text-xl font-semibold">Configuration Email (SMTP Gmail)</h2>
                                     <div className="flex items-center gap-2">
                                         <Label htmlFor="email-enabled">Activer les emails</Label>
                                         <Switch
@@ -110,8 +109,12 @@ const Settings = () => {
                                     </div>
                                 </div>
                                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-200">
-                                    <p className="font-semibold mb-1">💡 Note sur la sécurité :</p>
-                                    <p>Utilisez Gmail OAuth2 pour une sécurité maximale. Vous devez créer un projet sur Google Cloud Console pour obtenir le Client ID, Secret et Refresh Token.</p>
+                                    <p className="font-semibold mb-1">💡 Instructions :</p>
+                                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                                        <li>Activez la "Validation en deux étapes" sur votre compte Google.</li>
+                                        <li>Générez un "Mot de passe d'application" (App Password) dans les paramètres de sécurité.</li>
+                                        <li>Utilisez ce mot de passe ci-dessous (ce n'est PAS votre mot de passe Gmail habituel).</li>
+                                    </ul>
                                 </div>
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -131,6 +134,15 @@ const Settings = () => {
                                         />
                                     </div>
                                     <div className="space-y-2">
+                                        <Label>Mot de passe d'application</Label>
+                                        <Input
+                                            type="password"
+                                            value={formData.emailAppPassword || ""}
+                                            onChange={(e) => setFormData({ ...formData, emailAppPassword: e.target.value })}
+                                            placeholder="xxxx xxxx xxxx xxxx"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
                                         <Label>Email Administrateur (Notifications)</Label>
                                         <Input
                                             value={formData.emailAdminReceiver || ""}
@@ -138,40 +150,6 @@ const Settings = () => {
                                             placeholder="destinataire@email.com"
                                         />
                                         <p className="text-xs text-muted-foreground">L'email qui recevra les notifications de nouvelles commandes.</p>
-                                    </div>
-                                </div>
-
-                                <div className="pt-4 space-y-4">
-                                    <h3 className="text-lg font-medium border-b pb-2">Identifiants OAuth2</h3>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label>Client ID</Label>
-                                            <Input
-                                                value={formData.emailClientId || ""}
-                                                onChange={(e) => setFormData({ ...formData, emailClientId: e.target.value })}
-                                                placeholder="000000000000-abc.apps.googleusercontent.com"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Client Secret</Label>
-                                            <Input
-                                                type="password"
-                                                value={formData.emailClientSecret || ""}
-                                                onChange={(e) => setFormData({ ...formData, emailClientSecret: e.target.value })}
-                                                placeholder="********************"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Refresh Token</Label>
-                                            <Textarea
-                                                value={formData.emailRefreshToken || ""}
-                                                onChange={(e) => setFormData({ ...formData, emailRefreshToken: e.target.value })}
-                                                placeholder="1//0g..."
-                                                className="font-mono text-xs"
-                                                rows={2}
-                                            />
-                                            <p className="text-xs text-muted-foreground">Le token de rafraîchissement obtenu après l'autorisation OAuth2.</p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>

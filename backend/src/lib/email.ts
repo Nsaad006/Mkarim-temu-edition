@@ -1,8 +1,8 @@
-import { google } from 'googleapis';
+import nodemailer from 'nodemailer';
 import prisma from './prisma';
 
 /**
- * Sends an email using the Gmail OAuth2 settings stored in the database.
+ * Sends an email using Gmail SMTP and App Password stored in database.
  */
 export const sendEmail = async (to: string, subject: string, html: string) => {
     try {
@@ -18,69 +18,36 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
             return;
         }
 
-        const emailGmailUser = settings.emailGmailUser?.trim();
-        const emailClientId = settings.emailClientId?.trim();
-        const emailClientSecret = settings.emailClientSecret?.trim();
-        const emailRefreshToken = settings.emailRefreshToken?.trim();
+        const emailUser = settings.emailGmailUser?.trim();
+        const emailPass = settings.emailAppPassword?.trim();
         const emailSenderName = settings.emailSenderName;
 
-        // Debug logs (safe - only existence check)
-        console.log('🔍 Checking Email Credentials:');
-        console.log('- User:', emailGmailUser ? `✅ (${emailGmailUser})` : '❌');
-        console.log('- ClientID:', emailClientId ? '✅' : '❌');
-        console.log('- ClientSecret:', emailClientSecret ? '✅' : '❌');
-        console.log('- RefreshToken:', emailRefreshToken ? '✅' : '❌');
-
-        if (!emailGmailUser || !emailClientId || !emailClientSecret || !emailRefreshToken) {
-            console.error('❌ Email configuration is missing one or more credentials (see checks above).');
+        if (!emailUser || !emailPass) {
+            console.error('❌ Email configuration is missing credentials (User/AppPassword).');
             return;
         }
 
-        const auth = new google.auth.OAuth2(
-            emailClientId,
-            emailClientSecret
-        );
-
-        auth.setCredentials({
-            refresh_token: emailRefreshToken
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: emailUser,
+                pass: emailPass
+            }
         });
 
-        const gmail = google.gmail({ version: 'v1', auth });
+        console.log(`📨 Sending via Gmail SMTP to ${to}...`);
 
-        // Create the email in RFC 822 format
-        const subjectEncoded = Buffer.from(subject).toString('base64');
-        const htmlBase64 = Buffer.from(html, 'utf-8').toString('base64');
-
-        const rawMessage = [
-            `From: "${emailSenderName || 'Store'}" <${emailGmailUser}>`,
-            `To: ${to}`,
-            `Subject: =?utf-8?B?${subjectEncoded}?=`,
-            'Content-Type: text/html; charset=utf-8',
-            'Content-Transfer-Encoding: base64',
-            'MIME-Version: 1.0',
-            '',
-            htmlBase64,
-        ].join('\n');
-
-        const encodedMessage = Buffer.from(rawMessage)
-            .toString('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
-
-        console.log(`📨 Sending via Gmail API (HTTPS) to ${to}...`);
-
-        const res = await gmail.users.messages.send({
-            userId: 'me',
-            requestBody: {
-                raw: encodedMessage,
-            },
+        const info = await transporter.sendMail({
+            from: `"${emailSenderName || 'Store'}" <${emailUser}>`,
+            to,
+            subject,
+            html,
         });
 
-        console.log('✅ Email sent successfully via API:', res.data.id);
-        return res.data;
+        console.log('✅ Email sent successfully:', info.messageId);
+        return info;
     } catch (error) {
-        console.error('❌ Error in sendEmail (Gmail API):', error);
+        console.error('❌ Error in sendEmail (SMTP):', error);
         throw error;
     }
 };

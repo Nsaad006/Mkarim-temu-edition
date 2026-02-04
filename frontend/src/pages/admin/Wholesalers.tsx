@@ -64,6 +64,15 @@ export default function Wholesalers() {
         }
     });
 
+    // Wholesaler History Modal State
+    const [selectedWholesalerHistory, setSelectedWholesalerHistory] = useState<Wholesaler | null>(null);
+    const [isWholesalerHistoryOpen, setIsWholesalerHistoryOpen] = useState(false);
+
+    const openWholesalerHistory = (wholesaler: Wholesaler) => {
+        setSelectedWholesalerHistory(wholesaler);
+        setIsWholesalerHistoryOpen(true);
+    };
+
     const createOrderMutation = useMutation({
         mutationFn: (data: { wholesalerId: string, items: any[], advanceAmount: number }) =>
             wholesalersApi.createOrder(data.wholesalerId, { items: data.items, advanceAmount: data.advanceAmount }),
@@ -77,13 +86,23 @@ export default function Wholesalers() {
         }
     });
 
-    const updateOrderMutation = useMutation({
-        mutationFn: (data: { orderId: string, advanceAmount: number }) =>
-            wholesalersApi.updateOrder(data.orderId, { advanceAmount: data.advanceAmount }),
+    const addPaymentMutation = useMutation({
+        mutationFn: (data: { orderId: string, amount: number, note: string }) =>
+            wholesalersApi.addPayment(data.orderId, data.amount, data.note),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] });
+            // Refresh details if open
+            // We might need to refetch specific item or just close. 
+            // Better to invalidate 'wholesale-orders' then reload selectedOrder from the list if possible, 
+            // but selectedOrder is local state. We should close or update it.
+            // For now, let's close the modal or keep it open but we need to refresh data.
             setIsOrderDetailsOpen(false);
-            toast({ title: "Succès", description: "Mise à jour effectuée" });
+            setNewPaymentAmount('');
+            setNewPaymentNote('');
+            toast({ title: "Succès", description: "Paiement ajouté" });
+        },
+        onError: (err: any) => {
+            toast({ title: "Erreur", description: err.response?.data?.error || "Erreur lors du paiement", variant: "destructive" });
         }
     });
 
@@ -119,6 +138,10 @@ export default function Wholesalers() {
     const [newOrderWholesalerId, setNewOrderWholesalerId] = useState('');
     const [newOrderItems, setNewOrderItems] = useState<{ productId: string, quantity: number, unitPrice: number }[]>([]);
     const [newOrderAdvance, setNewOrderAdvance] = useState(0);
+
+    // Payment Form State
+    const [newPaymentAmount, setNewPaymentAmount] = useState('');
+    const [newPaymentNote, setNewPaymentNote] = useState('');
 
     // Products for selecting in order
     const [products, setProducts] = useState<any[]>([]); // Need to fetch products
@@ -171,6 +194,18 @@ export default function Wholesalers() {
             advanceAmount: Number(newOrderAdvance)
         });
     }
+
+    const handleAddPayment = () => {
+        if (!selectedOrder) return;
+        const amount = Number(newPaymentAmount);
+        if (!amount || amount <= 0) return;
+
+        addPaymentMutation.mutate({
+            orderId: selectedOrder.id,
+            amount: amount,
+            note: newPaymentNote
+        });
+    };
 
     const openEditOrder = (order: any) => {
         setSelectedOrder(order);
@@ -342,10 +377,10 @@ export default function Wholesalers() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-bold whitespace-nowrap">
-                                                {w.orders?.length || 0}
+                                                {w._count?.orders || w.orders?.length || 0}
                                             </TableCell>
                                             <TableCell className="text-right whitespace-nowrap">
-                                                <Button variant="ghost" size="sm">
+                                                <Button variant="ghost" size="sm" onClick={() => openWholesalerHistory(w)}>
                                                     <Eye className="w-4 h-4" />
                                                 </Button>
                                             </TableCell>
@@ -393,6 +428,73 @@ export default function Wholesalers() {
                             <Button type="submit" disabled={createWholesalerMutation.isPending}>Ajouter</Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal: Wholesaler History */}
+            <Dialog open={isWholesalerHistoryOpen} onOpenChange={setIsWholesalerHistoryOpen}>
+                <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Historique des Commandes: {selectedWholesalerHistory?.name}</DialogTitle>
+                        <DialogDescription>
+                            Liste complète des transactions pour ce client
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="rounded-md border mt-2">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>N° Commande</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead className="text-right">Total Commande</TableHead>
+                                    <TableHead className="text-right">Avance (Total)</TableHead>
+                                    <TableHead className="text-right">Reste à Payer</TableHead>
+                                    <TableHead className="text-center">Statut</TableHead>
+                                    <TableHead></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {orders.filter((o: any) => o.wholesalerId === selectedWholesalerHistory?.id).length > 0 ? (
+                                    orders
+                                        .filter((o: any) => o.wholesalerId === selectedWholesalerHistory?.id)
+                                        .map((order: any) => {
+                                            const remaining = order.totalAmount - order.advanceAmount;
+                                            return (
+                                                <TableRow key={order.id}>
+                                                    <TableCell className="font-mono">{order.orderNumber}</TableCell>
+                                                    <TableCell>{format(new Date(order.createdAt), 'dd MMM yyyy', { locale: fr })}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(order.totalAmount)}</TableCell>
+                                                    <TableCell className="text-right text-green-600 font-medium">{formatCurrency(order.advanceAmount)}</TableCell>
+                                                    <TableCell className={`text-right font-bold ${remaining > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                        {formatCurrency(Math.max(0, remaining))}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="outline" className={order.status === 'PAID' ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"}>
+                                                            {order.status === 'PAID' ? 'Payé' : 'Non Payé'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button variant="ghost" size="sm" onClick={() => {
+                                                            setSelectedOrder(order);
+                                                            setIsOrderDetailsOpen(true);
+                                                        }}>
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                                            Aucune commande pour ce grossiste
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -501,7 +603,7 @@ export default function Wholesalers() {
 
             {/* Modal: Order Detail */}
             <Dialog open={isOrderDetailsOpen} onOpenChange={setIsOrderDetailsOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl w-full max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Détail Commande {selectedOrder?.orderNumber}</DialogTitle>
                         <DialogDescription>
@@ -566,30 +668,75 @@ export default function Wholesalers() {
                                 </div>
                             </div>
 
-                            <div className="flex items-end gap-4 p-4 border rounded-md">
-                                <div className="grid gap-2 flex-1">
-                                    <Label>Modifier le montant TOTAL de l'avance</Label>
-                                    <Input
-                                        type="number"
-                                        defaultValue={selectedOrder.advanceAmount}
-                                        onChange={(e) => {
-                                            (selectedOrder as any).newAdvance = Number(e.target.value);
-                                        }}
-                                    />
-                                </div>
-                                <Button
-                                    onClick={() => {
-                                        const val = (selectedOrder as any).newAdvance ?? selectedOrder.advanceAmount;
-                                        updateOrderMutation.mutate({ orderId: selectedOrder.id, advanceAmount: val });
-                                    }}
-                                    disabled={updateOrderMutation.isPending}
-                                >
-                                    <DollarSign className="w-4 h-4 mr-2" />
-                                    Mettre à jour
-                                </Button>
+                            <div className="space-y-4 pt-4 border-t">
+                                <h3 className="font-semibold text-lg">Historique des Paiements</h3>
+
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Note</TableHead>
+                                            <TableHead className="text-right">Montant</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedOrder.payments && selectedOrder.payments.length > 0 ? (
+                                            selectedOrder.payments.map((payment) => (
+                                                <TableRow key={payment.id}>
+                                                    <TableCell>{format(new Date(payment.date), 'dd MMM yyyy HH:mm', { locale: fr })}</TableCell>
+                                                    <TableCell>{payment.note || '-'}</TableCell>
+                                                    <TableCell className="text-right font-medium text-green-600">
+                                                        +{formatCurrency(payment.amount)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                                                    Aucun paiement enregistré
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+
+                                {/* Add Payment Section */}
+                                {(selectedOrder.totalAmount - selectedOrder.advanceAmount) > 0 && (
+                                    <div className="bg-muted/50 p-4 rounded-md space-y-3 border">
+                                        <h4 className="font-medium text-sm">Ajouter un paiement</h4>
+                                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                            <div className="grid gap-1.5 flex-1">
+                                                <Label htmlFor="payment-amount">Montant (max: {formatCurrency(selectedOrder.totalAmount - selectedOrder.advanceAmount)})</Label>
+                                                <Input
+                                                    id="payment-amount"
+                                                    type="number"
+                                                    placeholder="0.00"
+                                                    value={newPaymentAmount}
+                                                    onChange={(e) => setNewPaymentAmount(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="grid gap-1.5 flex-[2]">
+                                                <Label htmlFor="payment-note">Note / Référence</Label>
+                                                <Input
+                                                    id="payment-note"
+                                                    placeholder="Ex: Virement bancaire, Espèces..."
+                                                    value={newPaymentNote}
+                                                    onChange={(e) => setNewPaymentNote(e.target.value)}
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={handleAddPayment}
+                                                disabled={addPaymentMutation.isPending || !newPaymentAmount || Number(newPaymentAmount) <= 0}
+                                            >
+                                                <DollarSign className="w-4 h-4 mr-2" />
+                                                Ajouter
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <DialogFooter className="flex justify-between sm:justify-between w-full">
+                            <DialogFooter className="flex justify-between sm:justify-between w-full pt-4 border-t">
                                 <Button
                                     variant="destructive"
                                     onClick={() => {

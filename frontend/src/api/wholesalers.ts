@@ -15,6 +15,14 @@ export interface Wholesaler {
     };
 }
 
+export interface WholesalePayment {
+    id: string;
+    wholesaleOrderId: string;
+    amount: number;
+    date: string;
+    note?: string;
+}
+
 export interface WholesaleOrder {
     id: string;
     wholesalerId: string;
@@ -24,6 +32,7 @@ export interface WholesaleOrder {
     status: 'PENDING' | 'PAID';
     createdAt: string;
     items: WholesaleOrderItem[];
+    payments?: WholesalePayment[];
 }
 
 export interface WholesaleOrderItem {
@@ -80,9 +89,9 @@ export const wholesalersApi = {
         return response.data;
     },
 
-    updateOrder: async (orderId: string, data: { advanceAmount: number }) => {
+    addPayment: async (orderId: string, amount: number, note?: string) => {
         const token = localStorage.getItem('auth_token');
-        const response = await axios.patch(`${API_URL}/wholesalers/orders/${orderId}`, data, {
+        const response = await axios.post(`${API_URL}/wholesalers/orders/${orderId}/payments`, { amount, note }, {
             headers: { Authorization: `Bearer ${token}` }
         });
         return response.data;

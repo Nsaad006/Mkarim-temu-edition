@@ -248,12 +248,10 @@ model Settings {
   // Low Stock Settings
   lowStockThreshold Int      @default(5)
 
-  // Email Configuration (OAuth2)
+  // Email Configuration (SMTP)
   emailSenderName    String    @default("MKARIM Store")
   emailGmailUser     String    @default("")
-  emailClientId      String    @default("")
-  emailClientSecret  String    @default("")
-  emailRefreshToken  String    @default("")
+  emailAppPassword   String    @default("")
   emailAdminReceiver String    @default("")
   emailEnabled       Boolean   @default(false)
 
@@ -312,6 +310,17 @@ model WholesaleOrder {
   
   wholesaler     Wholesaler        @relation(fields: [wholesalerId], references: [id])
   items          WholesaleOrderItem[]
+  payments       WholesalePayment[]
+}
+
+model WholesalePayment {
+  id               String         @id @default(uuid())
+  wholesaleOrderId String
+  amount           Int
+  date             DateTime       @default(now())
+  note             String?
+  
+  order            WholesaleOrder @relation(fields: [wholesaleOrderId], references: [id], onDelete: Cascade)
 }
 
 model WholesaleOrderItem {

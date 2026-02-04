@@ -79,9 +79,7 @@ export interface GlobalSettings {
     // Email Configuration
     emailSenderName?: string;
     emailGmailUser?: string;
-    emailClientId?: string;
-    emailClientSecret?: string;
-    emailRefreshToken?: string;
+    emailAppPassword?: string;
     emailAdminReceiver?: string;
     emailEnabled?: boolean;
 }
