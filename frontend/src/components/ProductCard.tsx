@@ -86,11 +86,15 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <span className="text-[8px] md:text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">
             {product.category?.name || product.categoryId.replace("-", " ")}
           </span>
-          <div className={`flex items-center gap-1 ${product.inStock ? "text-green-500" : "text-muted-foreground"}`}>
-            <div className={`w-1 h-1 rounded-full ${product.inStock ? "bg-green-500 animate-pulse" : "bg-muted-foreground"}`} />
-            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-tighter">
-              {product.inStock ? "OK" : "OUT"}
-            </span>
+          <div className={`flex items-center gap-1 ${product.inStock ? "" : "text-red-500"}`}>
+            {!product.inStock && (
+              <>
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-tighter">
+                  EN RUPTURE
+                </span>
+              </>
+            )}
           </div>
         </div>
 

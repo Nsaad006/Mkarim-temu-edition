@@ -170,9 +170,9 @@ const ProductDetailPage = () => {
                       </span>
                     )}
                   </div>
-                  <div className={`mt-4 inline-flex items-center gap-2 font-black uppercase tracking-[0.2em] text-[10px] ${product.inStock ? "text-green-500" : "text-primary"}`}>
-                    <Check className={`w-4 h-4 ${product.inStock ? "text-green-500" : "text-primary"}`} />
-                    {product.inStock ? "UNITÉ PRÊTE POUR EXPÉDITION" : "UNITÉ ÉPUISÉE"}
+                  <div className={`mt-4 inline-flex items-center gap-2 font-black uppercase tracking-[0.2em] text-[10px] ${product.inStock ? "text-green-500" : "text-red-500"}`}>
+                    <div className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"} animate-pulse`} />
+                    {product.inStock ? "UNITÉ PRÊTE POUR EXPÉDITION" : "EN RUPTURE"}
                   </div>
                 </div>
               </div>
