@@ -193,7 +193,7 @@ export const HeroCarousel = () => {
                                                             <Button
                                                                 size="xl"
                                                                 variant="outline"
-                                                                className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-black hover:border-white transition-all duration-300 group"
+                                                                className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 group"
                                                             >
                                                                 <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                                                                 Découvrir la Boutique
