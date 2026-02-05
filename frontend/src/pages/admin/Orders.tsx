@@ -70,7 +70,7 @@ import { getImageUrl } from "@/lib/image-utils";
 
 const Orders = () => {
     const { searchQuery: globalSearch } = useOutletContext<{ searchQuery: string }>();
-    const { currency } = useSettings();
+    const { currency, settings } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -223,7 +223,7 @@ const Orders = () => {
 
         try {
             toast({ title: "Envoi en cours", description: "Veuillez patienter...", });
-            const blob = getInvoiceBlob(order, currency);
+            const blob = getInvoiceBlob(order, currency, settings);
             await ordersApi.sendInvoiceEmail(order.id, blob);
             toast({ title: "Succès", description: "Facture envoyée par email" });
         } catch (error) {
@@ -344,7 +344,7 @@ const Orders = () => {
                                                     size="icon"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        generateInvoicePDF(order, currency);
+                                                        generateInvoicePDF(order, currency, settings);
                                                     }}
                                                     title="Télécharger la facture"
                                                 >
@@ -482,7 +482,7 @@ const Orders = () => {
                                                                     <Phone className="w-4 h-4 mr-2" />
                                                                     Appeler
                                                                 </Button>
-                                                                <Button className="w-full" variant="outline" onClick={() => generateInvoicePDF(order, currency)}>
+                                                                <Button className="w-full" variant="outline" onClick={() => generateInvoicePDF(order, currency, settings)}>
                                                                     <FileText className="w-4 h-4 mr-2" />
                                                                     Facture
                                                                 </Button>
@@ -518,7 +518,7 @@ const Orders = () => {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => generateInvoicePDF(order, currency)}>
+                                                    <DropdownMenuItem onClick={() => generateInvoicePDF(order, currency, settings)}>
                                                         <FileText className="mr-2 h-4 w-4" /> Facture PDF
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleEmailInvoice(order)}>

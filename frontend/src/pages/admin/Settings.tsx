@@ -85,13 +85,14 @@ const Settings = () => {
 
             <form onSubmit={handleSave} className="space-y-6">
                 <Tabs defaultValue="general" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto gap-2 bg-transparent p-0">
+                    <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto gap-2 bg-transparent p-0">
                         <TabsTrigger value="general" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Général</TabsTrigger>
                         <TabsTrigger value="hero" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Hero</TabsTrigger>
                         <TabsTrigger value="sections" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Sections</TabsTrigger>
                         <TabsTrigger value="contact" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Contact</TabsTrigger>
                         <TabsTrigger value="checkout" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Checkout</TabsTrigger>
                         <TabsTrigger value="email" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Email</TabsTrigger>
+                        <TabsTrigger value="invoice" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Facture</TabsTrigger>
                     </TabsList>
 
                     <div className="mt-6">
@@ -150,6 +151,53 @@ const Settings = () => {
                                             placeholder="destinataire@email.com"
                                         />
                                         <p className="text-xs text-muted-foreground">L'email qui recevra les notifications de nouvelles commandes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* Invoice Tab */}
+                        <TabsContent value="invoice" className="space-y-6 m-0">
+                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+                                <h2 className="text-xl font-semibold border-b pb-2">Configuration des Factures</h2>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Afficher la TVA</Label>
+                                            <p className="text-sm text-muted-foreground">Inclure le détail de la TVA sur les factures générées.</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.invoiceShowTax || false}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, invoiceShowTax: checked })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Taux de TVA (%)</Label>
+                                        <Input
+                                            type="number"
+                                            value={formData.invoiceTaxRate ?? 20}
+                                            onChange={(e) => setFormData({ ...formData, invoiceTaxRate: parseFloat(e.target.value) })}
+                                            disabled={!formData.invoiceShowTax}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Texte de pied de page</Label>
+                                        <Input
+                                            value={formData.invoiceFooterText || ""}
+                                            onChange={(e) => setFormData({ ...formData, invoiceFooterText: e.target.value })}
+                                            placeholder="Ex: Merci de votre confiance."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notes / Mentions légales</Label>
+                                        <Textarea
+                                            value={formData.invoiceNotes || ""}
+                                            onChange={(e) => setFormData({ ...formData, invoiceNotes: e.target.value })}
+                                            placeholder="Mentions légales, conditions de paiement..."
+                                            rows={3}
+                                        />
                                     </div>
                                 </div>
                             </div>

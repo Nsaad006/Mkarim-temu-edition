@@ -82,6 +82,12 @@ export interface GlobalSettings {
     emailAppPassword?: string;
     emailAdminReceiver?: string;
     emailEnabled?: boolean;
+
+    // Invoice Configuration
+    invoiceFooterText?: string;
+    invoiceShowTax?: boolean;
+    invoiceTaxRate?: number;
+    invoiceNotes?: string;
 }
 
 export const settingsApi = {

@@ -248,6 +248,12 @@ model Settings {
   // Low Stock Settings
   lowStockThreshold Int      @default(5)
 
+  // Invoice Configuration
+  invoiceFooterText   String    @default("Merci de votre confiance.")
+  invoiceShowTax      Boolean   @default(false)
+  invoiceTaxRate      Float     @default(20.0) // Percentage
+  invoiceNotes        String?   @default("Facture générée informatiquement.")
+
   // Email Configuration (SMTP)
   emailSenderName    String    @default("MKARIM Store")
   emailGmailUser     String    @default("")

@@ -15,6 +15,8 @@ import { Plus, Search, MapPin, Phone, Mail, ShoppingCart, Eye, DollarSign, FileT
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import axios from 'axios';
+import { useSettings } from "@/context/SettingsContext"; // Import hook
+
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD' }).format(amount);
@@ -25,6 +27,7 @@ import { generateWholesaleInvoicePDF, getWholesaleInvoiceBlob } from '@/utils/ex
 export default function Wholesalers() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const { settings, currency } = useSettings(); // Get settings and currency
     const [search, setSearch] = useState('');
 
     // State for Dialogs
@@ -101,7 +104,7 @@ export default function Wholesalers() {
         try {
             toast({ title: "Envoi en cours", description: "Veuillez patienter..." });
             // Using 'DH' as standard currency for now, or get from context/settings
-            const blob = getWholesaleInvoiceBlob(order, 'DH');
+            const blob = getWholesaleInvoiceBlob(order, currency, settings);
             await wholesalersApi.sendInvoiceEmail(order.id, blob);
             toast({ title: "Succès", description: "Facture envoyée par email" });
         } catch (error) {
@@ -362,7 +365,7 @@ export default function Wholesalers() {
                                                     }} title="Détails">
                                                         <Eye className="w-4 h-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, 'DH')} title="Télécharger Facture">
+                                                    <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, currency, settings)} title="Télécharger Facture">
                                                         <FileText className="w-4 h-4 text-blue-600" />
                                                     </Button>
                                                     <Button variant="ghost" size="sm" onClick={() => handleEmailInvoice(order)} title="Envoyer Facture par Email">
@@ -567,7 +570,7 @@ export default function Wholesalers() {
                                                         }} title="Détails">
                                                             <Eye className="w-4 h-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, 'DH')} title="Télécharger Facture">
+                                                        <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, currency, settings)} title="Télécharger Facture">
                                                             <FileText className="w-4 h-4 text-blue-600" />
                                                         </Button>
                                                         <Button variant="ghost" size="sm" onClick={() => handleEmailInvoice(order)} title="Envoyer Facture par Email">

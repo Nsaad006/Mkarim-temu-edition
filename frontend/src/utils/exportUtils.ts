@@ -60,7 +60,16 @@ export const exportOrdersToPDF = (orders: Order[], currency: string = "DH") => {
 };
 
 
-const createInvoiceDoc = (order: Order, currency: string) => {
+
+interface InvoiceSettings {
+    invoiceFooterText?: string;
+    invoiceShowTax?: boolean;
+    invoiceTaxRate?: number;
+    invoiceNotes?: string;
+    logo?: string;
+}
+
+const createInvoiceDoc = (order: Order, currency: string, settings?: InvoiceSettings) => {
     const doc = new jsPDF();
 
     // Header
@@ -111,29 +120,49 @@ const createInvoiceDoc = (order: Order, currency: string) => {
 
     // Totals
     const finalYPos = (doc as JSPDFWithAutoTable).lastAutoTable?.finalY || 180;
+    let currentY = finalYPos + 10;
 
     doc.setFontSize(12);
-    doc.text(`Total HT: ${(order.total * 0.8).toFixed(2)} ${currency}`, 140, finalYPos + 10);
-    doc.text(`TVA (20%): ${(order.total * 0.2).toFixed(2)} ${currency}`, 140, finalYPos + 17);
+
+    if (settings?.invoiceShowTax) {
+        const taxRate = settings.invoiceTaxRate || 20;
+        const totalHT = order.total / (1 + (taxRate / 100));
+        const totalTax = order.total - totalHT;
+
+        doc.text(`Total HT: ${totalHT.toFixed(2)} ${currency}`, 140, currentY);
+        currentY += 7;
+        doc.text(`TVA (${taxRate}%): ${totalTax.toFixed(2)} ${currency}`, 140, currentY);
+        currentY += 9;
+    }
+
     doc.setFontSize(14);
-    doc.text(`TOTAL TTC: ${order.total} ${currency}`, 140, finalYPos + 26);
+    doc.text(`TOTAL TTC: ${order.total} ${currency}`, 140, currentY);
 
     // Footer
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text("Merci pour votre confiance !", 105, 280, { align: "center" });
+    // Footer
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(settings?.invoiceFooterText || "Merci pour votre confiance !", 105, 280, { align: "center" });
     doc.text("MKARIM SOLUTION - www.mkarim.ma", 105, 285, { align: "center" });
+
+    // Notes
+    if (settings?.invoiceNotes) {
+        doc.setFontSize(8);
+        doc.text(settings.invoiceNotes, 14, 250);
+    }
 
     return doc;
 };
 
-export const generateInvoicePDF = (order: Order, currency: string = "DH") => {
-    const doc = createInvoiceDoc(order, currency);
+export const generateInvoicePDF = (order: Order, currency: string = "DH", settings?: InvoiceSettings) => {
+    const doc = createInvoiceDoc(order, currency, settings);
     doc.save(`Facture_${order.orderNumber}.pdf`);
 };
 
-export const getInvoiceBlob = (order: Order, currency: string = "DH") => {
-    const doc = createInvoiceDoc(order, currency);
+export const getInvoiceBlob = (order: Order, currency: string = "DH", settings?: InvoiceSettings) => {
+    const doc = createInvoiceDoc(order, currency, settings);
     return doc.output('blob');
 };
 
@@ -189,7 +218,7 @@ export const exportCustomersToPDF = (customers: any[], currency: string = "DH") 
 };
 
 
-const createWholesaleInvoiceDoc = (order: any, currency: string) => {
+const createWholesaleInvoiceDoc = (order: any, currency: string, settings?: InvoiceSettings) => {
     const doc = new jsPDF();
 
     // Header
@@ -241,35 +270,54 @@ const createWholesaleInvoiceDoc = (order: any, currency: string) => {
 
     // Totals
     const finalYPos = (doc as JSPDFWithAutoTable).lastAutoTable?.finalY || 180;
+    let currentY = finalYPos + 10;
 
     doc.setFontSize(12);
-    doc.text(`Total HT: ${(order.totalAmount * 0.8).toFixed(2)} ${currency}`, 140, finalYPos + 10);
-    doc.text(`TVA (20%): ${(order.totalAmount * 0.2).toFixed(2)} ${currency}`, 140, finalYPos + 17);
+
+    if (settings?.invoiceShowTax) {
+        const taxRate = settings.invoiceTaxRate || 20;
+        const totalHT = order.totalAmount / (1 + (taxRate / 100));
+        const totalTax = order.totalAmount - totalHT;
+
+        doc.text(`Total HT: ${totalHT.toFixed(2)} ${currency}`, 140, currentY);
+        currentY += 7;
+        doc.text(`TVA (${taxRate}%): ${totalTax.toFixed(2)} ${currency}`, 140, currentY);
+        currentY += 9;
+    }
+
     doc.setFontSize(14);
-    doc.text(`TOTAL TTC: ${order.totalAmount} ${currency}`, 140, finalYPos + 26);
+    doc.text(`TOTAL TTC: ${order.totalAmount} ${currency}`, 140, currentY);
+    currentY += 8;
 
     doc.setFontSize(12);
     doc.setTextColor(100);
-    doc.text(`Avance: ${order.advanceAmount} ${currency}`, 140, finalYPos + 34);
+    doc.text(`Avance: ${order.advanceAmount} ${currency}`, 140, currentY);
+    currentY += 6;
     doc.setTextColor(order.totalAmount - order.advanceAmount > 0 ? 200 : 0, 0, 0);
-    doc.text(`Reste à payer: ${(order.totalAmount - order.advanceAmount).toFixed(2)} ${currency}`, 140, finalYPos + 40);
+    doc.text(`Reste à payer: ${(order.totalAmount - order.advanceAmount).toFixed(2)} ${currency}`, 140, currentY);
 
     // Footer
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text("Merci pour votre partenariat !", 105, 280, { align: "center" });
+    doc.text(settings?.invoiceFooterText || "Merci pour votre partenariat !", 105, 280, { align: "center" });
     doc.text("MKARIM SOLUTION - www.mkarim.ma", 105, 285, { align: "center" });
+
+    // Notes
+    if (settings?.invoiceNotes) {
+        doc.setFontSize(8);
+        doc.text(settings.invoiceNotes, 14, 250);
+    }
 
     return doc;
 };
 
 // Export wholesale invoice to PDF
-export const generateWholesaleInvoicePDF = (order: any, currency: string = "DH") => {
-    const doc = createWholesaleInvoiceDoc(order, currency);
+export const generateWholesaleInvoicePDF = (order: any, currency: string = "DH", settings?: InvoiceSettings) => {
+    const doc = createWholesaleInvoiceDoc(order, currency, settings);
     doc.save(`Facture_Grossiste_${order.orderNumber}.pdf`);
 };
 
-export const getWholesaleInvoiceBlob = (order: any, currency: string = "DH") => {
-    const doc = createWholesaleInvoiceDoc(order, currency);
+export const getWholesaleInvoiceBlob = (order: any, currency: string = "DH", settings?: InvoiceSettings) => {
+    const doc = createWholesaleInvoiceDoc(order, currency, settings);
     return doc.output('blob');
 };

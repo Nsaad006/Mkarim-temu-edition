@@ -138,7 +138,13 @@ router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: 
                 ...(req.body.homeHeroAutoPlayInterval !== undefined && { homeHeroAutoPlayInterval: Number(req.body.homeHeroAutoPlayInterval) }),
                 ...(req.body.categoriesAutoPlayInterval !== undefined && { categoriesAutoPlayInterval: Number(req.body.categoriesAutoPlayInterval) }),
                 ...(req.body.logo !== undefined && { logo: req.body.logo }),
-                ...(req.body.aboutValues !== undefined && { aboutValues: req.body.aboutValues })
+                ...(req.body.aboutValues !== undefined && { aboutValues: req.body.aboutValues }),
+
+                // Invoice Configuration
+                ...(req.body.invoiceFooterText !== undefined && { invoiceFooterText: req.body.invoiceFooterText }),
+                ...(req.body.invoiceShowTax !== undefined && { invoiceShowTax: Boolean(req.body.invoiceShowTax) }),
+                ...(req.body.invoiceTaxRate !== undefined && { invoiceTaxRate: Number(req.body.invoiceTaxRate) }),
+                ...(req.body.invoiceNotes !== undefined && { invoiceNotes: req.body.invoiceNotes })
             }
         });
 
