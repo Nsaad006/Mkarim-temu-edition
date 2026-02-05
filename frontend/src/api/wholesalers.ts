@@ -82,6 +82,13 @@ export const wholesalersApi = {
         return response.data;
     },
 
+    update: async (id: string, data: Partial<Omit<Wholesaler, 'id' | 'createdAt' | 'orders'>>) => {
+        const response = await axios.put<Wholesaler>(`${API_URL}/wholesalers/${id}`, data, {
+            headers: getAuthHeader()
+        });
+        return response.data;
+    },
+
     createOrder: async (wholesalerId: string, data: { items: { productId: string; quantity: number; unitPrice: number }[]; advanceAmount: number }) => {
         const response = await axios.post<WholesaleOrder>(`${API_URL}/wholesalers/${wholesalerId}/orders`, data, {
             headers: getAuthHeader()
@@ -110,5 +117,18 @@ export const wholesalersApi = {
         await axios.delete(`${API_URL}/wholesalers/orders/${orderId}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
+    },
+
+    sendInvoiceEmail: async (orderId: string, pdfBlob: Blob) => {
+        const formData = new FormData();
+        formData.append('invoice', pdfBlob, 'facture.pdf');
+
+        const response = await axios.post(`${API_URL}/wholesalers/orders/${orderId}/email-invoice`, formData, {
+            headers: {
+                ...getAuthHeader(),
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
     }
 };

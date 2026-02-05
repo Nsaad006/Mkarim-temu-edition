@@ -8,13 +8,14 @@ const subDays = (date: Date, days: number) => {
 };
 
 // 1. Mock Orders
-export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled" | "returned";
+export type OrderStatus = "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURNED";
 
 export interface Order {
   id: string;
   orderNumber: string;
   customerName: string;
   phone: string;
+  email?: string;
   city: string;
   address: string;
   total: number;
@@ -33,7 +34,7 @@ export interface Order {
 }
 
 export const mockOrders: Order[] = Array.from({ length: 50 }).map((_, i) => {
-  const statuses: OrderStatus[] = ["pending", "confirmed", "shipped", "delivered", "cancelled", "delivered", "delivered"];
+  const statuses: OrderStatus[] = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "DELIVERED", "DELIVERED"];
   const cities = ["Casablanca", "Rabat", "Marrakech", "Tanger", "Agadir", "Fès"];
   const randomProduct = products[Math.floor(Math.random() * products.length)];
   const id = `ORD-${1000 + i}`;

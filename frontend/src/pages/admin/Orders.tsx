@@ -13,14 +13,16 @@ import {
     Loader2,
     FileText,
     Download,
-    FileSpreadsheet
+    FileSpreadsheet,
+    Mail
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
     exportOrdersToExcel,
     exportOrdersToPDF,
-    generateInvoicePDF
+    generateInvoicePDF,
+    getInvoiceBlob
 } from "@/utils/exportUtils";
 import {
     Table,
@@ -213,6 +215,23 @@ const Orders = () => {
         window.open(`https://wa.me/${phone.replace(/\s+/g, '')}?text=${message}`, "_blank");
     };
 
+    const handleEmailInvoice = async (order: Order) => {
+        if (!order.email) {
+            toast({ title: "Erreur", description: "Le client n'a pas d'adresse email", variant: "destructive" });
+            return;
+        }
+
+        try {
+            toast({ title: "Envoi en cours", description: "Veuillez patienter...", });
+            const blob = getInvoiceBlob(order, currency);
+            await ordersApi.sendInvoiceEmail(order.id, blob);
+            toast({ title: "Succès", description: "Facture envoyée par email" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Erreur", description: "Échec de l'envoi de l'email", variant: "destructive" });
+        }
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -330,6 +349,17 @@ const Orders = () => {
                                                     title="Télécharger la facture"
                                                 >
                                                     <FileText className="w-4 h-4 text-primary" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEmailInvoice(order);
+                                                    }}
+                                                    title="Envoyer Facture par Email"
+                                                >
+                                                    <Mail className="w-4 h-4 text-orange-600" />
                                                 </Button>
                                                 <SheetContent className="overflow-y-auto w-full sm:max-w-xl">
                                                     <SheetHeader className="mb-6">
@@ -456,6 +486,10 @@ const Orders = () => {
                                                                     <FileText className="w-4 h-4 mr-2" />
                                                                     Facture
                                                                 </Button>
+                                                                <Button className="w-full" variant="outline" onClick={() => handleEmailInvoice(order)}>
+                                                                    <Mail className="w-4 h-4 mr-2" />
+                                                                    Envoyer Email
+                                                                </Button>
                                                             </div>
                                                         </div>
 
@@ -486,6 +520,9 @@ const Orders = () => {
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                     <DropdownMenuItem onClick={() => generateInvoicePDF(order, currency)}>
                                                         <FileText className="mr-2 h-4 w-4" /> Facture PDF
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleEmailInvoice(order)}>
+                                                        <Mail className="mr-2 h-4 w-4" /> Envoyer Email
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     {canUpdateStatus('CONFIRMED') && (

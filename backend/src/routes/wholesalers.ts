@@ -3,6 +3,10 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { sendEmail } from '../lib/email';
+import multer from 'multer';
+
+const uploadPdf = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 
@@ -116,6 +120,26 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
         console.error('Error creating wholesaler:', error);
         if ((error as any).code === 'P2002') return res.status(400).json({ error: 'Phone number already exists' });
         res.status(500).json({ error: 'Failed to create wholesaler' });
+    }
+});
+
+// PUT /api/wholesalers/:id - Update wholesaler
+router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, address, phone, email } = req.body;
+
+        if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
+
+        const wholesaler = await prisma.wholesaler.update({
+            where: { id },
+            data: { name, address, phone, email }
+        });
+        res.json(wholesaler);
+    } catch (error) {
+        console.error('Error updating wholesaler:', error);
+        if ((error as any).code === 'P2002') return res.status(400).json({ error: 'Phone number already exists' });
+        res.status(500).json({ error: 'Failed to update wholesaler' });
     }
 });
 
@@ -370,6 +394,49 @@ router.delete('/orders/:id', authenticate, authorize(['super_admin', 'editor'], 
     } catch (error: any) {
         console.error('Error deleting order:', error);
         res.status(500).json({ error: error.message || 'Failed to delete order' });
+    }
+});
+
+// POST /api/wholesalers/orders/:id/email-invoice - Send PDF Invoice via Email
+router.post('/orders/:id/email-invoice', authenticate, authorize(['super_admin', 'editor']), uploadPdf.single('invoice'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({ error: 'No invoice file uploaded' });
+        }
+
+        const order = await prisma.wholesaleOrder.findUnique({
+            where: { id },
+            include: { wholesaler: true }
+        });
+
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        if (!order.wholesaler.email) return res.status(400).json({ error: 'Wholesaler has no email address' });
+
+        const subject = `Facture Commande #${order.orderNumber}`;
+        const html = `
+            <p>Bonjour ${order.wholesaler.name},</p>
+            <p>Veuillez trouver ci-joint la facture pour votre commande #${order.orderNumber}.</p>
+            <p>Cordialement,<br>MKARIM Solution</p>
+        `;
+
+        await sendEmail(
+            order.wholesaler.email,
+            subject,
+            html,
+            [{
+                filename: file.originalname || 'facture.pdf',
+                content: file.buffer,
+                contentType: 'application/pdf'
+            }]
+        );
+
+        res.json({ success: true, message: 'Email sent successfully' });
+    } catch (error: any) {
+        console.error('Error sending invoice email:', error);
+        res.status(500).json({ error: 'Failed to send email' });
     }
 });
 

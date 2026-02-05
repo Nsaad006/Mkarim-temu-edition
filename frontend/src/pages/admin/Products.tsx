@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AxiosError } from "axios";
 import { Plus, Pencil, Trash2, Search, AlertCircle, Star } from "lucide-react";
 import {
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { productsApi } from "@/api/products";
 import { categoriesApi } from "@/api/categories";
 import { suppliersApi } from "@/api/suppliers";
@@ -55,6 +55,8 @@ const AdminProducts = () => {
 
     // Get current user
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const [formData, setFormData] = useState({
         name: "",
@@ -89,6 +91,22 @@ const AdminProducts = () => {
         queryKey: ['admin-products'],
         queryFn: () => productsApi.getAll(),
     });
+
+    // Check for edit query param
+    useEffect(() => {
+        const editId = searchParams.get("edit");
+        if (editId && products.length > 0 && !isDialogOpen && !editingProduct) {
+            const productToEdit = products.find(p => p.id === editId);
+            if (productToEdit) {
+                handleEdit(productToEdit);
+                // Clean up URL without refreshing
+                setSearchParams(params => {
+                    params.delete("edit");
+                    return params;
+                });
+            }
+        }
+    }, [products, searchParams, isDialogOpen, editingProduct, setSearchParams]);
 
     // Create product mutation
     const createMutation = useMutation({

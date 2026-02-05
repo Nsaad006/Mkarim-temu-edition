@@ -9,16 +9,28 @@ interface StatsCardProps {
     trendUp?: boolean;
     description?: string;
     className?: string;
+    iconClassName?: string;
+    iconBgClassName?: string;
 }
 
-const StatsCard = ({ title, value, icon: Icon, trend, trendUp, description, className }: StatsCardProps) => {
+const StatsCard = ({
+    title,
+    value,
+    icon: Icon,
+    trend,
+    trendUp,
+    description,
+    className,
+    iconClassName,
+    iconBgClassName
+}: StatsCardProps) => {
     return (
         <Card className={className}>
             <CardContent className="p-5">
                 <div className="flex items-center justify-between space-y-0 pb-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Icon className="w-4 h-4 text-primary" />
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${iconBgClassName || "bg-primary/10"}`}>
+                        <Icon className={`w-4 h-4 ${iconClassName || "text-primary"}`} />
                     </div>
                 </div>
                 <div className="flex flex-col mt-2">

@@ -203,7 +203,7 @@ const Dashboard = () => {
                                             <p className="font-medium text-sm line-clamp-1">{product.name}</p>
                                             <p className="text-xs text-muted-foreground">Indisponible</p>
                                         </div>
-                                        <Link to="/admin/products">
+                                        <Link to={`/admin/products?edit=${product.id}`}>
                                             <Button size="sm" variant="ghost" className="h-8">Gérer</Button>
                                         </Link>
                                     </div>
@@ -276,8 +276,8 @@ const Dashboard = () => {
                                                 <p className="font-medium text-sm line-clamp-1">{product.name}</p>
                                                 <p className="text-xs text-warning font-medium">Reste: {product.quantity}</p>
                                             </div>
-                                            <Link to="/admin/procurements">
-                                                <Button size="sm" variant="ghost" className="h-8">Approvisionner</Button>
+                                            <Link to={`/admin/products?edit=${product.id}`}>
+                                                <Button size="sm" variant="ghost" className="h-8">Gérer</Button>
                                             </Link>
                                         </div>
                                     ))}
@@ -334,7 +334,9 @@ const Dashboard = () => {
                             icon={TrendingUp}
                             trendUp={true}
                             description="Marge brute ce mois-ci"
-                            className="bg-primary/5 border-primary/20 sm:col-span-2 lg:col-span-1"
+                            className="bg-emerald-500/10 border-emerald-500/20 sm:col-span-2 lg:col-span-1"
+                            iconBgClassName="bg-emerald-500/20"
+                            iconClassName="text-emerald-500"
                         />
                     </>
                 )}

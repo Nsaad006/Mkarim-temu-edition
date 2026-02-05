@@ -4,6 +4,10 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { sendEmail } from '../lib/email';
+import multer from 'multer';
+
+const uploadPdf = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 
@@ -29,6 +33,7 @@ function generateOrderNumber(): string {
     return `ORD-${timestamp}${random}`;
 }
 
+// import { sendOrderEmails } from '../lib/email';
 import { sendOrderEmails } from '../lib/email';
 
 // POST /api/orders - Create new COD order (Multi-item)
@@ -354,6 +359,54 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
             return res.status(404).json({ error: 'Order not found' });
         }
         res.status(500).json({ error: (error as Error).message || 'Failed to update order status' });
+    }
+});
+
+// POST /api/orders/:id/email-invoice - Send content via email
+router.post('/:id/email-invoice', authenticate, authorize(['super_admin', 'editor', 'commercial']), uploadPdf.single('invoice'), async (req: Request, res: Response) => {
+    try {
+        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({ error: 'No invoice file uploaded' });
+        }
+
+        const order = await prisma.order.findUnique({
+            where: { id },
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        if (!order.email) {
+            return res.status(400).json({ error: 'Customer has no email address associated with this order' });
+        }
+
+        const subject = `Facture Commande #${order.orderNumber} - MKARIM Solution`;
+        const html = `
+            <p>Bonjour ${order.customerName},</p>
+            <p>Veuillez trouver ci-joint la facture pour votre commande <strong>#${order.orderNumber}</strong>.</p>
+            <p>Merci de votre confiance.</p>
+            <p>Cordialement,<br>L'équipe MKARIM Solution</p>
+        `;
+
+        await sendEmail(
+            order.email,
+            subject,
+            html,
+            [{
+                filename: file.originalname || 'facture.pdf',
+                content: file.buffer,
+                contentType: 'application/pdf'
+            }]
+        );
+
+        res.json({ success: true, message: 'Email envoyé avec succès' });
+    } catch (error) {
+        console.error('Error sending invoice email:', error);
+        res.status(500).json({ error: 'Failed to send invoice email' });
     }
 });
 

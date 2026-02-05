@@ -123,13 +123,13 @@ export const HeroCarousel = () => {
                 <div className="overflow-hidden h-full" ref={emblaRef}>
                     <div className="flex h-full">
                         {slides.map((slide, index) => (
-                            <div key={index} className="relative flex-[0_0_100%] min-w-0 h-full">
+                            <div key={index} className="relative flex-[0_0_100%] min-w-0 h-full pl-0">
                                 {/* Background Image with Overlay */}
                                 <div className="absolute inset-0 z-0">
                                     <img
                                         src={slide.image}
                                         alt={slide.title}
-                                        className="w-full h-full object-cover transition-transform duration-[10s] scale-105 hover:scale-100"
+                                        className="w-[101%] h-full max-w-none object-cover transition-transform duration-[10s] scale-105 hover:scale-100"
                                         style={{ filter: `blur(${settings?.homeHeroBlur ?? 0}px)` }}
                                     />
                                     <div

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, MapPin, Phone, Mail, ShoppingCart, Eye, DollarSign } from 'lucide-react';
+import { Plus, Search, MapPin, Phone, Mail, ShoppingCart, Eye, DollarSign, FileText, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import axios from 'axios';
@@ -19,6 +19,8 @@ import axios from 'axios';
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD' }).format(amount);
 };
+
+import { generateWholesaleInvoicePDF, getWholesaleInvoiceBlob } from '@/utils/exportUtils';
 
 export default function Wholesalers() {
     const { toast } = useToast();
@@ -32,6 +34,10 @@ export default function Wholesalers() {
     const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false); // Controls detail view
     const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+
+    // Edit Wholesaler State
+    const [editingWholesaler, setEditingWholesaler] = useState<Wholesaler | null>(null);
+    const [isEditWholesalerOpen, setIsEditWholesalerOpen] = useState(false);
 
     // Fetch Data
     const { data: orders = [] } = useQuery<WholesaleOrder[]>({
@@ -64,6 +70,19 @@ export default function Wholesalers() {
         }
     });
 
+    const updateWholesalerMutation = useMutation({
+        mutationFn: (data: Partial<Wholesaler> & { id: string }) =>
+            wholesalersApi.update(data.id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
+            setIsEditWholesalerOpen(false);
+            toast({ title: "Succès", description: "Grossiste mis à jour" });
+        },
+        onError: () => {
+            toast({ title: "Erreur", description: "Impossible de mettre à jour", variant: "destructive" });
+        }
+    });
+
     // Wholesaler History Modal State
     const [selectedWholesalerHistory, setSelectedWholesalerHistory] = useState<Wholesaler | null>(null);
     const [isWholesalerHistoryOpen, setIsWholesalerHistoryOpen] = useState(false);
@@ -71,6 +90,24 @@ export default function Wholesalers() {
     const openWholesalerHistory = (wholesaler: Wholesaler) => {
         setSelectedWholesalerHistory(wholesaler);
         setIsWholesalerHistoryOpen(true);
+    };
+
+    const handleEmailInvoice = async (order: any) => {
+        if (!order.wholesaler?.email) {
+            toast({ title: "Erreur", description: "Le grossiste n'a pas d'adresse email", variant: "destructive" });
+            return;
+        }
+
+        try {
+            toast({ title: "Envoi en cours", description: "Veuillez patienter..." });
+            // Using 'DH' as standard currency for now, or get from context/settings
+            const blob = getWholesaleInvoiceBlob(order, 'DH');
+            await wholesalersApi.sendInvoiceEmail(order.id, blob);
+            toast({ title: "Succès", description: "Facture envoyée par email" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Erreur", description: "Échec de l'envoi de l'email", variant: "destructive" });
+        }
     };
 
     const createOrderMutation = useMutation({
@@ -157,6 +194,12 @@ export default function Wholesalers() {
     const handleAddWholesaler = (e: React.FormEvent) => {
         e.preventDefault();
         createWholesalerMutation.mutate(newWholesaler);
+    };
+
+    const handleUpdateWholesaler = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingWholesaler) return;
+        updateWholesalerMutation.mutate(editingWholesaler);
     };
 
     const handleAddOrderItem = () => {
@@ -316,9 +359,14 @@ export default function Wholesalers() {
                                                     <Button variant="ghost" size="sm" onClick={() => {
                                                         setSelectedOrder(order);
                                                         setIsOrderDetailsOpen(true);
-                                                    }}>
-                                                        <Eye className="w-4 h-4 mr-2" />
-                                                        Détails
+                                                    }} title="Détails">
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, 'DH')} title="Télécharger Facture">
+                                                        <FileText className="w-4 h-4 text-blue-600" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleEmailInvoice(order)} title="Envoyer Facture par Email">
+                                                        <Mail className="w-4 h-4 text-orange-600" />
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -380,6 +428,12 @@ export default function Wholesalers() {
                                                 {w._count?.orders || w.orders?.length || 0}
                                             </TableCell>
                                             <TableCell className="text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" onClick={() => {
+                                                    setEditingWholesaler(w);
+                                                    setIsEditWholesalerOpen(true);
+                                                }}>
+                                                    <Pencil className="w-4 h-4" />
+                                                </Button>
                                                 <Button variant="ghost" size="sm" onClick={() => openWholesalerHistory(w)}>
                                                     <Eye className="w-4 h-4" />
                                                 </Button>
@@ -431,6 +485,38 @@ export default function Wholesalers() {
                 </DialogContent>
             </Dialog>
 
+            {/* Modal: Edit Wholesaler */}
+            <Dialog open={isEditWholesalerOpen} onOpenChange={setIsEditWholesalerOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Modifier le Grossiste</DialogTitle>
+                    </DialogHeader>
+                    {editingWholesaler && (
+                        <form onSubmit={handleUpdateWholesaler} className="space-y-4">
+                            <div className="grid gap-2">
+                                <Label>Nom complet</Label>
+                                <Input value={editingWholesaler.name} onChange={e => setEditingWholesaler({ ...editingWholesaler, name: e.target.value })} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Téléphone</Label>
+                                <Input value={editingWholesaler.phone} onChange={e => setEditingWholesaler({ ...editingWholesaler, phone: e.target.value })} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Email</Label>
+                                <Input value={editingWholesaler.email || ''} onChange={e => setEditingWholesaler({ ...editingWholesaler, email: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Adresse</Label>
+                                <Input value={editingWholesaler.address} onChange={e => setEditingWholesaler({ ...editingWholesaler, address: e.target.value })} />
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit" disabled={updateWholesalerMutation.isPending}>Enregistrer</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             {/* Modal: Wholesaler History */}
             <Dialog open={isWholesalerHistoryOpen} onOpenChange={setIsWholesalerHistoryOpen}>
                 <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
@@ -478,8 +564,14 @@ export default function Wholesalers() {
                                                         <Button variant="ghost" size="sm" onClick={() => {
                                                             setSelectedOrder(order);
                                                             setIsOrderDetailsOpen(true);
-                                                        }}>
+                                                        }} title="Détails">
                                                             <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, 'DH')} title="Télécharger Facture">
+                                                            <FileText className="w-4 h-4 text-blue-600" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => handleEmailInvoice(order)} title="Envoyer Facture par Email">
+                                                            <Mail className="w-4 h-4 text-orange-600" />
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>

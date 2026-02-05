@@ -39,8 +39,22 @@ export const ordersApi = {
     },
 
     // Update order status (admin)
+    // Update order status (admin)
     updateStatus: async (id: string, status: string): Promise<Order> => {
         const { data } = await apiClient.patch<Order>(`/api/orders/${id}/status`, { status });
         return data;
     },
+
+    // Send invoice email
+    sendInvoiceEmail: async (id: string, pdfBlob: Blob) => {
+        const formData = new FormData();
+        formData.append('invoice', pdfBlob, 'facture.pdf');
+
+        const { data } = await apiClient.post(`/api/orders/${id}/email-invoice`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return data;
+    }
 };

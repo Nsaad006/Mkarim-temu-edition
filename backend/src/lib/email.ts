@@ -4,7 +4,7 @@ import prisma from './prisma';
 /**
  * Sends an email using Gmail SMTP and App Password stored in database.
  */
-export const sendEmail = async (to: string, subject: string, html: string) => {
+export const sendEmail = async (to: string, subject: string, html: string, attachments?: any[]) => {
     try {
         const settings = await prisma.settings.findFirst();
 
@@ -44,6 +44,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
             to,
             subject,
             html,
+            attachments
         });
 
         console.log('✅ Email sent successfully:', info.messageId);
