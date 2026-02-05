@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { MapPin, Phone, Mail, Clock, Send, MessageCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,6 +104,10 @@ const ContactPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
+      <SEO
+        title="Contact"
+        description="Une question ? Un projet ? Contactez MKARIM SOLUTION. Notre équipe est à votre écoute pour vous fournir les meilleures solutions informatiques au Maroc."
+      />
       <Navbar />
       <main className="pt-24 lg:pt-32">
         {/* Header */}

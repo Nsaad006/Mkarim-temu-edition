@@ -16,6 +16,8 @@ import { useCart } from "@/context/CartContext";
 import { settingsApi } from "@/api/settings";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { useSettings } from "@/context/SettingsContext";
+import SEO from "@/components/SEO";
+import { getImageUrl } from "@/lib/image-utils";
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -108,6 +110,12 @@ const ProductDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
+      <SEO
+        title={product.name}
+        description={`${product.name} - ${product.description.slice(0, 150)}... Achetez au meilleur prix au Maroc.`}
+        ogImage={getImageUrl(product.image)}
+        keywords={`${product.name}, ${product.category?.name}, gaming maroc, pc gamer`}
+      />
       <Navbar />
       <main className="pt-24 lg:pt-32">
         <div className="container-custom py-8 lg:py-16">

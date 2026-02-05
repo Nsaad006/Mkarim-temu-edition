@@ -3,6 +3,7 @@ import { Award, Users, Shield, Truck, Target, Heart } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CTASection from "@/components/CTASection";
+import SEO from "@/components/SEO";
 import { useQuery } from "@tanstack/react-query";
 import { statsApi } from "@/api/stats";
 import { settingsApi } from "@/api/settings";
@@ -60,6 +61,10 @@ const AboutPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
+      <SEO
+        title="À Propos"
+        description="Découvrez l'histoire de MKARIM SOLUTION, votre expert e-commerce spécialisé dans le matériel informatique et gaming au Maroc."
+      />
       <Navbar />
       <main className="pt-24 lg:pt-32">
         {/* Hero Section */}

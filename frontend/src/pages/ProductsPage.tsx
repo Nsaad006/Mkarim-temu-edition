@@ -40,6 +40,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import SEO from "@/components/SEO";
 
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -253,6 +254,10 @@ const ProductsPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
+      <SEO
+        title="Catalogue Produits"
+        description="Explorez notre arsenal de PC Gamers, composants et accessoires. Trouvez le meilleur matériel informatique au Maroc avec livraison express."
+      />
       <Navbar />
       <main className="pt-24 lg:pt-32">
         {/* Simplified Header */}
