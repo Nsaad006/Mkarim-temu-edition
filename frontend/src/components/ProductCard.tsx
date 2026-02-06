@@ -59,15 +59,15 @@ const ProductCard = ({ product }: ProductCardProps) => {
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
         {/* Badges - Gaming Style */}
-        <div className="absolute top-4 left-0 flex flex-col gap-2 items-start z-10">
+        <div className="absolute top-2 md:top-4 left-0 flex flex-col gap-1.5 md:gap-2 items-start z-10">
           {product.badge && (
-            <div className="bg-primary text-white text-[10px] font-black px-3 py-1 skew-x-[-12deg] -ml-1 shadow-lg">
-              <span className="skew-x-[12deg] inline-block uppercase tracking-widest">{product.badge}</span>
+            <div className="bg-primary text-white text-[8px] md:text-[10px] font-black px-2 md:px-3 py-0.5 md:py-1 skew-x-[-12deg] -ml-1 shadow-lg">
+              <span className="skew-x-[12deg] inline-block uppercase tracking-wider md:tracking-widest">{product.badge}</span>
             </div>
           )}
           {discount > 0 && (
-            <div className="bg-white text-black text-[10px] font-black px-3 py-1 skew-x-[-12deg] -ml-1 shadow-lg border-l-4 border-primary">
-              <span className="skew-x-[12deg] inline-block uppercase tracking-widest">-{discount}% OFF</span>
+            <div className="bg-white/90 md:bg-white text-black text-[8px] md:text-[10px] font-black px-2 md:px-3 py-0.5 md:py-1 skew-x-[-12deg] -ml-1 shadow-lg border-l-2 md:border-l-4 border-primary">
+              <span className="skew-x-[12deg] inline-block uppercase tracking-wider md:tracking-widest">-{discount}% OFF</span>
             </div>
           )}
         </div>
