@@ -15,7 +15,7 @@ const FeaturedProducts = () => {
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['featured-products'],
-    queryFn: () => productsApi.getAll({ inStock: true, featured: true }),
+    queryFn: () => productsApi.getAll({ inStock: true, featured: true, published: true }),
   });
 
   const sectionTitle = settings?.featuredTitle || "LES INCONTOURNABLES";

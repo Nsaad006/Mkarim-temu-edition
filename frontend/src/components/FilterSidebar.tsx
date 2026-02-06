@@ -125,6 +125,8 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
         const rams = new Set<string>();
         const storages = new Set<string>();
         const brands = new Set<string>();
+        const ecrans = new Set<string>();
+        const periphs = new Set<string>();
         const others = new Set<string>();
 
         // Legacy keyword matchers (fallback)
@@ -157,6 +159,8 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                         else if (key === 'ram') rams.add(value);
                         else if (key === 'stockage') storages.add(value);
                         else if (key === 'marque' || key === 'marque_pc') brands.add(value);
+                        else if (key === 'ecran' || key === 'resolution' || key === 'frequence') ecrans.add(value);
+                        else if (['switch', 'dpi', 'capteur', 'polling_rate', 'eclairage'].includes(key)) periphs.add(value);
                         else others.add(`${key}: ${value}`); // Keep others generic
                     } else {
                         // Legacy handling
@@ -175,6 +179,8 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
             rams: Array.from(rams).sort(),
             storages: Array.from(storages).sort(),
             brands: Array.from(brands).sort(),
+            ecrans: Array.from(ecrans).sort(),
+            periphs: Array.from(periphs).sort(),
             others: Array.from(others).sort().slice(0, 20)
         };
     }, [products, activeFilters.category, categories]);
@@ -462,6 +468,38 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                 </AccordionItem>
                             )}
 
+                            {/* Display (Écran) Group */}
+                            {(dynamicSpecs.ecrans?.length || 0) > 0 && (
+                                <AccordionItem value="ecrans" className="border-none">
+                                    <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
+                                        <div className="flex items-center gap-3 flex-1 text-left">
+                                            <LucideIcons.Tv className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Écran & Affichage</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-2 px-1">
+                                        <div className="space-y-1">
+                                            {dynamicSpecs.ecrans.map((ecran) => (
+                                                <div
+                                                    key={ecran}
+                                                    onClick={() => toggleArrayFilter('ecrans', ecran)}
+                                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent cursor-pointer group transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.ecrans?.includes(ecran) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
+                                                            {activeFilters.ecrans?.includes(ecran) && <Check className="w-3 h-3 text-primary-foreground" />}
+                                                        </div>
+                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.ecrans?.includes(ecran) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                            {ecran}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )}
+
                             {/* Storage (Stockage) Group */}
                             {(dynamicSpecs.storages?.length || 0) > 0 && (
                                 <AccordionItem value="storages" className="border-none">
@@ -485,6 +523,38 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         </div>
                                                         <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.storages?.includes(storage) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {storage}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )}
+
+                            {/* Peripherals (Périphériques) Group */}
+                            {(dynamicSpecs.periphs?.length || 0) > 0 && (
+                                <AccordionItem value="periphs" className="border-none">
+                                    <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
+                                        <div className="flex items-center gap-3 flex-1 text-left">
+                                            <LucideIcons.MousePointer2 className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Specs Périphériques</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-2 px-1">
+                                        <div className="space-y-1">
+                                            {dynamicSpecs.periphs.map((val) => (
+                                                <div
+                                                    key={val}
+                                                    onClick={() => toggleArrayFilter('periphs', val)}
+                                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent cursor-pointer group transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.periphs?.includes(val) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
+                                                            {activeFilters.periphs?.includes(val) && <Check className="w-3 h-3 text-primary-foreground" />}
+                                                        </div>
+                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.periphs?.includes(val) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                            {val}
                                                         </span>
                                                     </div>
                                                 </div>

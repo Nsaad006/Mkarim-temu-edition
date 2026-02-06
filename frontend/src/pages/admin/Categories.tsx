@@ -25,6 +25,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { categoriesApi } from "@/api/categories";
 import { Category } from "@/data/mock-admin-data";
 import { toast } from "@/hooks/use-toast";
+import { ImageUpload } from "@/components/ImageUpload";
+import { getImageUrl } from "@/lib/image-utils";
 
 const Categories = () => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +39,7 @@ const Categories = () => {
         slug: "",
         active: true,
         icon: "",
+        image: "",
     });
 
     // Fetch categories (including inactive ones for admin panel)
@@ -84,7 +87,7 @@ const Categories = () => {
     );
 
     const resetForm = () => {
-        setFormData({ name: "", slug: "", active: true, icon: "" });
+        setFormData({ name: "", slug: "", active: true, icon: "", image: "" });
         setSelectedCategory(null);
     };
 
@@ -104,6 +107,7 @@ const Categories = () => {
             slug: category.slug,
             active: category.active,
             icon: category.icon || "",
+            image: category.image || "",
         });
         setIsDialogOpen(true);
     };
@@ -161,7 +165,7 @@ const Categories = () => {
                             <TableRow>
                                 <TableHead>Nom</TableHead>
                                 <TableHead>Slug</TableHead>
-                                <TableHead>Icône</TableHead>
+                                <TableHead>Image</TableHead>
                                 <TableHead className="text-center">Aperçu</TableHead>
                                 <TableHead>Produits</TableHead>
                                 <TableHead>Statut</TableHead>
@@ -173,10 +177,22 @@ const Categories = () => {
                                 <TableRow key={category.id} className="hover:bg-muted/5 transition-colors">
                                     <TableCell className="font-medium">{category.name}</TableCell>
                                     <TableCell className="text-muted-foreground font-mono text-xs">{category.slug}</TableCell>
-                                    <TableCell className="text-muted-foreground text-xs">{category.icon || "-"}</TableCell>
+                                    <TableCell className="text-muted-foreground text-xs">
+                                        {category.image ? (
+                                            <span className="text-green-500 text-xs">✓ Image</span>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">{category.icon || "-"}</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-center">
                                         <div className="flex justify-center">
-                                            {(() => {
+                                            {category.image ? (
+                                                <img
+                                                    src={getImageUrl(category.image)}
+                                                    alt={category.name}
+                                                    className="w-10 h-10 rounded-full object-cover border border-border"
+                                                />
+                                            ) : (() => {
                                                 const iconName = category.icon || "";
                                                 const normalized = iconName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
@@ -252,7 +268,17 @@ const Categories = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="icon">Icône (Nom Lucide)</Label>
+                            <Label>Image de la catégorie</Label>
+                            <ImageUpload
+                                value={formData.image}
+                                onChange={(url) => setFormData({ ...formData, image: url })}
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                                Image circulaire affichée sur la page d'accueil (recommandé: 400x400px)
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="icon">Icône de secours (Nom Lucide)</Label>
                             <div className="flex gap-4 items-end">
                                 <div className="flex-1">
                                     <Input
@@ -283,7 +309,7 @@ const Categories = () => {
                                 </div>
                             </div>
                             <p className="text-[10px] text-muted-foreground">
-                                Utilisez les noms de <a href="https://lucide.dev/icons" target="_blank" rel="noreferrer" className="text-primary hover:underline">Lucide Icons</a> (ex: gamepad-2, monitor, laptop)
+                                Icône affichée si aucune image n'est téléchargée. Utilisez les noms de <a href="https://lucide.dev/icons" target="_blank" rel="noreferrer" className="text-primary hover:underline">Lucide Icons</a>
                             </p>
                         </div>
                         <DialogFooter>

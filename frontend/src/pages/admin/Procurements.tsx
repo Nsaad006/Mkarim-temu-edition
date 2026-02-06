@@ -34,12 +34,18 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useSettings } from "@/context/SettingsContext";
+import { useEffect } from "react";
+import { Pagination } from "@/components/admin/Pagination";
 
 const Procurements = () => {
     const { currency } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const queryClient = useQueryClient();
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
 
     const [formData, setFormData] = useState({
         productId: "",
@@ -114,6 +120,18 @@ const Procurements = () => {
         p.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    // Apply pagination
+    const totalPages = Math.ceil(filteredProcurements.length / pageSize);
+    const paginatedProcurements = filteredProcurements.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -157,8 +175,8 @@ const Procurements = () => {
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredProcurements.length > 0 ? (
-                                filteredProcurements.map((proc: any) => (
+                            ) : paginatedProcurements.length > 0 ? (
+                                paginatedProcurements.map((proc: any) => (
                                     <TableRow key={proc.id} className="hover:bg-muted/30 transition-colors">
                                         <TableCell className="font-medium whitespace-nowrap text-xs">
                                             <div className="flex flex-col">
@@ -209,6 +227,18 @@ const Procurements = () => {
                     </Table>
                 </div>
             </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                }}
+                totalItems={filteredProcurements.length}
+            />
 
             {/* Creation Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -170,6 +170,7 @@ export interface Category {
   productsCount: number;
   active: boolean;
   icon?: string;
+  image?: string;
 }
 
 export const mockCategories: Category[] = [

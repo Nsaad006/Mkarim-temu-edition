@@ -31,12 +31,18 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { contactsApi, Contact } from "@/api/contacts";
 import { toast } from "@/hooks/use-toast";
+import { useEffect } from "react";
+import { Pagination } from "@/components/admin/Pagination";
 
 const Messages = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedMessage, setSelectedMessage] = useState<Contact | null>(null);
 
     const queryClient = useQueryClient();
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
 
     const { data: messages = [], isLoading } = useQuery({
         queryKey: ['admin-messages'],
@@ -67,6 +73,18 @@ const Messages = () => {
         msg.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (msg.subject || "").toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    // Apply pagination
+    const totalPages = Math.ceil(filteredMessages.length / pageSize);
+    const paginatedMessages = filteredMessages.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
 
     const handleViewMessage = (msg: Contact) => {
         setSelectedMessage(msg);
@@ -119,8 +137,8 @@ const Messages = () => {
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredMessages.length > 0 ? (
-                                filteredMessages.map((msg) => (
+                            ) : paginatedMessages.length > 0 ? (
+                                paginatedMessages.map((msg) => (
                                     <TableRow key={msg.id} className={`hover:bg-muted/50 ${msg.status === 'NEW' ? 'bg-primary/5 font-medium' : ''}`}>
                                         <TableCell>
                                             <div className="flex items-center gap-2 whitespace-nowrap">
@@ -221,6 +239,18 @@ const Messages = () => {
                     </Table>
                 </div>
             </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                }}
+                totalItems={filteredMessages.length}
+            />
         </div>
     );
 };

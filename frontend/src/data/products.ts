@@ -18,6 +18,7 @@ export interface Product {
   weightedAverageCost?: number;
   stockValue?: number;
   isFeatured?: boolean;
+  published?: boolean;
 }
 
 export const products: Product[] = [

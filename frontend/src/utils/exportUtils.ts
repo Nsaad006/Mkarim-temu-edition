@@ -287,14 +287,6 @@ const createWholesaleInvoiceDoc = (order: any, currency: string, settings?: Invo
 
     doc.setFontSize(14);
     doc.text(`TOTAL TTC: ${order.totalAmount} ${currency}`, 140, currentY);
-    currentY += 8;
-
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.text(`Avance: ${order.advanceAmount} ${currency}`, 140, currentY);
-    currentY += 6;
-    doc.setTextColor(order.totalAmount - order.advanceAmount > 0 ? 200 : 0, 0, 0);
-    doc.text(`Reste à payer: ${(order.totalAmount - order.advanceAmount).toFixed(2)} ${currency}`, 140, currentY);
 
     // Footer
     doc.setFontSize(10);

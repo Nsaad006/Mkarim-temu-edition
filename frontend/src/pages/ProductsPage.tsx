@@ -79,6 +79,8 @@ const ProductsPage = () => {
     rams: searchParams.get("rams")?.split(",") || [],
     storages: searchParams.get("storages")?.split(",") || [],
     brands: searchParams.get("brands")?.split(",") || [],
+    ecrans: searchParams.get("ecrans")?.split(",") || [],
+    periphs: searchParams.get("periphs")?.split(",") || [],
     others: searchParams.get("others")?.split(",") || [],
     games: searchParams.get("games")?.split(",") || [],
     minPrice: Number(searchParams.get("minPrice")) || 0,
@@ -95,6 +97,8 @@ const ProductsPage = () => {
     if (filters.rams.length > 0) params.rams = filters.rams.join(",");
     if (filters.storages.length > 0) params.storages = filters.storages.join(",");
     if (filters.brands.length > 0) params.brands = filters.brands.join(",");
+    if (filters.ecrans.length > 0) params.ecrans = filters.ecrans.join(",");
+    if (filters.periphs.length > 0) params.periphs = filters.periphs.join(",");
     if (filters.others.length > 0) params.others = filters.others.join(",");
     if (filters.games.length > 0) params.games = filters.games.join(",");
     if (filters.minPrice > 0) params.minPrice = filters.minPrice.toString();
@@ -108,7 +112,7 @@ const ProductsPage = () => {
   // Fetch all products
   const { data: allProducts = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
-    queryFn: () => productsApi.getAll(),
+    queryFn: () => productsApi.getAll({ published: true }),
   });
 
   // Fetch categories
@@ -162,6 +166,16 @@ const ProductsPage = () => {
       // Brands (Marque)
       if (filters.brands?.length > 0) {
         if (!filters.brands.some(brand => productText.includes(brand.toLowerCase()))) return false;
+      }
+
+      // Display (Écran)
+      if (filters.ecrans?.length > 0) {
+        if (!filters.ecrans.some(ecran => productText.includes(ecran.toLowerCase()))) return false;
+      }
+
+      // Peripherals
+      if (filters.periphs?.length > 0) {
+        if (!filters.periphs.some(val => productText.includes(val.toLowerCase()))) return false;
       }
 
       // Dynamic Specs (Others)
@@ -243,6 +257,8 @@ const ProductsPage = () => {
     filters.rams.forEach(v => chips.push({ type: 'rams', value: v, label: v.toUpperCase() }));
     filters.storages.forEach(v => chips.push({ type: 'storages', value: v, label: v.toUpperCase() }));
     filters.brands.forEach(v => chips.push({ type: 'brands', value: v, label: v.toUpperCase() }));
+    filters.ecrans.forEach(v => chips.push({ type: 'ecrans', value: v, label: v.toUpperCase() }));
+    filters.periphs.forEach(v => chips.push({ type: 'periphs', value: v, label: v.toUpperCase() }));
     filters.others.forEach(v => chips.push({ type: 'others', value: v, label: v.toUpperCase() }));
     filters.games.forEach(v => chips.push({ type: 'games', value: v, label: v.toUpperCase() }));
     if (filters.minPrice > 0 || filters.maxPrice < 100000) {
@@ -411,6 +427,8 @@ const ProductsPage = () => {
                         rams: [],
                         storages: [],
                         brands: [],
+                        ecrans: [],
+                        periphs: [],
                         others: [],
                         games: [],
                         minPrice: 0,
@@ -540,6 +558,8 @@ const ProductsPage = () => {
                       rams: [],
                       storages: [],
                       brands: [],
+                      ecrans: [],
+                      periphs: [],
                       others: [],
                       games: [],
                       minPrice: 0,

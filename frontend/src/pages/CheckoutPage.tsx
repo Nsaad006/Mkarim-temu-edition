@@ -114,10 +114,8 @@ const CheckoutPage = () => {
 
     if (!formData.city) {
       newErrors.city = "Champ obligatoire";
-    }
-
-    if (!formData.address || formData.address.trim().length < 5) {
-      newErrors.address = "Champ obligatoire";
+    } else if (!cities.some(c => c.name.toLowerCase() === formData.city.toLowerCase())) {
+      newErrors.city = "Merci de choisir une ville dans la liste";
     }
 
     if (!formData.email) {
@@ -292,28 +290,51 @@ const CheckoutPage = () => {
                       <MapPin className="w-3.5 h-3.5 text-primary" />
                       Ville de livraison
                     </Label>
-                    <Select
-                      value={formData.city}
-                      onValueChange={(value) => {
-                        setFormData({ ...formData, city: value });
-                        if (errors.city) setErrors({ ...errors, city: "" });
-                      }}
-                    >
-                      <SelectTrigger
+                    <div className="relative group">
+                      <Input
                         id="city"
-                        className={`bg-background text-foreground h-13 lg:h-14 rounded-xl transition-all font-bold uppercase tracking-tighter md:tracking-normal text-xs lg:text-sm ${errors.city ? "border-red-500 focus:border-red-500" : "border-border focus:border-primary/50"
-                          }`}
-                      >
-                        <SelectValue placeholder="SÉLECTIONNER VOTRE VILLE" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border text-foreground">
-                        {cities.map((city) => (
-                          <SelectItem key={city.id} value={city.name} className="focus:bg-white/5 uppercase tracking-wide font-black text-[10px] cursor-pointer">
-                            {city.name} — {city.shippingFee} {currency}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        value={formData.city}
+                        onChange={(e) => {
+                          setFormData({ ...formData, city: e.target.value });
+                          if (errors.city) setErrors({ ...errors, city: "" });
+                        }}
+                        placeholder="EX: CASABLANCA, RABAT, MARRAKECH..."
+                        className={`bg-background text-foreground h-13 lg:h-14 rounded-xl transition-all font-bold placeholder:text-muted-foreground/30 uppercase italic ${errors.city ? "border-red-500 focus:border-red-500" : "border-border focus:border-primary/50"}`}
+                        autoComplete="off"
+                      />
+
+                      {/* Custom Suggestion Dropdown */}
+                      {formData.city.length > 0 && !cities.some(c => c.name.toLowerCase() === formData.city.toLowerCase()) && (
+                        <div className="absolute z-50 left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto animate-in fade-in zoom-in duration-200">
+                          {cities
+                            .filter(city =>
+                              city.name.toLowerCase().includes(formData.city.toLowerCase())
+                            )
+                            .map((city) => (
+                              <button
+                                key={city.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, city: city.name });
+                                  setErrors({ ...errors, city: "" });
+                                }}
+                                className="w-full px-4 py-3 text-left hover:bg-primary/10 transition-colors border-b border-border/50 last:border-0 flex justify-between items-center group/item"
+                              >
+                                <span className="font-black text-[10px] tracking-widest uppercase italic group-hover/item:text-primary transition-colors">
+                                  {city.name}
+                                </span>
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                                  LIVRAISON : {city.shippingFee} {currency}
+                                </span>
+                              </button>
+                            ))}
+                        </div>
+                      )}
+
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-muted-foreground/40 pointer-events-none uppercase italic">
+                        RECHERCHER
+                      </div>
+                    </div>
                     {errors.city && (
                       <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.city}</p>
                     )}
@@ -322,7 +343,7 @@ const CheckoutPage = () => {
                   <div className="space-y-2">
                     <Label htmlFor="address" className="text-[11px] lg:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 px-1">
                       <Home className="w-3.5 h-3.5 text-primary" />
-                      Adresse complète
+                      Adresse complète (Facultatif)
                     </Label>
                     <Input
                       id="address"
@@ -332,12 +353,8 @@ const CheckoutPage = () => {
                         if (errors.address) setErrors({ ...errors, address: "" });
                       }}
                       placeholder="Quartier, rue, appartement..."
-                      className={`bg-background text-foreground h-13 lg:h-14 rounded-xl transition-all font-bold placeholder:text-muted-foreground/30 ${errors.address ? "border-red-500 focus:border-red-500" : "border-border focus:border-primary/50"
-                        }`}
+                      className={`bg-background text-foreground h-13 lg:h-14 rounded-xl transition-all font-bold placeholder:text-muted-foreground/30 border-border focus:border-primary/50`}
                     />
-                    {errors.address && (
-                      <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.address}</p>
-                    )}
                   </div>
                 </div>
 
@@ -381,6 +398,35 @@ const CheckoutPage = () => {
                     </>
                   )}
                 </Button>
+
+                {Object.keys(errors).length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+                  >
+                    <p className="text-[11px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      Attention : Informations manquantes ou invalides
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {Object.entries(errors).map(([key, value]) => {
+                        const fieldNames: Record<string, string> = {
+                          fullName: "Nom complet",
+                          phone: "Téléphone",
+                          city: "Ville de livraison",
+                          email: "Adresse Email",
+                          address: "Adresse complète"
+                        };
+                        return value ? (
+                          <span key={key} className="text-[10px] bg-red-500/20 text-red-500 px-2 py-1 rounded-md font-bold uppercase tracking-tighter">
+                            • {fieldNames[key] || key}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  </motion.div>
+                )}
               </form>
             </motion.div>
           </div>

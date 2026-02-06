@@ -6,6 +6,7 @@ export interface ProductFilters {
     inStock?: boolean;
     search?: string;
     featured?: boolean;
+    published?: boolean;
 }
 
 export const productsApi = {
@@ -15,6 +16,7 @@ export const productsApi = {
         if (filters?.categoryId) params.append('categoryId', filters.categoryId);
         if (filters?.inStock !== undefined) params.append('inStock', String(filters.inStock));
         if (filters?.featured !== undefined) params.append('featured', String(filters.featured));
+        if (filters?.published !== undefined) params.append('published', String(filters.published));
         if (filters?.search) params.append('search', filters.search);
 
         const { data } = await apiClient.get<Product[]>(`/api/products?${params}`);

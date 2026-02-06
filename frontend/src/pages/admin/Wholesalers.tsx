@@ -42,6 +42,10 @@ export default function Wholesalers() {
     const [editingWholesaler, setEditingWholesaler] = useState<Wholesaler | null>(null);
     const [isEditWholesalerOpen, setIsEditWholesalerOpen] = useState(false);
 
+    // Price Warning State
+    const [showPriceWarning, setShowPriceWarning] = useState(false);
+    const [priceWarningItems, setPriceWarningItems] = useState<Array<{ productName: string, unitPrice: number, cost: number }>>([]);
+
     // Fetch Data
     const { data: orders = [] } = useQuery<WholesaleOrder[]>({
         queryKey: ['wholesale-orders'],
@@ -223,11 +227,38 @@ export default function Wholesalers() {
         if (!newOrderWholesalerId) return toast({ title: "Erreur", description: "Sélectionnez un grossiste", variant: "destructive" });
         if (newOrderItems.length === 0) return toast({ title: "Erreur", description: "Ajoutez au moins un article", variant: "destructive" });
 
+        // Check if any item has unit price < cost
+        const itemsBelowCost: Array<{ productName: string, unitPrice: number, cost: number }> = [];
+
+        for (const item of newOrderItems) {
+            const product = products.find(p => p.id === item.productId);
+            if (product && item.unitPrice < (product.weightedAverageCost || 0)) {
+                itemsBelowCost.push({
+                    productName: product.name,
+                    unitPrice: item.unitPrice,
+                    cost: product.weightedAverageCost || 0
+                });
+            }
+        }
+
+        // If items below cost, show warning
+        if (itemsBelowCost.length > 0) {
+            setPriceWarningItems(itemsBelowCost);
+            setShowPriceWarning(true);
+            return;
+        }
+
+        // Proceed with order creation
+        proceedWithOrderCreation();
+    };
+
+    const proceedWithOrderCreation = () => {
         createOrderMutation.mutate({
             wholesalerId: newOrderWholesalerId,
             items: newOrderItems,
             advanceAmount: Number(newOrderAdvance)
         });
+        setShowPriceWarning(false);
     };
 
     const handleUpdateFullOrder = () => {
@@ -692,6 +723,67 @@ export default function Wholesalers() {
                     </div>
                     <DialogFooter>
                         <Button onClick={handleCreateOrder} disabled={createOrderMutation.isPending}>Valider la commande</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Price Warning Dialog */}
+            <Dialog open={showPriceWarning} onOpenChange={setShowPriceWarning}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">⚠️ Attention: Prix en dessous du coût</DialogTitle>
+                        <DialogDescription>
+                            Les produits suivants ont un prix unitaire inférieur au coût d'achat. Cela entraînera une perte sur ces articles.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-muted">
+                                    <tr>
+                                        <th className="text-left p-3 font-semibold">Produit</th>
+                                        <th className="text-right p-3 font-semibold">Prix Unitaire</th>
+                                        <th className="text-right p-3 font-semibold">Coût</th>
+                                        <th className="text-right p-3 font-semibold">Perte</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {priceWarningItems.map((item, idx) => (
+                                        <tr key={idx} className="border-t">
+                                            <td className="p-3">{item.productName}</td>
+                                            <td className="text-right p-3 text-destructive font-semibold">
+                                                {formatCurrency(item.unitPrice)}
+                                            </td>
+                                            <td className="text-right p-3">
+                                                {formatCurrency(item.cost)}
+                                            </td>
+                                            <td className="text-right p-3 text-destructive font-bold">
+                                                -{formatCurrency(item.cost - item.unitPrice)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                            <p className="text-sm font-medium text-destructive">
+                                Êtes-vous sûr de vouloir continuer avec ces prix ?
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Cette action créera une commande avec des prix inférieurs au coût d'achat.
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setShowPriceWarning(false)}>
+                            Annuler
+                        </Button>
+                        <Button variant="destructive" onClick={proceedWithOrderCreation}>
+                            Confirmer et Continuer
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

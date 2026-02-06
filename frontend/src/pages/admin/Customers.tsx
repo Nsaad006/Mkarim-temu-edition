@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Mail, Phone, FileDown, History, Loader2 } from "lucide-react";
+import { Search, Mail, Phone, FileDown, History, Loader2, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -24,17 +24,32 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customersApi, Customer } from "@/api/customers";
+import { productsApi } from "@/api/products";
+import { ordersApi } from "@/api/orders";
+import { citiesApi } from "@/api/cities";
 import { useSettings } from "@/context/SettingsContext";
 import { exportCustomersToExcel, exportCustomersToPDF } from "@/utils/exportUtils";
 import { toast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { useEffect } from "react";
+import { Pagination } from "@/components/admin/Pagination";
 
 const Customers = () => {
     const { currency } = useSettings();
+    const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [showOrderHistory, setShowOrderHistory] = useState(false);
+    const [showCreateOrder, setShowCreateOrder] = useState(false);
+    const [orderItems, setOrderItems] = useState<Array<{ productId: string; quantity: number; price: number }>>([]);
+    const [productSearch, setProductSearch] = useState("");
+    const [showProductDropdown, setShowProductDropdown] = useState(false);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
 
     const { data: customers = [], isLoading } = useQuery({
         queryKey: ['admin-customers'],
@@ -47,10 +62,32 @@ const Customers = () => {
         enabled: !!selectedCustomer,
     });
 
+    const { data: products = [] } = useQuery({
+        queryKey: ['products'],
+        queryFn: () => productsApi.getAll(),
+    });
+
+    const { data: cities = [] } = useQuery({
+        queryKey: ['cities'],
+        queryFn: () => citiesApi.getAll(),
+    });
+
     const filteredCustomers = customers.filter((customer) =>
         customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phone.includes(searchTerm)
+    );
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    // Apply pagination
+    const totalPages = Math.ceil(filteredCustomers.length / pageSize);
+    const paginatedCustomers = filteredCustomers.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
     );
 
     const handleExportExcel = () => {
@@ -88,6 +125,86 @@ const Customers = () => {
     const handleViewOrderHistory = (customer: Customer) => {
         setSelectedCustomer(customer);
         setShowOrderHistory(true);
+    };
+
+    const handleCreateOrder = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setOrderItems([]);
+        setProductSearch("");
+        setShowProductDropdown(false);
+        setShowCreateOrder(true);
+    };
+
+    const handleAddProduct = (productId: string) => {
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        setOrderItems([...orderItems, {
+            productId: product.id,
+            quantity: 1,
+            price: product.price
+        }]);
+        setProductSearch("");
+        setShowProductDropdown(false);
+    };
+
+    const handleRemoveProduct = (index: number) => {
+        setOrderItems(orderItems.filter((_, i) => i !== index));
+    };
+
+    const handleUpdateQuantity = (index: number, quantity: number) => {
+        const newItems = [...orderItems];
+        newItems[index].quantity = Math.max(1, quantity);
+        setOrderItems(newItems);
+    };
+
+    const handleUpdatePrice = (index: number, price: number) => {
+        const newItems = [...orderItems];
+        newItems[index].price = Math.max(0, price);
+        setOrderItems(newItems);
+    };
+
+    const createOrderMutation = useMutation({
+        mutationFn: (orderData: any) => ordersApi.create(orderData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+            queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast({
+                title: "Commande créée",
+                description: "La commande a été créée avec succès.",
+            });
+            setShowCreateOrder(false);
+            setOrderItems([]);
+        },
+        onError: (error: any) => {
+            const errorMessage = error?.response?.data?.error || error?.message || "Impossible de créer la commande.";
+            toast({
+                title: "Erreur",
+                description: errorMessage,
+                variant: "destructive",
+            });
+        }
+    });
+
+    const handleSubmitOrder = () => {
+        if (!selectedCustomer || orderItems.length === 0) return;
+
+        const orderData = {
+            customerName: selectedCustomer.name,
+            phone: selectedCustomer.phone,
+            email: selectedCustomer.email,
+            city: selectedCustomer.city,
+            address: selectedCustomer.address,
+            items: orderItems.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price
+            })),
+            bypassStockCheck: true // Admin can create orders regardless of stock
+        };
+
+        createOrderMutation.mutate(orderData);
     };
 
     return (
@@ -148,8 +265,8 @@ const Customers = () => {
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredCustomers.length > 0 ? (
-                                filteredCustomers.map((customer) => (
+                            ) : paginatedCustomers.length > 0 ? (
+                                paginatedCustomers.map((customer) => (
                                     <TableRow key={customer.id} className="hover:bg-muted/50">
                                         <TableCell>
                                             <div className="flex items-center gap-3">
@@ -181,6 +298,14 @@ const Customers = () => {
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() => handleCreateOrder(customer)}
+                                                >
+                                                    <Plus className="w-4 h-4 mr-1" />
+                                                    Ajouter une commande
+                                                </Button>
+                                                <Button
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleViewOrderHistory(customer)}
@@ -210,6 +335,18 @@ const Customers = () => {
                     </Table>
                 </div>
             </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                }}
+                totalItems={filteredCustomers.length}
+            />
 
             {/* Order History Dialog */}
             <Dialog open={showOrderHistory} onOpenChange={setShowOrderHistory}>
@@ -276,6 +413,189 @@ const Customers = () => {
                                 Aucune commande trouvée pour ce client.
                             </div>
                         )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Order Dialog */}
+            <Dialog open={showCreateOrder} onOpenChange={setShowCreateOrder}>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Créer une Commande</DialogTitle>
+                        <DialogDescription>
+                            {selectedCustomer && (
+                                <>
+                                    Client: <span className="font-semibold">{selectedCustomer.name}</span> |
+                                    Téléphone: <span className="font-semibold">{selectedCustomer.phone}</span>
+                                </>
+                            )}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6 mt-4">
+                        {/* Product Selection */}
+                        <div className="space-y-2">
+                            <Label>Ajouter un produit</Label>
+                            <div className="flex gap-2">
+                                <div className="flex-1 relative">
+                                    <Input
+                                        placeholder="Rechercher un produit..."
+                                        value={productSearch}
+                                        onChange={(e) => {
+                                            setProductSearch(e.target.value);
+                                            setShowProductDropdown(true);
+                                        }}
+                                        onFocus={() => setShowProductDropdown(true)}
+                                        onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
+                                    />
+                                    {showProductDropdown && productSearch && (
+                                        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[300px] overflow-y-auto">
+                                            {products
+                                                .filter(p =>
+                                                    p.name.toLowerCase().includes(productSearch.toLowerCase())
+                                                )
+                                                .map((product) => (
+                                                    <div
+                                                        key={product.id}
+                                                        className="px-3 py-2 hover:bg-accent cursor-pointer"
+                                                        onClick={() => handleAddProduct(product.id)}
+                                                    >
+                                                        <div className="font-medium text-sm">{product.name}</div>
+                                                        <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                                                            <span>Prix: {product.price} {currency}</span>
+                                                            <span>•</span>
+                                                            <span>Stock: {product.quantity || 0}</span>
+                                                            {product.weightedAverageCost !== undefined && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span className="text-green-600 font-medium">Coût: {product.weightedAverageCost.toFixed(2)} {currency}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            }
+                                            {products.filter(p =>
+                                                p.name.toLowerCase().includes(productSearch.toLowerCase())
+                                            ).length === 0 && (
+                                                    <div className="px-3 py-2 text-sm text-muted-foreground text-center">
+                                                        Aucun produit trouvé
+                                                    </div>
+                                                )}
+                                        </div>
+                                    )}
+                                </div>
+                                <Button onClick={() => productSearch && handleAddProduct(products.find(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))?.id || '')} disabled={!productSearch}>
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    Ajouter
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Order Items */}
+                        {orderItems.length > 0 && (
+                            <div className="space-y-2">
+                                <Label>Produits de la commande</Label>
+                                <div className="border rounded-lg overflow-hidden">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Produit</TableHead>
+                                                <TableHead>Prix Unitaire</TableHead>
+                                                <TableHead>Quantité</TableHead>
+                                                <TableHead>Total</TableHead>
+                                                <TableHead className="w-[50px]"></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {orderItems.map((item, index) => {
+                                                const product = products.find(p => p.id === item.productId);
+                                                return (
+                                                    <TableRow key={index}>
+                                                        <TableCell className="font-medium">
+                                                            {product?.name || 'Produit inconnu'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                value={item.price}
+                                                                onChange={(e) => handleUpdatePrice(index, parseFloat(e.target.value) || 0)}
+                                                                className="w-24"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Input
+                                                                type="number"
+                                                                min="1"
+                                                                max={product?.quantity || 999}
+                                                                value={item.quantity}
+                                                                onChange={(e) => handleUpdateQuantity(index, parseInt(e.target.value) || 1)}
+                                                                className="w-20"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className="font-semibold">
+                                                            {(item.price * item.quantity).toFixed(2)} {currency}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleRemoveProduct(index)}
+                                                            >
+                                                                <Trash2 className="w-4 h-4 text-destructive" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Total */}
+                                <div className="flex justify-end pt-4 border-t">
+                                    <div className="text-right">
+                                        <p className="text-sm text-muted-foreground">Total de la commande</p>
+                                        <p className="text-2xl font-bold">
+                                            {orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)} {currency}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {orderItems.length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                                <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p>Aucun produit ajouté</p>
+                                <p className="text-sm">Sélectionnez un produit ci-dessus pour commencer</p>
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button variant="outline" onClick={() => setShowCreateOrder(false)}>
+                                Annuler
+                            </Button>
+                            <Button
+                                onClick={handleSubmitOrder}
+                                disabled={orderItems.length === 0 || createOrderMutation.isPending}
+                            >
+                                {createOrderMutation.isPending ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Création...
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShoppingCart className="w-4 h-4 mr-2" />
+                                        Créer la Commande
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

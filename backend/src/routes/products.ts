@@ -9,9 +9,9 @@ const router = Router();
 // GET /api/products - List all products with optional filters
 router.get('/', async (req, res) => {
     try {
-        const { categoryId, category, inStock, search, featured } = req.query;
+        const { categoryId, category, inStock, search, featured, published } = req.query;
 
-        const where: Prisma.ProductWhereInput = {};
+        const where: any = {};
 
         // Support both categoryId (UUID or slug) and category (slug)
         const categoryIdentifier = categoryId || category;
@@ -41,6 +41,10 @@ router.get('/', async (req, res) => {
 
         if (featured !== undefined) {
             where.isFeatured = featured === 'true';
+        }
+
+        if (published !== undefined) {
+            where.published = published === 'true';
         }
 
         if (search) {
@@ -209,7 +213,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
     try {
         const {
             name, description, price, originalPrice, image, images,
-            categoryId, inStock, quantity, badge, specs, isFeatured,
+            categoryId, inStock, quantity, badge, specs, isFeatured, published,
             supplierId, unitCostPrice // New required fields
         } = req.body;
 
@@ -240,8 +244,9 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
                     quantity: initialQuantity,
                     badge,
                     specs: specs || [],
-                    isFeatured: isFeatured ?? false
-                },
+                    isFeatured: isFeatured ?? false,
+                    published: published ?? true
+                } as any,
                 include: {
                     category: true
                 }
@@ -275,7 +280,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
         const id = req.params.id;
         const {
             name, description, price, originalPrice, image, images,
-            categoryId, inStock, quantity, badge, specs, isFeatured,
+            categoryId, inStock, quantity, badge, specs, isFeatured, published,
             supplierId, unitCostPrice, password // Fields to "fix" existing data
         } = req.body;
 
@@ -289,8 +294,9 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
             ...(quantity !== undefined && { quantity: Number(quantity) }),
             ...(badge !== undefined && { badge }),
             ...(specs && { specs }),
-            ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) })
-        };
+            ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
+            ...(published !== undefined && { published: Boolean(published) })
+        } as any;
 
         // Handle images array update
         if (images !== undefined) {

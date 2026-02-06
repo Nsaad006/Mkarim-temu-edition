@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { AxiosError } from "axios";
-import { Plus, Pencil, Trash2, Search, AlertCircle, Star } from "lucide-react";
+import {
+    Plus, Pencil, Trash2, Search, AlertCircle, Star, Sparkles,
+    Cpu, Zap, HardDrive, Tag, Monitor, Terminal, Power, Box,
+    Wind, Maximize, Activity, Wifi, Battery, Weight, Layers,
+    Keyboard, MousePointer2, Palette, ShieldCheck, CircuitBoard,
+    Target, Snowflake, RefreshCw, Layout, Scale
+} from "lucide-react";
 import {
     Table,
     TableBody,
@@ -40,6 +46,8 @@ import { MultiImageUpload } from "@/components/MultiImageUpload";
 import { getImageUrl } from "@/lib/image-utils";
 import { useSettings } from "@/context/SettingsContext";
 
+import { Pagination } from "@/components/admin/Pagination";
+
 const AdminProducts = () => {
     const { searchQuery: globalSearch } = useOutletContext<{ searchQuery: string }>();
     const { currency } = useSettings();
@@ -52,6 +60,10 @@ const AdminProducts = () => {
     const [passwordActionType, setPasswordActionType] = useState<'COST' | 'STOCK'>('COST');
     const [pendingProductData, setPendingProductData] = useState<any>(null);
     const queryClient = useQueryClient();
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
 
     // Get current user
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -68,10 +80,11 @@ const AdminProducts = () => {
         inStock: true,
         quantity: "0",
         badge: "",
-        specs: "",
+        specs: [] as { key: string, value: string }[],
         supplierId: "", // New required field
         unitCostPrice: "", // New required field
         isFeatured: false,
+        published: true,
     });
 
     // Fetch categories (all, including inactive for admin)
@@ -219,10 +232,11 @@ const AdminProducts = () => {
             inStock: true,
             quantity: "0",
             badge: "",
-            specs: "",
+            specs: [],
             supplierId: "",
             unitCostPrice: "",
             isFeatured: false,
+            published: true,
         });
         setEditingProduct(null);
     };
@@ -239,15 +253,20 @@ const AdminProducts = () => {
             inStock: product.inStock,
             quantity: product.quantity?.toString() || "0",
             badge: product.badge || "",
-            specs: product.specs?.join(", ") || "",
+            specs: product.specs?.map(s => {
+                const match = s.match(/^\{(.*?)\}:\s*(.*)$/);
+                if (match) return { key: match[1], value: match[2] };
+                return { key: "Général", value: s };
+            }) || [],
             supplierId: (product as any).procurements?.[0]?.supplierId || "",
             unitCostPrice: (product as any).weightedAverageCost?.toString() || "",
             isFeatured: (product as any).isFeatured || false,
+            published: product.published ?? true,
         });
         setIsDialogOpen(true);
     };
 
-    const validateSpecs = (specsString: string, categoryId: string): { valid: boolean; error?: string } => {
+    const validateSpecs = (_specs: any, _categoryId: string): { valid: boolean; error?: string } => {
         // ✅ Specs are now completely optional - no validation required
         // Specs without {key} will automatically go to "Hardware Global"
         // Specs with {key}: value will be categorized for filtering (GPU, CPU, RAM, etc.)
@@ -279,10 +298,11 @@ const AdminProducts = () => {
             inStock: formData.inStock,
             quantity: parseInt(formData.quantity) || 0,
             badge: formData.badge || undefined,
-            specs: formData.specs ? formData.specs.split(",").map(s => s.trim()) : [],
+            specs: formData.specs.map(s => s.key === "Général" ? s.value : `{${s.key}}: ${s.value}`),
             supplierId: formData.supplierId,
             unitCostPrice: formData.unitCostPrice,
             isFeatured: formData.isFeatured,
+            published: formData.published,
             image: formData.images[0] || "",
         };
 
@@ -397,6 +417,18 @@ const AdminProducts = () => {
         return matchesSearch && matchesCategory;
     });
 
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, categoryFilter]);
+
+    // Apply pagination
+    const totalPages = Math.ceil(filteredProducts.length / pageSize);
+    const paginatedProducts = filteredProducts.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -452,12 +484,13 @@ const AdminProducts = () => {
                                 <TableHead>Prix Vente</TableHead>
                                 <TableHead>Coût (WAC)</TableHead>
                                 <TableHead>Stock</TableHead>
+                                <TableHead>Publié</TableHead>
                                 <TableHead>Valeur</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredProducts.map((product) => (
+                            {paginatedProducts.map((product) => (
                                 <TableRow key={product.id} className="hover:bg-muted/5 transition-colors">
                                     <TableCell>
                                         <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-secondary border border-border">
@@ -517,6 +550,18 @@ const AdminProducts = () => {
                                             </div>
                                         </div>
                                     </TableCell>
+                                    <TableCell>
+                                        <Switch
+                                            checked={product.published ?? true}
+                                            onCheckedChange={(checked) => {
+                                                updateMutation.mutate({
+                                                    id: product.id,
+                                                    data: { published: checked }
+                                                });
+                                            }}
+                                            className="scale-75 data-[state=checked]:bg-blue-500"
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-bold text-sm">
                                         {(product.stockValue || 0).toLocaleString()} {currency}
                                     </TableCell>
@@ -546,6 +591,18 @@ const AdminProducts = () => {
                     </Table>
                 </div>
             </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                }}
+                totalItems={filteredProducts.length}
+            />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -670,6 +727,14 @@ const AdminProducts = () => {
                                 <Label>Produit en vedette (Accueil)</Label>
                             </div>
 
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    checked={formData.published}
+                                    onCheckedChange={(checked) => setFormData({ ...formData, published: checked })}
+                                />
+                                <Label>Publié sur le site</Label>
+                            </div>
+
                             {/* Supplier is only shown for New products (historical correction happens on the cost price directly if existing) */}
                             {/* Supplier Section (Always Visible) */}
                             <div className="space-y-2">
@@ -709,23 +774,238 @@ const AdminProducts = () => {
                                 />
                             </div>
 
-                            <div className="space-y-2 col-span-2">
-                                <Label>Spécifications (séparées par des virgules)</Label>
-                                <Textarea
-                                    value={formData.specs}
-                                    onChange={(e) => setFormData({ ...formData, specs: e.target.value })}
-                                    placeholder="Ex: {gpu}: RTX 5090, {ram}: 32GB, Écran OLED, Clavier RGB"
-                                    rows={4}
-                                />
-                                <div className="text-[11px] text-muted-foreground mt-1.5 p-2 bg-muted/40 rounded border border-border space-y-1">
-                                    <p className="font-semibold text-primary">✅ Clés optionnelles : <code className="bg-background px-1 rounded border">{'\{clé\}: valeur'}</code></p>
-                                    <p className="text-[10px] italic">
-                                        • <strong>Avec clé</strong> (ex: {'{gpu}: RTX 5090'}) → Utilisé pour le filtrage avancé (GPU, CPU, RAM, etc.)<br />
-                                        • <strong>Sans clé</strong> (ex: "Écran OLED") → Ajouté à "Hardware Global"
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        <span className="font-semibold">Clés disponibles :</span> {'\{gpu\}, \{cpu\}, \{ram\}, \{stockage\}, \{marque\}, \{marque_pc\}, etc.'}
-                                    </p>
+                            <div className="space-y-4 col-span-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold">Spécifications & Caractéristiques</Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-[11px]"
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            specs: [...formData.specs, { key: "cpu", value: "" }]
+                                        })}
+                                    >
+                                        <Plus className="w-3 h-3 mr-1" /> Ajouter une spécification
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-2 border rounded-lg p-3 bg-muted/20">
+                                    {formData.specs.length === 0 ? (
+                                        <p className="text-center text-[11px] text-muted-foreground py-2 italic">
+                                            Aucune spécification ajoutée. Cliquez sur le bouton pour en ajouter.
+                                        </p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {formData.specs.map((spec, idx) => (
+                                                <div key={idx} className="flex gap-2 items-start">
+                                                    <div className="w-32 flex-shrink-0">
+                                                        <Select
+                                                            value={spec.key}
+                                                            onValueChange={(val) => {
+                                                                const newSpecs = [...formData.specs];
+                                                                newSpecs[idx].key = val;
+                                                                setFormData({ ...formData, specs: newSpecs });
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-8 text-xs">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Général">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Layout className="w-3.5 h-3.5 text-muted-foreground" />
+                                                                        <span>Général (Texte)</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="cpu">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Cpu className="w-3.5 h-3.5 text-primary" />
+                                                                        <span>Processeur (CPU)</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="gpu">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                                                                        <span>Carte Graphique (GPU)</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="ram">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <CircuitBoard className="w-3.5 h-3.5 text-blue-500" />
+                                                                        <span>Mémoire RAM</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="stockage">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <HardDrive className="w-3.5 h-3.5 text-emerald-500" />
+                                                                        <span>Stockage</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="marque">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+                                                                        <span>Marque</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="marque_pc">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Box className="w-3.5 h-3.5 text-muted-foreground" />
+                                                                        <span>Modèle PC</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="ecran">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Monitor className="w-3.5 h-3.5 text-indigo-500" />
+                                                                        <span>Écran</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="os">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Terminal className="w-3.5 h-3.5 text-violet-500" />
+                                                                        <span>Système (OS)</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="carte_mere">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <CircuitBoard className="w-3.5 h-3.5 text-red-500" />
+                                                                        <span>Carte Mère</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="alimentation">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Power className="w-3.5 h-3.5 text-amber-600" />
+                                                                        <span>Alimentation (PSU)</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="boitier">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Box className="w-3.5 h-3.5 text-zinc-400" />
+                                                                        <span>Boîtier</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="refroidissement">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Snowflake className="w-3.5 h-3.5 text-cyan-400" />
+                                                                        <span>Refroidissement</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="resolution">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Maximize className="w-3.5 h-3.5 text-indigo-400" />
+                                                                        <span>Résolution Écran</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="frequence">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <RefreshCw className="w-3.5 h-3.5 text-orange-500" />
+                                                                        <span>Fréquence</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="connectivite">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Wifi className="w-3.5 h-3.5 text-sky-500" />
+                                                                        <span>Connectivité</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="batterie">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Battery className="w-3.5 h-3.5 text-green-500" />
+                                                                        <span>Batterie</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="poids">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Scale className="w-3.5 h-3.5 text-stone-400" />
+                                                                        <span>Poids</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="chipset">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Cpu className="w-3.5 h-3.5 text-zinc-500" />
+                                                                        <span>Chipset</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="format">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Layers className="w-3.5 h-3.5 text-pink-500" />
+                                                                        <span>Format</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="switch">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Keyboard className="w-3.5 h-3.5 text-rose-500" />
+                                                                        <span>Switch Clavier</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="dpi">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <MousePointer2 className="w-3.5 h-3.5 text-blue-400" />
+                                                                        <span>DPI Souris</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="capteur">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Target className="w-3.5 h-3.5 text-red-400" />
+                                                                        <span>Capteur Optique</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="eclairage">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Palette className="w-3.5 h-3.5 text-fuchsia-500" />
+                                                                        <span>RGB / Éclairage</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="polling_rate">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Activity className="w-3.5 h-3.5 text-lime-500" />
+                                                                        <span>Polling Rate</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                                <SelectItem value="garantie">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                                                                        <span>Garantie</span>
+                                                                    </div>
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <Input
+                                                            className="h-8 text-xs"
+                                                            placeholder={spec.key === "Général" ? "Ex: Garantie 2 ans..." : "Valeur..."}
+                                                            value={spec.value}
+                                                            onChange={(e) => {
+                                                                const newSpecs = [...formData.specs];
+                                                                newSpecs[idx].value = e.target.value;
+                                                                setFormData({ ...formData, specs: newSpecs });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive"
+                                                        onClick={() => {
+                                                            setFormData({
+                                                                ...formData,
+                                                                specs: formData.specs.filter((_, i) => i !== idx)
+                                                            });
+                                                        }}
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 px-1 font-medium italic">
+                                    <Sparkles className="w-3 h-3 text-primary" />
+                                    <span>Les clés techniques (CPU, GPU, RAM...) sont utilisées pour les filtres avancés du catalogue.</span>
                                 </div>
                             </div>
 

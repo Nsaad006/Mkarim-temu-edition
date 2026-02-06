@@ -14,6 +14,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { getImageUrl } from "@/lib/image-utils";
 
 const item = {
   hidden: { opacity: 0, y: 20 },
@@ -127,26 +128,40 @@ const CategoriesSection = () => {
                 }
 
                 return (
-                  <CarouselItem key={category.slug} className="pl-2 basis-1/2 md:basis-1/4 lg:basis-1/6">
+                  <CarouselItem key={category.slug} className="pl-3 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6">
                     <motion.div
                       variants={item}
-                      whileHover={{ y: -5 }}
+                      whileHover={{ y: -8, scale: 1.05 }}
                       className="group h-full"
                     >
                       <Link
                         to={`/products?category=${category.slug}`}
-                        className="relative flex flex-col items-center justify-center p-4 md:p-6 rounded-xl bg-card/50 border border-border hover:border-primary/50 transition-all duration-300 overflow-hidden h-full aspect-square"
+                        className="flex flex-col items-center justify-center py-3"
                       >
-                        {/* Hover Background Glow */}
-                        <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors duration-500" />
-
-                        <div className="relative z-10 w-10 h-10 md:w-14 md:h-14 mb-3 rounded-xl bg-muted flex items-center justify-center border border-border group-hover:bg-primary group-hover:border-primary group-hover:rotate-6 transition-all duration-500 shadow-lg">
-                          <IconComponent className="w-5 h-5 md:w-7 md:h-7 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
+                        {/* Circular Image Container */}
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 mb-2 sm:mb-3 rounded-full overflow-hidden bg-muted/30 shadow-lg group-hover:shadow-xl group-hover:shadow-primary/20 transition-all duration-500">
+                          {category.image ? (
+                            <img
+                              src={getImageUrl(category.image)}
+                              alt={category.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                              <IconComponent className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 text-primary/60 group-hover:text-primary group-hover:scale-110 transition-all duration-500" />
+                            </div>
+                          )}
                         </div>
 
-                        <h3 className="relative z-10 font-bold text-[10px] md:text-[11px] lg:text-sm text-center group-hover:text-primary transition-colors duration-300 line-clamp-2 uppercase tracking-tighter leading-tight min-h-[2.2em] flex items-center justify-center px-1">
+                        {/* Category Name */}
+                        <h3 className="font-bold text-[11px] sm:text-xs md:text-sm text-center group-hover:text-primary transition-colors duration-300 line-clamp-2 uppercase tracking-tight leading-tight mb-0.5 px-1">
                           {category.name}
                         </h3>
+
+                        {/* Product Count */}
+                        <p className="text-[10px] sm:text-xs text-muted-foreground group-hover:text-primary/70 transition-colors duration-300">
+                          {category.productsCount} produits
+                        </p>
                       </Link>
                     </motion.div>
                   </CarouselItem>

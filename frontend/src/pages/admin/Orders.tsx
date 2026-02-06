@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useEffect } from "react";
+import { Pagination } from "@/components/admin/Pagination";
 import {
     exportOrdersToExcel,
     exportOrdersToPDF,
@@ -75,6 +77,10 @@ const Orders = () => {
     const [statusFilter, setStatusFilter] = useState("all");
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
 
     const queryClient = useQueryClient();
 
@@ -206,6 +212,18 @@ const Orders = () => {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
 
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter, dateRange, globalSearch]);
+
+    // Apply pagination
+    const totalPages = Math.ceil(filteredOrders.length / pageSize);
+    const paginatedOrders = filteredOrders.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
+
     const handleStatusChange = (orderId: string, newStatus: string) => {
         updateStatusMutation.mutate({ id: orderId, status: newStatus });
     };
@@ -314,8 +332,8 @@ const Orders = () => {
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredOrders.length > 0 ? (
-                                filteredOrders.map((order) => (
+                            ) : paginatedOrders.length > 0 ? (
+                                paginatedOrders.map((order) => (
                                     <TableRow key={order.id} className="cursor-pointer hover:bg-muted/5 transition-colors">
                                         <TableCell className="font-mono font-medium">{order.orderNumber}</TableCell>
                                         <TableCell>
@@ -577,6 +595,18 @@ const Orders = () => {
                     </Table>
                 </div>
             </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                }}
+                totalItems={filteredOrders.length}
+            />
         </div>
     );
 };

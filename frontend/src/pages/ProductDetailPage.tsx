@@ -2,7 +2,9 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ShoppingCart, Truck, ShieldCheck, CreditCard, ArrowLeft, Check, Loader2,
-  Cpu, Zap, HardDrive, Tag, CircuitBoard, AppWindow, Monitor, LayoutGrid
+  Cpu, Zap, HardDrive, Tag, CircuitBoard, AppWindow, Monitor, LayoutGrid,
+  Power, Box, Wind, Snowflake, Maximize, RefreshCw, Activity, Wifi, Battery,
+  Scale, Keyboard, MousePointer2, Target, Palette, Terminal, Layers
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -58,14 +60,32 @@ const ProductDetailPage = () => {
   const getSpecIcon = (key?: string) => {
     if (!key) return LayoutGrid;
     const normalized = key.toLowerCase().trim();
+
     if (normalized.includes('cpu') || normalized.includes('processeur')) return Cpu;
     if (normalized.includes('gpu') || normalized.includes('graphique')) return Zap;
     if (normalized.includes('ram') || normalized.includes('memoire')) return CircuitBoard;
-    if (normalized.includes('stockage') || normalized.includes('disque') || normalized.includes('ssd')) return HardDrive;
+    if (normalized.includes('stockage') || normalized.includes('disque') || normalized.includes('ssd') || normalized.includes('hdd')) return HardDrive;
     if (normalized.includes('marque')) return Tag;
     if (normalized.includes('carte_mere') || normalized.includes('motherboard')) return CircuitBoard;
-    if (normalized.includes('systeme') || normalized.includes('os') || normalized.includes('windows')) return AppWindow;
+    if (normalized.includes('alimentation') || normalized.includes('psu')) return Power;
+    if (normalized.includes('boitier') || normalized.includes('case')) return Box;
+    if (normalized.includes('refroidissement') || normalized.includes('cooling')) return Snowflake;
+    if (normalized.includes('resolution') || normalized.includes('affichage')) return Maximize;
+    if (normalized.includes('frequence') || normalized.includes('rafraichissement') || normalized.includes('hz')) return RefreshCw;
+    if (normalized.includes('connectivite') || normalized.includes('wifi') || normalized.includes('bluetooth')) return Wifi;
+    if (normalized.includes('batterie') || normalized.includes('autonomie')) return Battery;
+    if (normalized.includes('poids') || normalized.includes('weight')) return Scale;
+    if (normalized.includes('chipset')) return Cpu;
+    if (normalized.includes('format')) return Layers;
+    if (normalized.includes('switch') || normalized.includes('clavier')) return Keyboard;
+    if (normalized.includes('dpi') || normalized.includes('sensibilite')) return MousePointer2;
+    if (normalized.includes('capteur') || normalized.includes('sensor')) return Target;
+    if (normalized.includes('rgb') || normalized.includes('eclairage') || normalized.includes('couleur')) return Palette;
+    if (normalized.includes('polling') || normalized.includes('rapport')) return Activity;
+    if (normalized.includes('garantie') || normalized.includes('warranty')) return ShieldCheck;
+    if (normalized.includes('systeme') || normalized.includes('os') || normalized.includes('windows')) return Terminal;
     if (normalized.includes('ecran') || normalized.includes('display')) return Monitor;
+
     return LayoutGrid;
   };
 
@@ -227,10 +247,50 @@ const ProductDetailPage = () => {
                       const displayValue = match ? match[2] : spec;
                       const Icon = getSpecIcon(key);
 
+                      // Human readable labels mapping
+                      const labels: Record<string, string> = {
+                        'cpu': 'Processeur',
+                        'gpu': 'Graphique',
+                        'ram': 'Mémoire',
+                        'stockage': 'Stockage',
+                        'marque': 'Marque',
+                        'marque_pc': 'Modèle',
+                        'ecran': 'Écran',
+                        'os': 'Système',
+                        'carte_mere': 'Carte Mère',
+                        'alimentation': 'Alimentation',
+                        'boitier': 'Boîtier',
+                        'refroidissement': 'Cooling',
+                        'resolution': 'Résolution',
+                        'frequence': 'Fréquence',
+                        'connectivite': 'Connexion',
+                        'batterie': 'Batterie',
+                        'poids': 'Poids',
+                        'chipset': 'Chipset',
+                        'format': 'Format',
+                        'switch': 'Switch',
+                        'dpi': 'Sensibilité',
+                        'capteur': 'Capteur',
+                        'eclairage': 'RGB',
+                        'polling_rate': 'Polling',
+                        'garantie': 'Garantie'
+                      };
+
+                      const label = key ? (labels[key.toLowerCase()] || key) : 'Général';
+
                       return (
-                        <div key={index} className="flex items-center gap-4 bg-muted/50 border border-border p-4 rounded-xl group hover:border-primary/30 transition-colors duration-300">
-                          <Icon className="w-5 h-5 text-primary shrink-0" />
-                          <span className="text-sm font-bold text-foreground uppercase tracking-tight">{displayValue}</span>
+                        <div key={index} className="flex items-center gap-4 bg-muted/40 border border-border p-4 rounded-xl group hover:border-primary/30 transition-all duration-300">
+                          <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border border-border shrink-0 group-hover:bg-primary/5 transition-colors">
+                            <Icon className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest leading-none mb-1">
+                              {label}
+                            </span>
+                            <span className="text-sm font-bold text-foreground uppercase tracking-tight truncate">
+                              {displayValue}
+                            </span>
+                          </div>
                         </div>
                       );
                     })}

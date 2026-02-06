@@ -4,6 +4,7 @@ import { Order } from '@/data/mock-admin-data';
 export interface CreateOrderItemData {
     productId: string;
     quantity: number;
+    price?: number;
 }
 
 export interface CreateOrderData {
@@ -13,6 +14,7 @@ export interface CreateOrderData {
     phone: string;
     city: string;
     address: string;
+    bypassStockCheck?: boolean;
 }
 
 export const ordersApi = {

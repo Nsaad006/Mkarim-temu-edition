@@ -17,13 +17,15 @@ const phoneRegex = /^(\+212|0)[5-7]\d{8}$/;
 const createOrderSchema = z.object({
     items: z.array(z.object({
         productId: z.string(),
-        quantity: z.number().int().positive()
+        quantity: z.number().int().positive(),
+        price: z.number().positive().optional()
     })).min(1, 'Votre panier est vide'),
     customerName: z.string().min(2, "Merci de saisir votre nom complet (min 2 caractères)"),
     email: z.string().email("Merci de saisir une adresse email valide").optional().or(z.literal("")),
     phone: z.string().regex(phoneRegex, 'Merci de saisir un numéro de téléphone marocain valide (Ex: 06XXXXXXXX)'),
     city: z.string().min(2, "Merci de sélectionner votre ville"),
-    address: z.string().min(5, "Merci de saisir votre adresse complète (min 5 caractères)")
+    address: z.string().optional().or(z.literal("")),
+    bypassStockCheck: z.boolean().optional()
 });
 
 // Generate order number
@@ -54,16 +56,20 @@ router.post('/', async (req, res) => {
             if (!product) {
                 return res.status(404).json({ error: `Product ${item.productId} not found` });
             }
-            if (!product.inStock || product.quantity < item.quantity) {
+
+            // Only check stock if bypassStockCheck is not true
+            if (!validatedData.bypassStockCheck && (!product.inStock || product.quantity < item.quantity)) {
                 return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
             }
 
-            total += product.price * item.quantity;
+            // Use provided price (admin manual order) or product price from DB
+            const finalPrice = item.price ?? product.price;
+            total += finalPrice * item.quantity;
 
             orderItems.push({
                 productId: item.productId,
                 quantity: item.quantity,
-                price: product.price
+                price: finalPrice
             });
 
             // NOTE: Stock is NOT decremented here anymore. 
@@ -77,14 +83,14 @@ router.post('/', async (req, res) => {
                 name: validatedData.customerName,
                 email: validatedData.email || null,
                 city: validatedData.city,
-                address: validatedData.address,
+                address: validatedData.address || "",
             },
             create: {
                 name: validatedData.customerName,
                 email: validatedData.email || null,
                 phone: validatedData.phone,
                 city: validatedData.city,
-                address: validatedData.address,
+                address: validatedData.address || "",
             }
         });
 
@@ -96,7 +102,7 @@ router.post('/', async (req, res) => {
                 email: validatedData.email || null,
                 phone: validatedData.phone,
                 city: validatedData.city,
-                address: validatedData.address,
+                address: validatedData.address || "",
                 total: total,
                 status: 'PENDING',
                 items: {
