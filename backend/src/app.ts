@@ -30,7 +30,24 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }  // Allow cross-origin images
 }));
 app.use(cors({
-    origin: [process.env.FRONTEND_URL || 'http://localhost:8080', 'http://localhost:8081', 'http://localhost:8082', 'http://localhost:5173'],
+    origin: (origin, callback) => {
+        const allowedOrigins = [
+            process.env.FRONTEND_URL,
+            'http://localhost:8080',
+            'http://localhost:8081',
+            'http://localhost:8082',
+            'http://localhost:5173',
+            /\.railway\.app$/  // Allow any Railway app domain
+        ].filter(Boolean);
+
+        if (!origin || allowedOrigins.some(pattern =>
+            pattern instanceof RegExp ? pattern.test(origin) : pattern === origin
+        )) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
