@@ -108,6 +108,7 @@ const Orders = () => {
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['orders'],
         queryFn: () => ordersApi.getAll(),
+        placeholderData: (previousData) => previousData,
     });
 
     const updateStatusMutation = useMutation({
@@ -250,6 +251,8 @@ const Orders = () => {
         currentPage * pageSize
     );
 
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
     const handleStatusChange = (orderId: string, newStatus: string) => {
         if (newStatus === "RETOUR") {
             setOrderToReturn(orderId);
@@ -258,6 +261,11 @@ const Orders = () => {
             return;
         }
         updateStatusMutation.mutate({ id: orderId, status: newStatus });
+    };
+
+    const handleViewDetails = (order: Order) => {
+        setSelectedOrder(order);
+        setIsDetailsOpen(true);
     };
 
     const confirmReturn = () => {
@@ -403,206 +411,36 @@ const Orders = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Sheet>
-                                                <SheetTrigger asChild>
-                                                    <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(order)}>
-                                                        <Eye className="w-4 h-4" />
-                                                    </Button>
-                                                </SheetTrigger>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        generateInvoicePDF(order, currency, settings);
-                                                    }}
-                                                    title="Télécharger la facture"
-                                                >
-                                                    <FileText className="w-4 h-4 text-primary" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEmailInvoice(order);
-                                                    }}
-                                                    title="Envoyer Facture par Email"
-                                                >
-                                                    <Mail className="w-4 h-4 text-orange-600" />
-                                                </Button>
-                                                <SheetContent className="overflow-y-auto w-full sm:max-w-xl">
-                                                    <SheetHeader className="mb-6">
-                                                        <SheetTitle className="text-2xl">Commande {order.orderNumber}</SheetTitle>
-                                                        <SheetDescription>
-                                                            Détails complets de la commande et informations client
-                                                        </SheetDescription>
-                                                    </SheetHeader>
-
-                                                    <div className="space-y-6">
-                                                        {/* Status Section */}
-                                                        <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg border border-border">
-                                                            <div>
-                                                                <p className="text-sm text-muted-foreground mb-1">Statut actuel</p>
-                                                                <StatusBadge status={order.status} />
-                                                            </div>
-                                                            <div className="flex gap-2 flex-wrap">
-                                                                {/* Commercial can only CONFIRM */}
-                                                                {canUpdateStatus('CONFIRMED') && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        onClick={() => handleStatusChange(order.id, "CONFIRMED")}
-                                                                        disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CONFIRMED')}
-                                                                    >
-                                                                        <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmer
-                                                                    </Button>
-                                                                )}
-                                                                {/* Magasinier can mark as SHIPPED */}
-                                                                {canUpdateStatus('SHIPPED') && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        onClick={() => handleStatusChange(order.id, "SHIPPED")}
-                                                                        disabled={updateStatusMutation.isPending || !canPerformAction(order, 'SHIPPED')}
-                                                                    >
-                                                                        <Truck className="w-4 h-4 mr-1" /> Expédier
-                                                                    </Button>
-                                                                )}
-                                                                {/* Magasinier can mark as DELIVERED */}
-                                                                {canUpdateStatus('DELIVERED') && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        onClick={() => handleStatusChange(order.id, "DELIVERED")}
-                                                                        disabled={updateStatusMutation.isPending || !canPerformAction(order, 'DELIVERED')}
-                                                                    >
-                                                                        <CheckCircle2 className="w-4 h-4 mr-1" /> Livrer
-                                                                    </Button>
-                                                                )}
-                                                                {/* Magasinier or Admin can mark as RETOUR */}
-                                                                {canUpdateStatus('RETOUR') && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                                                                        onClick={() => handleStatusChange(order.id, "RETOUR")}
-                                                                        disabled={updateStatusMutation.isPending}
-                                                                    >
-                                                                        <RotateCcw className="w-4 h-4 mr-1" /> Retour
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Return Reason Section */}
-                                                        {(order.status.toUpperCase() === 'RETOUR' || order.returnReason) && (
-                                                            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
-                                                                <p className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
-                                                                    <RotateCcw className="w-4 h-4" /> Raison du retour
-                                                                </p>
-                                                                <p className="text-sm text-orange-700 italic">
-                                                                    "{order.returnReason || "Raison non spécifiée"}"
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Customer Info */}
-                                                        <div>
-                                                            <h3 className="font-semibold text-lg mb-3">Information Client</h3>
-                                                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                                                <div>
-                                                                    <p className="text-muted-foreground">Nom complet</p>
-                                                                    <p className="font-medium">{order.customerName}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-muted-foreground">Téléphone</p>
-                                                                    <p className="font-medium flex items-center gap-2">
-                                                                        {order.phone}
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openWhatsApp(order.phone, order.orderNumber)}>
-                                                                            <MessageCircle className="w-3 h-3 text-green-600" />
-                                                                        </Button>
-                                                                    </p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-muted-foreground">Ville</p>
-                                                                    <p className="font-medium">{order.city}</p>
-                                                                </div>
-                                                                <div className="col-span-2">
-                                                                    <p className="text-muted-foreground">Adresse</p>
-                                                                    <p className="font-medium">{order.address}</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Items */}
-                                                        <div>
-                                                            <h3 className="font-semibold text-lg mb-3">Articles</h3>
-                                                            <div className="border rounded-lg divide-y">
-                                                                {order.items.map((item, idx) => (
-                                                                    <div key={idx} className="p-3 flex justify-between items-center">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
-                                                                                {item.product?.image ? (
-                                                                                    <img src={getImageUrl(item.product.image)} alt={item.product.name} className="w-full h-full object-cover" />
-                                                                                ) : (
-                                                                                    <Package className="w-5 h-5 text-gray-500" />
-                                                                                )}
-                                                                            </div>
-                                                                            <div>
-                                                                                <p className="font-medium">{item.product?.name || 'Produit inconnu'}</p>
-                                                                                <p className="text-sm text-muted-foreground">Qté: {item.quantity}</p>
-                                                                            </div>
-                                                                        </div>
-                                                                        <p className="font-medium">{item.price.toLocaleString()} {currency}</p>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex justify-between items-center mt-4 pt-4 border-t">
-                                                                <span className="font-semibold text-lg">Total à payer</span>
-                                                                <span className="font-bold text-xl text-primary">{order.total.toLocaleString()} {currency}</span>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Quick Actions */}
-                                                        <div>
-                                                            <h3 className="font-semibold text-lg mb-3">Actions Rapides</h3>
-                                                            <div className="grid grid-cols-3 gap-3">
-                                                                <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => openWhatsApp(order.phone, order.orderNumber)}>
-                                                                    <MessageCircle className="w-4 h-4 mr-2" />
-                                                                    WhatsApp
-                                                                </Button>
-                                                                <Button className="w-full" variant="outline" onClick={() => window.open(`tel:${order.phone}`)}>
-                                                                    <Phone className="w-4 h-4 mr-2" />
-                                                                    Appeler
-                                                                </Button>
-                                                                <Button className="w-full" variant="outline" onClick={() => generateInvoicePDF(order, currency, settings)}>
-                                                                    <FileText className="w-4 h-4 mr-2" />
-                                                                    Facture
-                                                                </Button>
-                                                                <Button className="w-full" variant="outline" onClick={() => handleEmailInvoice(order)}>
-                                                                    <Mail className="w-4 h-4 mr-2" />
-                                                                    Envoyer Email
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="pt-4 border-t">
-                                                            {canUpdateStatus('CANCELLED') && (
-                                                                <Button
-                                                                    variant="destructive"
-                                                                    className="w-full"
-                                                                    onClick={() => handleStatusChange(order.id, "CANCELLED")}
-                                                                    disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CANCELLED')}
-                                                                >
-                                                                    <XCircle className="w-4 h-4 mr-2" />
-                                                                    Annuler la commande
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </SheetContent>
-                                            </Sheet>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleViewDetails(order)}
+                                                title="Voir les détails"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    generateInvoicePDF(order, currency, settings);
+                                                }}
+                                                title="Télécharger la facture"
+                                            >
+                                                <FileText className="w-4 h-4 text-primary" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEmailInvoice(order);
+                                                }}
+                                                title="Envoyer Facture par Email"
+                                            >
+                                                <Mail className="w-4 h-4 text-orange-600" />
+                                            </Button>
 
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -678,6 +516,185 @@ const Orders = () => {
                     </Table>
                 </div>
             </div>
+
+            {/* Global Order Details Sheet */}
+            <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <SheetContent className="overflow-y-auto w-full sm:max-w-xl">
+                    {selectedOrder && (
+                        <>
+                            <SheetHeader className="mb-6">
+                                <SheetTitle className="text-2xl">Commande {selectedOrder.orderNumber}</SheetTitle>
+                                <SheetDescription>
+                                    Détails complets de la commande et informations client
+                                </SheetDescription>
+                            </SheetHeader>
+
+                            <div className="space-y-6">
+                                {/* Status Section */}
+                                <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg border border-border">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground mb-1">Statut actuel</p>
+                                        <StatusBadge status={selectedOrder.status} />
+                                    </div>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {/* Commercial can only CONFIRM */}
+                                        {canUpdateStatus('CONFIRMED') && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleStatusChange(selectedOrder.id, "CONFIRMED")}
+                                                disabled={updateStatusMutation.isPending || !canPerformAction(selectedOrder, 'CONFIRMED')}
+                                            >
+                                                <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmer
+                                            </Button>
+                                        )}
+                                        {/* Magasinier can mark as SHIPPED */}
+                                        {canUpdateStatus('SHIPPED') && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleStatusChange(selectedOrder.id, "SHIPPED")}
+                                                disabled={updateStatusMutation.isPending || !canPerformAction(selectedOrder, 'SHIPPED')}
+                                            >
+                                                <Truck className="w-4 h-4 mr-1" /> Expédier
+                                            </Button>
+                                        )}
+                                        {/* Magasinier can mark as DELIVERED */}
+                                        {canUpdateStatus('DELIVERED') && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleStatusChange(selectedOrder.id, "DELIVERED")}
+                                                disabled={updateStatusMutation.isPending || !canPerformAction(selectedOrder, 'DELIVERED')}
+                                            >
+                                                <CheckCircle2 className="w-4 h-4 mr-1" /> Livrer
+                                            </Button>
+                                        )}
+                                        {/* Magasinier or Admin can mark as RETOUR */}
+                                        {canUpdateStatus('RETOUR') && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                                onClick={() => handleStatusChange(selectedOrder.id, "RETOUR")}
+                                                disabled={updateStatusMutation.isPending}
+                                            >
+                                                <RotateCcw className="w-4 h-4 mr-1" /> Retour
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Return Reason Section */}
+                                {(selectedOrder.status.toUpperCase() === 'RETOUR' || selectedOrder.returnReason) && (
+                                    <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
+                                        <p className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
+                                            <RotateCcw className="w-4 h-4" /> Raison du retour
+                                        </p>
+                                        <p className="text-sm text-orange-700 italic">
+                                            "{selectedOrder.returnReason || "Raison non spécifiée"}"
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Customer Info */}
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-3">Information Client</h3>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="text-muted-foreground">Nom complet</p>
+                                            <p className="font-medium">{selectedOrder.customerName}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">Téléphone</p>
+                                            <p className="font-medium flex items-center gap-2">
+                                                {selectedOrder.phone}
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openWhatsApp(selectedOrder.phone, selectedOrder.orderNumber)}>
+                                                    <MessageCircle className="w-3 h-3 text-green-600" />
+                                                </Button>
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">Ville</p>
+                                            <p className="font-medium">{selectedOrder.city}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-muted-foreground">Adresse</p>
+                                            <p className="font-medium">{selectedOrder.address}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Items */}
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-3">Articles</h3>
+                                    <div className="border rounded-lg divide-y">
+                                        {selectedOrder.items.map((item, idx) => (
+                                            <div key={idx} className="p-3 flex justify-between items-center">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                                                        {item.product?.image ? (
+                                                            <img src={getImageUrl(item.product.image)} alt={item.product.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <Package className="w-5 h-5 text-gray-500" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium">{item.product?.name || 'Produit inconnu'}</p>
+                                                        <p className="text-sm text-muted-foreground">Qté: {item.quantity}</p>
+                                                    </div>
+                                                </div>
+                                                <p className="font-medium">{item.price.toLocaleString()} {currency}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                                        <span className="font-semibold text-lg">Total à payer</span>
+                                        <span className="font-bold text-xl text-primary">{selectedOrder.total.toLocaleString()} {currency}</span>
+                                    </div>
+                                </div>
+
+                                {/* Quick Actions */}
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-3">Actions Rapides</h3>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => openWhatsApp(selectedOrder.phone, selectedOrder.orderNumber)}>
+                                            <MessageCircle className="w-4 h-4 mr-2" />
+                                            WhatsApp
+                                        </Button>
+                                        <Button className="w-full" variant="outline" onClick={() => window.open(`tel:${selectedOrder.phone}`)}>
+                                            <Phone className="w-4 h-4 mr-2" />
+                                            Appeler
+                                        </Button>
+                                        <Button className="w-full" variant="outline" onClick={() => generateInvoicePDF(selectedOrder, currency, settings)}>
+                                            <FileText className="w-4 h-4 mr-2" />
+                                            Facture
+                                        </Button>
+                                        <Button className="w-full" variant="outline" onClick={() => handleEmailInvoice(selectedOrder)}>
+                                            <Mail className="w-4 h-4 mr-2" />
+                                            Envoyer Email
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t">
+                                    {canUpdateStatus('CANCELLED') && (
+                                        <Button
+                                            variant="destructive"
+                                            className="w-full"
+                                            onClick={() => handleStatusChange(selectedOrder.id, "CANCELLED")}
+                                            disabled={updateStatusMutation.isPending || !canPerformAction(selectedOrder, 'CANCELLED')}
+                                        >
+                                            <XCircle className="w-4 h-4 mr-2" />
+                                            Annuler la commande
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </SheetContent>
+            </Sheet>
 
             <Pagination
                 currentPage={currentPage}
