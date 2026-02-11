@@ -94,8 +94,23 @@ const Orders = () => {
 
     // Retour state
     const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [returnReason, setReturnReason] = useState("");
     const [orderToReturn, setOrderToReturn] = useState<string | null>(null);
+
+    // Safety cleanup for stuck backdrops (Radix UI)
+    // If the page is frozen, it's usually because 'pointer-events: none' is left on the body
+    useEffect(() => {
+        if (!isDetailsOpen && !isReturnDialogOpen) {
+            const cleanup = () => {
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.overflow = 'auto';
+            };
+            // Small delay to let Radix finish its own cleanup
+            const timer = setTimeout(cleanup, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isDetailsOpen, isReturnDialogOpen]);
 
     const queryClient = useQueryClient();
 
@@ -108,15 +123,22 @@ const Orders = () => {
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['orders'],
         queryFn: () => ordersApi.getAll(),
-        placeholderData: (previousData) => previousData,
     });
 
     const updateStatusMutation = useMutation({
         mutationFn: ({ id, status, reason }: { id: string; status: string; reason?: string }) =>
             ordersApi.updateStatus(id, status, reason),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+
+            // If the updated order is the one currently selected in the details sheet,
+            // we close the sheet to avoid stale data and trigger backdrop cleanup.
+            if (selectedOrder?.id === variables.id) {
+                setIsDetailsOpen(false);
+                setSelectedOrder(null);
+            }
+
             toast({
                 title: "Statut mis à jour",
                 description: "La commande a été mise à jour avec succès.",
@@ -251,21 +273,29 @@ const Orders = () => {
         currentPage * pageSize
     );
 
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const openOrderDetails = (order: Order) => {
+        setSelectedOrder(order);
+        setIsDetailsOpen(true);
+    };
 
     const handleStatusChange = (orderId: string, newStatus: string) => {
         if (newStatus === "RETOUR") {
             setOrderToReturn(orderId);
             setReturnReason("");
-            setIsReturnDialogOpen(true);
+
+            // Serialize transition: close sheet first, wait for Radix to cleanup, then open dialog
+            // This prevents the "stacking backdrop" issue that leads to UI freezes.
+            if (isDetailsOpen && selectedOrder?.id === orderId) {
+                setIsDetailsOpen(false);
+                setTimeout(() => {
+                    setIsReturnDialogOpen(true);
+                }, 300); // Wait for Sheet animation + backdrop cleanup
+            } else {
+                setIsReturnDialogOpen(true);
+            }
             return;
         }
         updateStatusMutation.mutate({ id: orderId, status: newStatus });
-    };
-
-    const handleViewDetails = (order: Order) => {
-        setSelectedOrder(order);
-        setIsDetailsOpen(true);
     };
 
     const confirmReturn = () => {
@@ -274,9 +304,17 @@ const Orders = () => {
                 id: orderToReturn,
                 status: "RETOUR",
                 reason: returnReason
+            }, {
+                onSuccess: () => {
+                    setIsReturnDialogOpen(false);
+                    setOrderToReturn(null);
+                    // Force refresh as requested by user to ensure absolute clean state
+                    // This is a safety measure to ensure any lingering overlays or body locks are cleared.
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }
             });
-            setIsReturnDialogOpen(false);
-            setOrderToReturn(null);
         }
     };
 
@@ -411,97 +449,100 @@ const Orders = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleViewDetails(order)}
-                                                title="Voir les détails"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    generateInvoicePDF(order, currency, settings);
-                                                }}
-                                                title="Télécharger la facture"
-                                            >
-                                                <FileText className="w-4 h-4 text-primary" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEmailInvoice(order);
-                                                }}
-                                                title="Envoyer Facture par Email"
-                                            >
-                                                <Mail className="w-4 h-4 text-orange-600" />
-                                            </Button>
-
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="w-4 h-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => generateInvoicePDF(order, currency, settings)}>
-                                                        <FileText className="mr-2 h-4 w-4" /> Facture PDF
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleEmailInvoice(order)}>
-                                                        <Mail className="mr-2 h-4 w-4" /> Envoyer Email
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    {canUpdateStatus('CONFIRMED') && (
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleStatusChange(order.id, "CONFIRMED")}
-                                                            disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CONFIRMED')}
-                                                        >
-                                                            Confirmer
+                                            <div className="flex justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openOrderDetails(order);
+                                                    }}
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        generateInvoicePDF(order, currency, settings);
+                                                    }}
+                                                    title="Télécharger la facture"
+                                                >
+                                                    <FileText className="w-4 h-4 text-primary" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEmailInvoice(order);
+                                                    }}
+                                                    title="Envoyer Facture par Email"
+                                                >
+                                                    <Mail className="w-4 h-4 text-orange-600" />
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                                            <MoreHorizontal className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                        <DropdownMenuItem onClick={() => generateInvoicePDF(order, currency, settings)}>
+                                                            <FileText className="mr-2 h-4 w-4" /> Facture PDF
                                                         </DropdownMenuItem>
-                                                    )}
-                                                    {canUpdateStatus('SHIPPED') && (
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleStatusChange(order.id, "SHIPPED")}
-                                                            disabled={updateStatusMutation.isPending || !canPerformAction(order, 'SHIPPED')}
-                                                        >
-                                                            Marquer Expédiée
+                                                        <DropdownMenuItem onClick={() => handleEmailInvoice(order)}>
+                                                            <Mail className="mr-2 h-4 w-4" /> Envoyer Email
                                                         </DropdownMenuItem>
-                                                    )}
-                                                    {canUpdateStatus('DELIVERED') && (
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleStatusChange(order.id, "DELIVERED")}
-                                                            disabled={updateStatusMutation.isPending || !canPerformAction(order, 'DELIVERED')}
-                                                        >
-                                                            Marquer Livrée
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    {canUpdateStatus('CANCELLED') && (
-                                                        <>
-                                                            <DropdownMenuSeparator />
+                                                        <DropdownMenuSeparator />
+                                                        {canUpdateStatus('CONFIRMED') && (
                                                             <DropdownMenuItem
-                                                                className="text-destructive"
-                                                                onClick={() => handleStatusChange(order.id, "CANCELLED")}
-                                                                disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CANCELLED')}
+                                                                onClick={() => handleStatusChange(order.id, "CONFIRMED")}
+                                                                disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CONFIRMED')}
                                                             >
-                                                                Annuler
+                                                                Confirmer
                                                             </DropdownMenuItem>
+                                                        )}
+                                                        {canUpdateStatus('SHIPPED') && (
                                                             <DropdownMenuItem
-                                                                className="text-orange-600"
-                                                                onClick={() => handleStatusChange(order.id, "RETOUR")}
-                                                                disabled={updateStatusMutation.isPending}
+                                                                onClick={() => handleStatusChange(order.id, "SHIPPED")}
+                                                                disabled={updateStatusMutation.isPending || !canPerformAction(order, 'SHIPPED')}
                                                             >
-                                                                RETOUR (Raison demandée)
+                                                                Marquer Expédiée
                                                             </DropdownMenuItem>
-                                                        </>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                                        )}
+                                                        {canUpdateStatus('DELIVERED') && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleStatusChange(order.id, "DELIVERED")}
+                                                                disabled={updateStatusMutation.isPending || !canPerformAction(order, 'DELIVERED')}
+                                                            >
+                                                                Marquer Livrée
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {canUpdateStatus('CANCELLED') && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive"
+                                                                    onClick={() => handleStatusChange(order.id, "CANCELLED")}
+                                                                    disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CANCELLED')}
+                                                                >
+                                                                    Annuler
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-orange-600"
+                                                                    onClick={() => handleStatusChange(order.id, "RETOUR")}
+                                                                    disabled={updateStatusMutation.isPending}
+                                                                >
+                                                                    RETOUR (Raison demandée)
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -516,6 +557,18 @@ const Orders = () => {
                     </Table>
                 </div>
             </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                }}
+                totalItems={filteredOrders.length}
+            />
 
             {/* Global Order Details Sheet */}
             <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -537,7 +590,6 @@ const Orders = () => {
                                         <StatusBadge status={selectedOrder.status} />
                                     </div>
                                     <div className="flex gap-2 flex-wrap">
-                                        {/* Commercial can only CONFIRM */}
                                         {canUpdateStatus('CONFIRMED') && (
                                             <Button
                                                 size="sm"
@@ -548,7 +600,6 @@ const Orders = () => {
                                                 <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmer
                                             </Button>
                                         )}
-                                        {/* Magasinier can mark as SHIPPED */}
                                         {canUpdateStatus('SHIPPED') && (
                                             <Button
                                                 size="sm"
@@ -559,7 +610,6 @@ const Orders = () => {
                                                 <Truck className="w-4 h-4 mr-1" /> Expédier
                                             </Button>
                                         )}
-                                        {/* Magasinier can mark as DELIVERED */}
                                         {canUpdateStatus('DELIVERED') && (
                                             <Button
                                                 size="sm"
@@ -570,7 +620,6 @@ const Orders = () => {
                                                 <CheckCircle2 className="w-4 h-4 mr-1" /> Livrer
                                             </Button>
                                         )}
-                                        {/* Magasinier or Admin can mark as RETOUR */}
                                         {canUpdateStatus('RETOUR') && (
                                             <Button
                                                 size="sm"
@@ -654,29 +703,6 @@ const Orders = () => {
                                     </div>
                                 </div>
 
-                                {/* Quick Actions */}
-                                <div>
-                                    <h3 className="font-semibold text-lg mb-3">Actions Rapides</h3>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => openWhatsApp(selectedOrder.phone, selectedOrder.orderNumber)}>
-                                            <MessageCircle className="w-4 h-4 mr-2" />
-                                            WhatsApp
-                                        </Button>
-                                        <Button className="w-full" variant="outline" onClick={() => window.open(`tel:${selectedOrder.phone}`)}>
-                                            <Phone className="w-4 h-4 mr-2" />
-                                            Appeler
-                                        </Button>
-                                        <Button className="w-full" variant="outline" onClick={() => generateInvoicePDF(selectedOrder, currency, settings)}>
-                                            <FileText className="w-4 h-4 mr-2" />
-                                            Facture
-                                        </Button>
-                                        <Button className="w-full" variant="outline" onClick={() => handleEmailInvoice(selectedOrder)}>
-                                            <Mail className="w-4 h-4 mr-2" />
-                                            Envoyer Email
-                                        </Button>
-                                    </div>
-                                </div>
-
                                 <div className="pt-4 border-t">
                                     {canUpdateStatus('CANCELLED') && (
                                         <Button
@@ -695,18 +721,6 @@ const Orders = () => {
                     )}
                 </SheetContent>
             </Sheet>
-
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(newSize) => {
-                    setPageSize(newSize);
-                    setCurrentPage(1);
-                }}
-                totalItems={filteredOrders.length}
-            />
 
             {/* Return Reason Dialog */}
             <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
