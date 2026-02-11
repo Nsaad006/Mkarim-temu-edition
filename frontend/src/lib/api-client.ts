@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const isProd = import.meta.env.PROD;
+const API_BASE_URL = import.meta.env.VITE_API_URL || (isProd ? '/api' : 'http://localhost:3001/api');
 
-if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
-    console.warn('⚠️ VITE_API_URL is not set. Defaulting to localhost:3001. API calls will likely fail in production.');
+if (isProd && !import.meta.env.VITE_API_URL) {
+    console.log('ℹ️ No VITE_API_URL provided, defaulting to relative /api proxy.');
 }
 
 export const apiClient = axios.create({
