@@ -1,5 +1,6 @@
 # Backend Dockerfile for Railway
 FROM node:18-alpine AS builder
+RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
@@ -21,6 +22,7 @@ RUN npm run build
 
 # Production stage
 FROM node:18-alpine
+RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
