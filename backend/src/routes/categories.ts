@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -10,7 +11,16 @@ router.get('/', async (req, res) => {
     try {
         const { includeInactive } = req.query;
 
-        // Build where clause - only filter by active if includeInactive is not set
+        // If trying to see inactive categories, require VIEW permission
+        if (includeInactive === 'true') {
+            await new Promise((resolve, reject) => {
+                authenticate(req, res, (err) => {
+                    if (err) return reject(err);
+                    authorize(['super_admin', 'editor', 'viewer'], [PERMISSIONS.CATEGORIES_VIEW, PERMISSIONS.PRODUCTS_VIEW])(req, res, resolve as any);
+                });
+            });
+        }
+
         const whereClause = includeInactive === 'true' ? {} : { active: true };
 
         const categories = await prisma.category.findMany({
@@ -42,8 +52,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST /api/categories - Create category (super_admin/editor)
-router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+// POST /api/categories - Create category (super_admin/editor/manage)
+router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.CATEGORIES_CREATE, PERMISSIONS.CATEGORIES_MANAGE]), async (req: Request, res: Response) => {
     try {
         const { name, slug, active } = req.body;
 
@@ -64,8 +74,8 @@ router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req:
     }
 });
 
-// PUT /api/categories/:id - Update category (super_admin/editor)
-router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+// PUT /api/categories/:id - Update category (super_admin/editor/manage)
+router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.CATEGORIES_EDIT, PERMISSIONS.CATEGORIES_MANAGE]), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const { name, slug, active } = req.body;
@@ -91,8 +101,8 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (re
     }
 });
 
-// DELETE /api/categories/:id - Delete category (super_admin/editor)
-router.delete('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+// DELETE /api/categories/:id - Delete category (super_admin/editor/manage)
+router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.CATEGORIES_DELETE, PERMISSIONS.CATEGORIES_MANAGE]), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Mail, Phone, FileDown, History, Loader2, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Search, Mail, Phone, FileDown, History, Loader2, Plus, ShoppingCart, Trash2, Heart, Star, UserPlus } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -35,6 +35,14 @@ import { toast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { useEffect } from "react";
 import { Pagination } from "@/components/admin/Pagination";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const Customers = () => {
     const { currency } = useSettings();
@@ -43,9 +51,27 @@ const Customers = () => {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [showOrderHistory, setShowOrderHistory] = useState(false);
     const [showCreateOrder, setShowCreateOrder] = useState(false);
+    const [showAddCustomer, setShowAddCustomer] = useState(false);
     const [orderItems, setOrderItems] = useState<Array<{ productId: string; quantity: number; price: number }>>([]);
     const [productSearch, setProductSearch] = useState("");
     const [showProductDropdown, setShowProductDropdown] = useState(false);
+    const [typeFilter, setTypeFilter] = useState("all");
+
+    // Get current user permissions
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : { role: "viewer", permissions: [] };
+    const userPermissions = user.permissions || [];
+    const isSuperAdmin = user.role === 'super_admin';
+    const canCreate = isSuperAdmin || userPermissions.includes(PERMISSIONS.CUSTOMERS_CREATE) || userPermissions.includes(PERMISSIONS.CUSTOMERS_MANAGE);
+    const canEdit = isSuperAdmin || userPermissions.includes(PERMISSIONS.CUSTOMERS_EDIT) || userPermissions.includes(PERMISSIONS.CUSTOMERS_MANAGE);
+
+    const [newCustomer, setNewCustomer] = useState({
+        name: "",
+        phone: "",
+        email: "",
+        city: "",
+        address: ""
+    });
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -72,16 +98,33 @@ const Customers = () => {
         queryFn: () => citiesApi.getAll(),
     });
 
-    const filteredCustomers = customers.filter((customer) =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.phone.includes(searchTerm)
-    );
+    const filteredCustomers = customers.filter((customer) => {
+        const matchesSearch =
+            customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            customer.phone.includes(searchTerm);
+
+        const matchesType =
+            typeFilter === "all" ||
+            (typeFilter === "loyal" && customer.isLoyal) ||
+            (typeFilter === "vip" && customer.isFavorite) ||
+            (typeFilter === "normal" && !customer.isLoyal && !customer.isFavorite);
+
+        return matchesSearch && matchesType;
+    });
 
     // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, typeFilter]);
+
+    // Safety fix for frozen page after closing dialogs (Radix UI overlay bug)
+    useEffect(() => {
+        if (!showOrderHistory && !showCreateOrder && !showAddCustomer) {
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.overflow = 'auto';
+        }
+    }, [showOrderHistory, showCreateOrder, showAddCustomer]);
 
     // Apply pagination
     const totalPages = Math.ceil(filteredCustomers.length / pageSize);
@@ -124,7 +167,7 @@ const Customers = () => {
 
     const handleViewOrderHistory = (customer: Customer) => {
         setSelectedCustomer(customer);
-        setShowOrderHistory(true);
+        setTimeout(() => setShowOrderHistory(true), 100);
     };
 
     const handleCreateOrder = (customer: Customer) => {
@@ -132,7 +175,7 @@ const Customers = () => {
         setOrderItems([]);
         setProductSearch("");
         setShowProductDropdown(false);
-        setShowCreateOrder(true);
+        setTimeout(() => setShowCreateOrder(true), 100);
     };
 
     const handleAddProduct = (productId: string) => {
@@ -207,39 +250,101 @@ const Customers = () => {
         createOrderMutation.mutate(orderData);
     };
 
+    const addCustomerMutation = useMutation({
+        mutationFn: (data: any) => customersApi.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+            toast({ title: "Succès", description: "Client ajouté manuellement" });
+            setShowAddCustomer(false);
+            setNewCustomer({ name: "", phone: "", email: "", city: "", address: "" });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erreur",
+                description: error?.response?.data?.error || "Impossible d'ajouter le client",
+                variant: "destructive"
+            });
+        }
+    });
+
+    const updateCustomerMutation = useMutation({
+        mutationFn: ({ dbId, data }: { dbId: string, data: any }) => customersApi.update(dbId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+            toast({ title: "Mise à jour réussie" });
+        }
+    });
+
+    const toggleFavorite = (customer: Customer) => {
+        updateCustomerMutation.mutate({
+            dbId: customer.dbId,
+            data: { isFavorite: !customer.isFavorite }
+        });
+    };
+
+    const toggleLoyal = (customer: Customer) => {
+        updateCustomerMutation.mutate({
+            dbId: customer.dbId,
+            data: { isLoyal: !customer.isLoyal }
+        });
+    };
+
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                            <FileDown className="w-4 h-4 mr-2" />
-                            Exporter
+                <div className="flex gap-2">
+                    {canCreate && (
+                        <Button onClick={() => setShowAddCustomer(true)} className="gap-2">
+                            <UserPlus className="h-4 w-4" />
+                            <span className="hidden sm:inline">Ajouter un Client</span>
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleExportExcel}>
-                            <FileDown className="w-4 h-4 mr-2" />
-                            Exporter en Excel (.xlsx)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleExportPDF}>
-                            <FileDown className="w-4 h-4 mr-2" />
-                            Exporter en PDF
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                    )}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline">
+                                <FileDown className="w-4 h-4 mr-2" />
+                                Exporter
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleExportExcel}>
+                                <FileDown className="w-4 h-4 mr-2" />
+                                Exporter en Excel (.xlsx)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportPDF}>
+                                <FileDown className="w-4 h-4 mr-2" />
+                                Exporter en PDF
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
 
             <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-                <div className="mb-6 max-w-sm relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Rechercher..."
-                        className="pl-8"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div className="max-w-sm relative flex-1">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Rechercher par nom, email ou téléphone..."
+                            className="pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                            <SelectValue placeholder="Type de client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les clients</SelectItem>
+                            <SelectItem value="loyal">Clients FIDÈLE</SelectItem>
+                            <SelectItem value="vip">Clients VIP</SelectItem>
+                            <SelectItem value="normal">Clients Normaux</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -274,8 +379,12 @@ const Customers = () => {
                                                     <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-medium">{customer.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{customer.id}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium">{customer.name}</p>
+                                                        {customer.isFavorite && <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />}
+                                                        {customer.isLoyal && <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground font-mono">{customer.phone}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -290,36 +399,57 @@ const Customers = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell>{customer.city}</TableCell>
-                                        <TableCell>{customer.ordersCount}</TableCell>
-                                        <TableCell className="font-semibold">{customer.totalSpent.toLocaleString()} {currency}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-sm font-medium">{customer.ordersCount}</span>
+                                                {customer.isLoyal && <span className="text-[10px] bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded font-bold border border-yellow-500/20 w-fit">FIDÈLE</span>}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-primary">{customer.totalSpent.toLocaleString()} {currency}</span>
+                                                {customer.isFavorite && <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Client VIP</span>}
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {new Date(customer.lastOrderDate).toLocaleDateString()}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    onClick={() => handleCreateOrder(customer)}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className={`h-8 w-8 ${customer.isFavorite ? 'text-red-500 fill-red-500' : 'text-muted-foreground'}`}
+                                                    onClick={() => toggleFavorite(customer)}
+                                                    disabled={!canEdit}
                                                 >
-                                                    <Plus className="w-4 h-4 mr-1" />
-                                                    Ajouter une commande
+                                                    <Heart className="h-4 w-4" />
                                                 </Button>
                                                 <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleViewOrderHistory(customer)}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className={`h-8 w-8 ${customer.isLoyal ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`}
+                                                    onClick={() => toggleLoyal(customer)}
+                                                    disabled={!canEdit}
                                                 >
-                                                    <History className="w-4 h-4 mr-1" />
-                                                    Historique
+                                                    <Star className="h-4 w-4" />
                                                 </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => window.open(`https://wa.me/${customer.phone.replace(/\s+/g, '')}`, "_blank")}
-                                                >
-                                                    WhatsApp
-                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="outline" size="sm">Options</Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-48">
+                                                        <DropdownMenuItem onSelect={() => handleCreateOrder(customer)}>
+                                                            <Plus className="w-4 h-4 mr-2" /> Nouvelle Commande
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handleViewOrderHistory(customer)}>
+                                                            <History className="w-4 h-4 mr-2" /> Historique
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => window.open(`https://wa.me/${customer.phone.replace(/\s+/g, '')}`, "_blank")}>
+                                                            <Phone className="w-4 h-4 mr-2" /> WhatsApp
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -336,17 +466,20 @@ const Customers = () => {
                 </div>
             </div>
 
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(newSize) => {
-                    setPageSize(newSize);
-                    setCurrentPage(1);
-                }}
-                totalItems={filteredCustomers.length}
-            />
+            {/* Pagination outside of the centered container if needed, but below the card */}
+            <div className="flex justify-center mt-6">
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={(newSize) => {
+                        setPageSize(newSize);
+                        setCurrentPage(1);
+                    }}
+                    totalItems={filteredCustomers.length}
+                />
+            </div>
 
             {/* Order History Dialog */}
             <Dialog open={showOrderHistory} onOpenChange={setShowOrderHistory}>
@@ -458,7 +591,10 @@ const Customers = () => {
                                                     <div
                                                         key={product.id}
                                                         className="px-3 py-2 hover:bg-accent cursor-pointer"
-                                                        onClick={() => handleAddProduct(product.id)}
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            handleAddProduct(product.id);
+                                                        }}
                                                     >
                                                         <div className="font-medium text-sm">{product.name}</div>
                                                         <div className="flex gap-3 text-xs text-muted-foreground mt-1">
@@ -596,6 +732,77 @@ const Customers = () => {
                                 )}
                             </Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Customer Dialog */}
+            <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nouveau Client</DialogTitle>
+                        <DialogDescription>Ajouter un client manuellement à la base de données.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="name">Nom Complet</Label>
+                            <Input
+                                id="name"
+                                value={newCustomer.name}
+                                onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="phone">Téléphone</Label>
+                            <Input
+                                id="phone"
+                                placeholder="06XXXXXXXX"
+                                value={newCustomer.phone}
+                                onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="email">Email (Optionnel)</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                value={newCustomer.email}
+                                onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="city">Ville</Label>
+                            <Select
+                                value={newCustomer.city}
+                                onValueChange={(val) => setNewCustomer({ ...newCustomer, city: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une ville" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {cities.map(city => (
+                                        <SelectItem key={city.id} value={city.name}>{city.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="address">Adresse</Label>
+                            <Input
+                                id="address"
+                                value={newCustomer.address}
+                                onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowAddCustomer(false)}>Annuler</Button>
+                        <Button
+                            onClick={() => addCustomerMutation.mutate(newCustomer)}
+                            disabled={!newCustomer.name || !newCustomer.phone || !newCustomer.city || addCustomerMutation.isPending}
+                        >
+                            {addCustomerMutation.isPending ? "Ajout..." : "Enregistrer"}
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

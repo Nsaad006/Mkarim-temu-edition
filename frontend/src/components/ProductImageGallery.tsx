@@ -164,7 +164,7 @@ export function ProductImageGallery({ images, productName, badge }: ProductImage
 
             {/* Lightbox Dialog */}
             <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
-                <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center">
+                <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:text-white [&>button]:opacity-100 [&>button]:hover:bg-white/10 [&>button]:h-10 [&>button]:w-10 [&>button]:rounded-full">
                     {/* Accessibility requirements */}
                     <DialogTitle className="sr-only">Vue agrandie du produit</DialogTitle>
                     <DialogDescription className="sr-only">
@@ -172,14 +172,6 @@ export function ProductImageGallery({ images, productName, badge }: ProductImage
                     </DialogDescription>
 
                     <div className="relative w-full h-full flex items-center justify-center">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-0 right-0 z-50 text-white hover:bg-white/10"
-                            onClick={() => setIsLightboxOpen(false)}
-                        >
-                            <X className="w-8 h-8" />
-                        </Button>
 
                         <button
                             className="absolute left-4 top-1/2 -translate-y-1/2 z-50 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"

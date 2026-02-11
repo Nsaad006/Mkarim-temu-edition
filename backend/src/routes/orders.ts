@@ -224,10 +224,18 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', '
 });
 
 // PATCH /api/orders/:id/status - Update order status (super_admin/editor/commercial/magasinier)
-router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], PERMISSIONS.ORDERS_MANAGE), async (req: Request, res: Response) => {
+router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor'], [
+    PERMISSIONS.ORDERS_MANAGE,
+    PERMISSIONS.ORDERS_EDIT,
+    PERMISSIONS.ORDERS_CONFIRM,
+    PERMISSIONS.ORDERS_SHIP,
+    PERMISSIONS.ORDERS_DELIVER,
+    PERMISSIONS.ORDERS_CANCEL,
+    PERMISSIONS.ORDERS_RETURN
+]), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
-        const { status } = req.body;
+        const { status, returnReason } = req.body;
         const user = (req as any).user;
 
         // 1. Get current order with items
@@ -247,48 +255,46 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
             return res.json(currentOrder);
         }
 
-        // 2. Role-based status update restrictions
-        if (user.role === 'commercial') {
-            // Commercial can only CONFIRM or CANCEL orders
-            if (!['CONFIRMED', 'CANCELLED'].includes(status)) {
-                return res.status(403).json({
-                    error: 'Commercial can only confirm or cancel orders'
-                });
+        // 2. Permission-based status update restrictions
+        const isSuperAdmin = user.role === 'super_admin';
+        const hasManageAll = user.permissions?.includes(PERMISSIONS.ORDERS_MANAGE);
+
+        if (!isSuperAdmin && !hasManageAll) {
+            const perms = user.permissions || [];
+
+            // Check specific status permissions
+            if (status === 'CONFIRMED' && !perms.includes(PERMISSIONS.ORDERS_CONFIRM)) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission de confirmer les commandes" });
+            }
+            if (status === 'SHIPPED' && !perms.includes(PERMISSIONS.ORDERS_SHIP)) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission d'expédier les commandes" });
+            }
+            if (status === 'DELIVERED' && !perms.includes(PERMISSIONS.ORDERS_DELIVER)) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission de livrer les commandes" });
+            }
+            if (status === 'CANCELLED' && !perms.includes(PERMISSIONS.ORDERS_CANCEL)) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission d'annuler les commandes" });
+            }
+            if (status === 'RETOUR' && !perms.includes(PERMISSIONS.ORDERS_RETURN)) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission d'effectuer un retour" });
+            }
+            if (status === 'PENDING' && !perms.includes(PERMISSIONS.ORDERS_EDIT)) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission de remettre en attente" });
             }
 
-            // Commercial can only CONFIRM orders that are PENDING
-            if (status === 'CONFIRMED' && oldStatus !== 'PENDING') {
-                return res.status(403).json({
-                    error: 'Vous ne pouvez confirmer que les commandes en attente'
-                });
+            // Additional logic for specific "roles" (even if permission based)
+            // Example: Commercial logic (if they only have confirm/cancel)
+            if (perms.includes(PERMISSIONS.ORDERS_CONFIRM) && !perms.includes(PERMISSIONS.ORDERS_SHIP)) {
+                if (status === 'CONFIRMED' && oldStatus !== 'PENDING') {
+                    return res.status(403).json({ error: 'Vous ne pouvez confirmer que les commandes en attente' });
+                }
             }
 
-            // Commercial can only CANCEL orders that are PENDING or CONFIRMED
-            if (status === 'CANCELLED' && !['PENDING', 'CONFIRMED'].includes(oldStatus)) {
-                return res.status(403).json({
-                    error: 'Vous ne pouvez annuler que les commandes en attente ou confirmées'
-                });
-            }
-
-            // Cannot modify orders that are already SHIPPED, DELIVERED, or CANCELLED
-            if (['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(oldStatus) && status !== 'CANCELLED') {
-                return res.status(403).json({
-                    error: 'Cette commande ne peut plus être modifiée'
-                });
-            }
-        } else if (user.role === 'magasinier') {
-            // Magasinier can only set SHIPPED or DELIVERED
-            if (!['SHIPPED', 'DELIVERED'].includes(status)) {
-                return res.status(403).json({
-                    error: 'Magasinier can only set orders to shipped or delivered'
-                });
-            }
-
-            // Magasinier can only update orders that are already CONFIRMED
-            if (!['CONFIRMED', 'SHIPPED'].includes(oldStatus)) {
-                return res.status(403).json({
-                    error: 'Magasinier can only update confirmed or shipped orders'
-                });
+            // Example: Magasinier logic (if they only have ship/deliver)
+            if (perms.includes(PERMISSIONS.ORDERS_SHIP) && !perms.includes(PERMISSIONS.ORDERS_CONFIRM)) {
+                if (!['CONFIRMED', 'SHIPPED'].includes(oldStatus)) {
+                    return res.status(403).json({ error: 'Vous ne pouvez traiter que les commandes confirmées ou expédiées' });
+                }
             }
         }
 
@@ -345,7 +351,10 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
             // Update order status
             const updatedOrder = await tx.order.update({
                 where: { id },
-                data: { status },
+                data: {
+                    status,
+                    returnReason: status === 'RETOUR' ? returnReason : currentOrder.returnReason
+                },
                 include: {
                     items: {
                         include: {

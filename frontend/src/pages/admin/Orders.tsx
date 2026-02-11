@@ -14,7 +14,8 @@ import {
     FileText,
     Download,
     FileSpreadsheet,
-    Mail
+    Mail,
+    RotateCcw
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -59,6 +60,15 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { PERMISSIONS } from "@/constants/permissions";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import StatusBadge from "@/components/admin/StatusBadge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext } from "react-router-dom";
@@ -82,12 +92,18 @@ const Orders = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
 
+    // Retour state
+    const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+    const [returnReason, setReturnReason] = useState("");
+    const [orderToReturn, setOrderToReturn] = useState<string | null>(null);
+
     const queryClient = useQueryClient();
 
-    // Get current user role from localStorage
+    // Get current user role and permissions from localStorage
     const userStr = localStorage.getItem("user");
-    const currentUser = userStr ? JSON.parse(userStr) : { role: "viewer" };
+    const currentUser = userStr ? JSON.parse(userStr) : { role: "viewer", permissions: [] };
     const userRole = currentUser.role;
+    const userPermissions = currentUser.permissions || [];
 
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['orders'],
@@ -95,8 +111,8 @@ const Orders = () => {
     });
 
     const updateStatusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) =>
-            ordersApi.updateStatus(id, status),
+        mutationFn: ({ id, status, reason }: { id: string; status: string; reason?: string }) =>
+            ordersApi.updateStatus(id, status, reason),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
@@ -114,15 +130,27 @@ const Orders = () => {
         }
     });
 
-    // Helper function to check if user can perform an action
+    // Helper function to check if user can perform an action based on permissions or role
     const canUpdateStatus = (status: string): boolean => {
-        if (userRole === 'super_admin' || userRole === 'editor') return true;
+        // Super admin and editor or ManageAll can do anything
+        if (userRole === 'super_admin' || userRole === 'editor' || userPermissions.includes(PERMISSIONS.ORDERS_MANAGE)) return true;
+
+        // Check specific permissions
+        if (status === 'CONFIRMED' && userPermissions.includes(PERMISSIONS.ORDERS_CONFIRM)) return true;
+        if (status === 'SHIPPED' && userPermissions.includes(PERMISSIONS.ORDERS_SHIP)) return true;
+        if (status === 'DELIVERED' && userPermissions.includes(PERMISSIONS.ORDERS_DELIVER)) return true;
+        if (status === 'CANCELLED' && userPermissions.includes(PERMISSIONS.ORDERS_CANCEL)) return true;
+        if (status === 'RETOUR' && userPermissions.includes(PERMISSIONS.ORDERS_RETURN)) return true;
+        if (status === 'PENDING' && userPermissions.includes(PERMISSIONS.ORDERS_EDIT)) return true;
+
+        // Legacy role fallbacks
         if (userRole === 'commercial') {
             return ['CONFIRMED', 'CANCELLED'].includes(status);
         }
         if (userRole === 'magasinier') {
-            return ['SHIPPED', 'DELIVERED'].includes(status);
+            return ['SHIPPED', 'DELIVERED', 'RETOUR'].includes(status);
         }
+
         return false;
     };
 
@@ -130,29 +158,27 @@ const Orders = () => {
     const canPerformAction = (order: Order, targetStatus: string): boolean => {
         const currentStatus = order.status.toUpperCase();
 
-        // Super admin and editor can do anything
+        // Must have the general permission first
+        if (!canUpdateStatus(targetStatus)) return false;
+
+        // Super admin and editor can bypass transition rules if needed (but we keep them for safety)
         if (userRole === 'super_admin' || userRole === 'editor') return true;
 
-        if (userRole === 'commercial') {
-            // Commercial can only CONFIRM orders that are PENDING
-            if (targetStatus === 'CONFIRMED') {
-                return currentStatus === 'PENDING';
-            }
-            // Commercial can only CANCEL orders that are PENDING or CONFIRMED
-            if (targetStatus === 'CANCELLED') {
-                return ['PENDING', 'CONFIRMED'].includes(currentStatus);
-            }
+        // Status transition rules
+        if (targetStatus === 'CONFIRMED') {
+            return currentStatus === 'PENDING';
         }
-
-        if (userRole === 'magasinier') {
-            // Magasinier can only mark as SHIPPED if order is CONFIRMED
-            if (targetStatus === 'SHIPPED') {
-                return currentStatus === 'CONFIRMED';
-            }
-            // Magasinier can only mark as DELIVERED if order is SHIPPED
-            if (targetStatus === 'DELIVERED') {
-                return currentStatus === 'SHIPPED';
-            }
+        if (targetStatus === 'SHIPPED') {
+            return currentStatus === 'CONFIRMED';
+        }
+        if (targetStatus === 'DELIVERED') {
+            return currentStatus === 'SHIPPED';
+        }
+        if (targetStatus === 'CANCELLED') {
+            return ['PENDING', 'CONFIRMED'].includes(currentStatus);
+        }
+        if (targetStatus === 'RETOUR') {
+            return ['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(currentStatus);
         }
 
         return false;
@@ -161,8 +187,8 @@ const Orders = () => {
     // Helper function to check if order is visible to user
     const isOrderVisible = (order: Order): boolean => {
         if (userRole === 'magasinier') {
-            // Magasinier can only see CONFIRMED, SHIPPED, and DELIVERED orders
-            return ['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(order.status.toUpperCase());
+            // Magasinier can only see CONFIRMED, SHIPPED, DELIVERED and RETOUR orders
+            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR'].includes(order.status.toUpperCase());
         }
         return true; // All other roles can see all orders
     };
@@ -225,7 +251,25 @@ const Orders = () => {
     );
 
     const handleStatusChange = (orderId: string, newStatus: string) => {
+        if (newStatus === "RETOUR") {
+            setOrderToReturn(orderId);
+            setReturnReason("");
+            setIsReturnDialogOpen(true);
+            return;
+        }
         updateStatusMutation.mutate({ id: orderId, status: newStatus });
+    };
+
+    const confirmReturn = () => {
+        if (orderToReturn) {
+            updateStatusMutation.mutate({
+                id: orderToReturn,
+                status: "RETOUR",
+                reason: returnReason
+            });
+            setIsReturnDialogOpen(false);
+            setOrderToReturn(null);
+        }
     };
 
     const openWhatsApp = (phone: string, orderNumber: string) => {
@@ -297,6 +341,7 @@ const Orders = () => {
                                 <SelectItem value="shipped">Expédiée</SelectItem>
                                 <SelectItem value="delivered">Livrée</SelectItem>
                                 <SelectItem value="cancelled">Annulée</SelectItem>
+                                <SelectItem value="retour">Retour</SelectItem>
                             </SelectContent>
                         </Select>
                         <div className="h-9 w-full sm:w-auto">
@@ -348,7 +393,14 @@ const Orders = () => {
                                         </TableCell>
                                         <TableCell className="font-bold">{order.total.toLocaleString()} {currency}</TableCell>
                                         <TableCell>
-                                            <StatusBadge status={order.status} />
+                                            <div className="flex flex-col gap-1">
+                                                <StatusBadge status={order.status} />
+                                                {order.returnReason && (
+                                                    <span className="text-[10px] text-orange-600 font-medium italic truncate max-w-[100px]" title={order.returnReason}>
+                                                        {order.returnReason}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Sheet>
@@ -428,8 +480,32 @@ const Orders = () => {
                                                                         <CheckCircle2 className="w-4 h-4 mr-1" /> Livrer
                                                                     </Button>
                                                                 )}
+                                                                {/* Magasinier or Admin can mark as RETOUR */}
+                                                                {canUpdateStatus('RETOUR') && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                                                        onClick={() => handleStatusChange(order.id, "RETOUR")}
+                                                                        disabled={updateStatusMutation.isPending}
+                                                                    >
+                                                                        <RotateCcw className="w-4 h-4 mr-1" /> Retour
+                                                                    </Button>
+                                                                )}
                                                             </div>
                                                         </div>
+
+                                                        {/* Return Reason Section */}
+                                                        {(order.status.toUpperCase() === 'RETOUR' || order.returnReason) && (
+                                                            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
+                                                                <p className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
+                                                                    <RotateCcw className="w-4 h-4" /> Raison du retour
+                                                                </p>
+                                                                <p className="text-sm text-orange-700 italic">
+                                                                    "{order.returnReason || "Raison non spécifiée"}"
+                                                                </p>
+                                                            </div>
+                                                        )}
 
                                                         {/* Customer Info */}
                                                         <div>
@@ -577,6 +653,13 @@ const Orders = () => {
                                                             >
                                                                 Annuler
                                                             </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-orange-600"
+                                                                onClick={() => handleStatusChange(order.id, "RETOUR")}
+                                                                disabled={updateStatusMutation.isPending}
+                                                            >
+                                                                RETOUR (Raison demandée)
+                                                            </DropdownMenuItem>
                                                         </>
                                                     )}
                                                 </DropdownMenuContent>
@@ -607,6 +690,38 @@ const Orders = () => {
                 }}
                 totalItems={filteredOrders.length}
             />
+
+            {/* Return Reason Dialog */}
+            <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirmer le retour</DialogTitle>
+                        <DialogDescription>
+                            Veuillez indiquer la raison du retour. Les articles seront remis en stock.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Input
+                            placeholder="Ex: Produit cassé, erreur de commande..."
+                            value={returnReason}
+                            onChange={(e) => setReturnReason(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && returnReason.trim()) confirmReturn();
+                            }}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsReturnDialogOpen(false)}>Annuler</Button>
+                        <Button
+                            disabled={!returnReason.trim() || updateStatusMutation.isPending}
+                            onClick={confirmReturn}
+                        >
+                            {updateStatusMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+                            Confirmer le retour
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

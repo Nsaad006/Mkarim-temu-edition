@@ -24,7 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import apiClient from "@/lib/api-client";
-import { PERMISSIONS } from "@/constants/permissions";
+import { PERMISSIONS, PERMISSIONS_LABELS, CATEGORY_LABELS } from "@/constants/permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
@@ -49,6 +49,21 @@ const Roles = () => {
         description: "",
         permissions: [] as string[]
     });
+
+
+    const CATEGORY_LABELS: Record<string, string> = {
+        PRODUCTS: "PRODUITS",
+        CATEGORIES: "CATÉGORIES",
+        ORDERS: "COMMANDES",
+        CUSTOMERS: "CLIENTS",
+        WHOLESALERS: "GROSSISTES",
+        ANALYTICS: "STATISTIQUES",
+        SETTINGS: "PARAMÈTRES",
+        USERS: "UTILISATEURS",
+        ROLES: "RÔLES",
+        MESSAGES: "MESSAGES",
+        LOGISTICS: "LOGISTIQUE",
+    };
 
     // Group available permissions by category
     const permissionCategories = Object.values(PERMISSIONS).reduce((acc, perm) => {
@@ -206,7 +221,7 @@ const Roles = () => {
                             <div className="flex flex-wrap gap-2 mb-4">
                                 {role.permissions.slice(0, 5).map(perm => (
                                     <Badge key={perm} variant="secondary" className="text-xs">
-                                        {perm}
+                                        {PERMISSIONS_LABELS[perm] || perm.split(':')[1]}
                                     </Badge>
                                 ))}
                                 {role.permissions.length > 5 && (
@@ -227,7 +242,7 @@ const Roles = () => {
             <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
                 <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle>{editingRole ? "Modifier le rôle" : "Créer un nouveau rôle"}</DialogTitle>
+                        <DialogTitle>{editingRole ? "Modifier le rôle" : "Créer un nouveau rôle TEST"}</DialogTitle>
                         <DialogDescription>
                             Définissez le nom et les permissions pour ce rôle.
                         </DialogDescription>
@@ -258,11 +273,24 @@ const Roles = () => {
                             </div>
 
                             <div className="space-y-4">
-                                <Label className="text-base">Permissions</Label>
+                                <Label className="text-base font-semibold">Autorisations par catégorie</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {Object.entries(permissionCategories).map(([category, perms]) => (
                                         <div key={category} className="space-y-3 p-4 border rounded-lg bg-card/50">
-                                            <h4 className="font-semibold text-sm text-primary">{category}</h4>
+                                            <h4 className="font-bold text-sm text-primary tracking-wider">
+                                                {category === "PRODUCTS" ? "PRODUITS" :
+                                                    category === "CATEGORIES" ? "CATÉGORIES" :
+                                                        category === "ORDERS" ? "COMMANDES" :
+                                                            category === "CUSTOMERS" ? "CLIENTS" :
+                                                                category === "WHOLESALERS" ? "GROSSISTES" :
+                                                                    category === "ANALYTICS" ? "STATISTIQUES" :
+                                                                        category === "SETTINGS" ? "PARAMÈTRES" :
+                                                                            category === "USERS" ? "UTILISATEURS" :
+                                                                                category === "ROLES" ? "RÔLES" :
+                                                                                    category === "MESSAGES" ? "MESSAGES" :
+                                                                                        category === "LOGISTICS" ? "LOGISTIQUE" :
+                                                                                            category}
+                                            </h4>
                                             <div className="space-y-2">
                                                 {perms.map((perm) => (
                                                     <div key={perm} className="flex items-start space-x-2">
@@ -275,7 +303,7 @@ const Roles = () => {
                                                             htmlFor={perm}
                                                             className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                                                         >
-                                                            {perm.split(':')[1]}
+                                                            {PERMISSIONS_LABELS[perm] || perm.split(':')[1]}
                                                         </Label>
                                                     </div>
                                                 ))}

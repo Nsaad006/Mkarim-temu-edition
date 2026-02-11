@@ -57,6 +57,7 @@ model Order {
   city         String
   address      String
   status       OrderStatus @default(PENDING)
+  returnReason String?     // Reason for return
   total        Int
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -66,14 +67,16 @@ model Order {
 }
 
 model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?  
-  phone     String   @unique
-  city      String
-  address   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  email      String?  
+  phone      String   @unique
+  city       String
+  address    String
+  isFavorite Boolean  @default(false)
+  isLoyal    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
   
   orders    Order[]
 }
@@ -99,6 +102,7 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   RETURNED
+  RETOUR
 }
 
 model City {
@@ -251,10 +255,13 @@ model Settings {
   lowStockThreshold Int      @default(5)
 
   // Invoice Configuration
-  invoiceFooterText   String    @default("Merci de votre confiance.")
-  invoiceShowTax      Boolean   @default(false)
-  invoiceTaxRate      Float     @default(20.0) // Percentage
-  invoiceNotes        String?   @default("Facture générée informatiquement.")
+  invoiceFooterText      String    @default("Merci de votre confiance.")
+  invoiceShowTax         Boolean   @default(false)
+  invoiceTaxRate         Float     @default(20.0)
+  invoiceNotes           String?   @default("Facture générée informatiquement.")
+  invoiceSubtitle        String    @default("Vente de PC & Matériel Gaming")
+  invoiceAddress         String    @default("Maroc")
+  invoiceCustomerHeader String    @default("Facture pour :")
 
   // Email Configuration (SMTP)
   emailSenderName    String    @default("MKARIM Store")
@@ -294,14 +301,22 @@ model CapitalEntry {
   @@index([adminId])
 }
 
+enum WholesalerType {
+  PARTICULIER
+  ENTREPRISE
+}
+
 model Wholesaler {
-  id        String   @id @default(uuid())
-  name      String
-  address   String
-  phone     String   @unique
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String         @id @default(uuid())
+  type            WholesalerType @default(PARTICULIER)
+  name            String         // Compte as "Nom complet" for Particulier or "Nom entreprise" for Entreprise
+  ice             String?        // 15 digits, required for Entreprise
+  responsibleName String?        // For Entreprise
+  address         String
+  phone           String         @unique
+  email           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   
   orders    WholesaleOrder[]
 }

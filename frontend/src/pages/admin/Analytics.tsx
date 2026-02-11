@@ -51,7 +51,7 @@ const Analytics = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Analytics Profonds</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Analyses Approfondies</h1>
                 <div className="flex gap-2">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Année:</span>
@@ -85,6 +85,8 @@ const Analytics = () => {
                                 <YAxis width={80} axisLine={false} tickLine={false} tickFormatter={(val) => `${val}${currency}`} tick={{ fill: '#9ca3af' }} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    labelStyle={{ color: '#9ca3af' }}
                                 />
                                 <Line
                                     type="monotone"
@@ -111,6 +113,8 @@ const Analytics = () => {
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    labelStyle={{ color: '#9ca3af' }}
                                 />
                                 <Bar dataKey="value" fill="#9b87f5" radius={[0, 4, 4, 0]} barSize={20} />
                             </BarChart>
@@ -142,7 +146,8 @@ const Analytics = () => {
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(val) => `${val}${currency}`} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                                    itemStyle={{ fontWeight: 'bold' }}
+                                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                    labelStyle={{ color: '#9ca3af' }}
                                 />
                                 <Bar dataKey="revenue" name="Valeur de Vente" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
                                 <Bar dataKey="profit" name="Profit Estimé" fill="url(#profitGradient)" radius={[4, 4, 0, 0]} barSize={20} />

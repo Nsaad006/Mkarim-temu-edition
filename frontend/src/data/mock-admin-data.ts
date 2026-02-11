@@ -8,7 +8,7 @@ const subDays = (date: Date, days: number) => {
 };
 
 // 1. Mock Orders
-export type OrderStatus = "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURNED";
+export type OrderStatus = "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURNED" | "RETOUR";
 
 export interface Order {
   id: string;
@@ -20,6 +20,7 @@ export interface Order {
   address: string;
   total: number;
   status: OrderStatus;
+  returnReason?: string;
   createdAt: string;
   items: {
     id: string;

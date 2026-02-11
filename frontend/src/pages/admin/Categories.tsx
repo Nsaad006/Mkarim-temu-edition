@@ -27,13 +27,13 @@ import { Category } from "@/data/mock-admin-data";
 import { toast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/ImageUpload";
 import { getImageUrl } from "@/lib/image-utils";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const Categories = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const queryClient = useQueryClient();
-
     const [formData, setFormData] = useState({
         name: "",
         slug: "",
@@ -41,6 +41,14 @@ const Categories = () => {
         icon: "",
         image: "",
     });
+
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : { role: "viewer", permissions: [] };
+    const userPermissions = user.permissions || [];
+    const isSuperAdmin = user.role === 'super_admin';
+    const canCreate = isSuperAdmin || userPermissions.includes(PERMISSIONS.CATEGORIES_CREATE) || userPermissions.includes(PERMISSIONS.CATEGORIES_MANAGE);
+    const canEdit = isSuperAdmin || userPermissions.includes(PERMISSIONS.CATEGORIES_EDIT) || userPermissions.includes(PERMISSIONS.CATEGORIES_MANAGE);
+    const canDelete = isSuperAdmin || userPermissions.includes(PERMISSIONS.CATEGORIES_DELETE) || userPermissions.includes(PERMISSIONS.CATEGORIES_MANAGE);
 
     // Fetch categories (including inactive ones for admin panel)
     const { data: categories = [], isLoading } = useQuery({
@@ -143,9 +151,11 @@ const Categories = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Catégories</h1>
-                <Button onClick={openCreateDialog}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter
-                </Button>
+                {canCreate && (
+                    <Button onClick={openCreateDialog}>
+                        <Plus className="mr-2 h-4 w-4" /> Ajouter
+                    </Button>
+                )}
             </div>
 
             <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
@@ -216,6 +226,7 @@ const Categories = () => {
                                             <Switch
                                                 checked={category.active}
                                                 onCheckedChange={() => handleStatusToggle(category)}
+                                                disabled={!canEdit}
                                             />
                                             <span className="text-xs font-medium">
                                                 {category.active ? "Actif" : "Inactif"}
@@ -224,12 +235,16 @@ const Categories = () => {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)}>
-                                                <Pencil className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(category.id)}>
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)}>
+                                                    <Pencil className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(category.id)}>
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>

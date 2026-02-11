@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import axios from 'axios';
 import { useSettings } from "@/context/SettingsContext"; // Import hook
+import { PERMISSIONS } from "@/constants/permissions";
 
 
 const formatCurrency = (amount: number) => {
@@ -25,6 +26,14 @@ const formatCurrency = (amount: number) => {
 import { generateWholesaleInvoicePDF, getWholesaleInvoiceBlob } from '@/utils/exportUtils';
 
 export default function Wholesalers() {
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : { role: "viewer", permissions: [] };
+    const userPermissions = user.permissions || [];
+    const isSuperAdmin = user.role === 'super_admin';
+    const canManageWholesalers = isSuperAdmin || userPermissions.includes(PERMISSIONS.WHOLESALERS_CREATE) || userPermissions.includes(PERMISSIONS.LOGISTICS_MANAGE);
+    const canEditWholesalers = isSuperAdmin || userPermissions.includes(PERMISSIONS.WHOLESALERS_EDIT) || userPermissions.includes(PERMISSIONS.LOGISTICS_MANAGE);
+    const canPayWholesalers = isSuperAdmin || userPermissions.includes(PERMISSIONS.WHOLESALERS_PAYMENTS) || userPermissions.includes(PERMISSIONS.LOGISTICS_MANAGE);
+
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const { settings, currency } = useSettings(); // Get settings and currency
@@ -70,6 +79,15 @@ export default function Wholesalers() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
             setIsAddWholesalerOpen(false);
+            setNewWholesaler({
+                type: 'PARTICULIER',
+                name: '',
+                address: '',
+                phone: '',
+                email: '',
+                ice: '',
+                responsibleName: ''
+            });
             toast({ title: "Succès", description: "Grossiste ajouté avec succès" });
         },
         onError: () => {
@@ -176,7 +194,23 @@ export default function Wholesalers() {
     });
 
     // --- Forms State ---
-    const [newWholesaler, setNewWholesaler] = useState({ name: '', address: '', phone: '', email: '' });
+    const [newWholesaler, setNewWholesaler] = useState<{
+        type: 'PARTICULIER' | 'ENTREPRISE';
+        name: string;
+        address: string;
+        phone: string;
+        email: string;
+        ice?: string;
+        responsibleName?: string;
+    }>({
+        type: 'PARTICULIER',
+        name: '',
+        address: '',
+        phone: '',
+        email: '',
+        ice: '',
+        responsibleName: ''
+    });
 
     // Add Order Form State
     const [newOrderWholesalerId, setNewOrderWholesalerId] = useState('');
@@ -306,14 +340,18 @@ export default function Wholesalers() {
                     <p className="text-muted-foreground">Gérez vos clients B2B et suivis de commandes</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button size="sm" onClick={() => setIsAddWholesalerOpen(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Nouveau Grossiste
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setIsAddOrderOpen(true)}>
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Nouvelle Commande
-                    </Button>
+                    {canManageWholesalers && (
+                        <>
+                            <Button size="sm" onClick={() => setIsAddWholesalerOpen(true)}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Nouveau Grossiste
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => setIsAddOrderOpen(true)}>
+                                <ShoppingCart className="w-4 h-4 mr-2" />
+                                Nouvelle Commande
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -428,46 +466,52 @@ export default function Wholesalers() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="whitespace-nowrap">Nom</TableHead>
+                                        <TableHead className="whitespace-nowrap">Grossiste</TableHead>
+                                        <TableHead className="whitespace-nowrap">Type</TableHead>
+                                        <TableHead className="whitespace-nowrap">ICE</TableHead>
                                         <TableHead className="whitespace-nowrap">Téléphone</TableHead>
                                         <TableHead className="whitespace-nowrap">Email</TableHead>
-                                        <TableHead className="whitespace-nowrap">Adresse</TableHead>
-                                        <TableHead className="text-right whitespace-nowrap">Total Commandes</TableHead>
+                                        <TableHead className="whitespace-nowrap text-right">Total Commandes</TableHead>
                                         <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {wholesalers.map((w: any) => (
                                         <TableRow key={w.id}>
-                                            <TableCell className="font-medium whitespace-nowrap">{w.name}</TableCell>
-                                            <TableCell className="whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <Phone className="w-3 h-3 text-muted-foreground" />
-                                                    {w.phone}
+                                            <TableCell className="font-medium whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span>{w.name}</span>
+                                                    {w.type === 'ENTREPRISE' && w.responsibleName && (
+                                                        <span className="text-[10px] text-muted-foreground uppercase">Resp: {w.responsibleName}</span>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <Mail className="w-3 h-3 text-muted-foreground" />
-                                                    {w.email || '-'}
-                                                </div>
+                                                <Badge variant={w.type === 'ENTREPRISE' ? "default" : "secondary"} className="text-[10px]">
+                                                    {w.type === 'ENTREPRISE' ? 'Entreprise' : 'Particulier'}
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin className="w-3 h-3 text-muted-foreground" />
-                                                    {w.address}
-                                                </div>
+                                                {w.ice || <span className="text-muted-foreground text-xs italic">N/A</span>}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap font-mono text-xs">
+                                                {w.phone}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap text-xs">
+                                                {w.email || '-'}
                                             </TableCell>
                                             <TableCell className="text-right font-bold whitespace-nowrap">
                                                 {w._count?.orders || w.orders?.length || 0}
                                             </TableCell>
                                             <TableCell className="text-right whitespace-nowrap">
-                                                <Button variant="ghost" size="sm" onClick={() => {
-                                                    setEditingWholesaler(w);
-                                                    setIsEditWholesalerOpen(true);
-                                                }}>
-                                                    <Pencil className="w-4 h-4" />
-                                                </Button>
+                                                {canEditWholesalers && (
+                                                    <Button variant="ghost" size="sm" onClick={() => {
+                                                        setEditingWholesaler(w);
+                                                        setIsEditWholesalerOpen(true);
+                                                    }}>
+                                                        <Pencil className="w-4 h-4" />
+                                                    </Button>
+                                                )}
                                                 <Button variant="ghost" size="sm" onClick={() => openWholesalerHistory(w)}>
                                                     <Eye className="w-4 h-4" />
                                                 </Button>
@@ -497,9 +541,51 @@ export default function Wholesalers() {
                     </DialogHeader>
                     <form onSubmit={handleAddWholesaler} className="space-y-4">
                         <div className="grid gap-2">
-                            <Label>Nom complet</Label>
+                            <Label>Type de Grossiste</Label>
+                            <Select
+                                value={newWholesaler.type}
+                                onValueChange={(val: 'PARTICULIER' | 'ENTREPRISE') => setNewWholesaler({ ...newWholesaler, type: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner le type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PARTICULIER">Particulier</SelectItem>
+                                    <SelectItem value="ENTREPRISE">Entreprise</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>{newWholesaler.type === 'ENTREPRISE' ? 'Nom Entreprise' : 'Nom Complet'}</Label>
                             <Input value={newWholesaler.name} onChange={e => setNewWholesaler({ ...newWholesaler, name: e.target.value })} required />
                         </div>
+
+                        {newWholesaler.type === 'ENTREPRISE' && (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label>ICE (15 chiffres)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="Ex: 001234567890123"
+                                        value={newWholesaler.ice}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val.length <= 15) setNewWholesaler({ ...newWholesaler, ice: val });
+                                        }}
+                                        required
+                                    />
+                                    {newWholesaler.ice && newWholesaler.ice.length !== 15 && (
+                                        <p className="text-[10px] text-red-500">L'ICE doit comporter exactement 15 chiffres ({newWholesaler.ice.length}/15)</p>
+                                    )}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Nom Responsable</Label>
+                                    <Input value={newWholesaler.responsibleName} onChange={e => setNewWholesaler({ ...newWholesaler, responsibleName: e.target.value })} required />
+                                </div>
+                            </>
+                        )}
+
                         <div className="grid gap-2">
                             <Label>Téléphone</Label>
                             <Input value={newWholesaler.phone} onChange={e => setNewWholesaler({ ...newWholesaler, phone: e.target.value })} required />
@@ -528,9 +614,51 @@ export default function Wholesalers() {
                     {editingWholesaler && (
                         <form onSubmit={handleUpdateWholesaler} className="space-y-4">
                             <div className="grid gap-2">
-                                <Label>Nom complet</Label>
+                                <Label>Type de Grossiste</Label>
+                                <Select
+                                    value={editingWholesaler.type}
+                                    onValueChange={(val: 'PARTICULIER' | 'ENTREPRISE') => setEditingWholesaler({ ...editingWholesaler, type: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionner le type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="PARTICULIER">Particulier</SelectItem>
+                                        <SelectItem value="ENTREPRISE">Entreprise</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>{editingWholesaler.type === 'ENTREPRISE' ? 'Nom Entreprise' : 'Nom Complet'}</Label>
                                 <Input value={editingWholesaler.name} onChange={e => setEditingWholesaler({ ...editingWholesaler, name: e.target.value })} required />
                             </div>
+
+                            {editingWholesaler.type === 'ENTREPRISE' && (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label>ICE (15 chiffres)</Label>
+                                        <Input
+                                            type="number"
+                                            placeholder="Ex: 001234567890123"
+                                            value={editingWholesaler.ice || ''}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val.length <= 15) setEditingWholesaler({ ...editingWholesaler, ice: val });
+                                            }}
+                                            required
+                                        />
+                                        {editingWholesaler.ice && editingWholesaler.ice.length !== 15 && (
+                                            <p className="text-[10px] text-red-500">L'ICE doit comporter exactement 15 chiffres ({editingWholesaler.ice.length}/15)</p>
+                                        )}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Nom Responsable</Label>
+                                        <Input value={editingWholesaler.responsibleName || ''} onChange={e => setEditingWholesaler({ ...editingWholesaler, responsibleName: e.target.value })} required />
+                                    </div>
+                                </>
+                            )}
+
                             <div className="grid gap-2">
                                 <Label>Téléphone</Label>
                                 <Input value={editingWholesaler.phone} onChange={e => setEditingWholesaler({ ...editingWholesaler, phone: e.target.value })} required />
@@ -888,7 +1016,7 @@ export default function Wholesalers() {
                                 </Table>
 
                                 {/* Add Payment Section */}
-                                {(selectedOrder.totalAmount - selectedOrder.advanceAmount) > 0 && (
+                                {(selectedOrder.totalAmount - selectedOrder.advanceAmount) > 0 && canPayWholesalers && (
                                     <div className="bg-muted/50 p-4 rounded-md space-y-3 border">
                                         <h4 className="font-medium text-sm">Ajouter un paiement</h4>
                                         <div className="flex flex-col sm:flex-row gap-3 items-end">
@@ -924,23 +1052,27 @@ export default function Wholesalers() {
                             </div>
 
                             <DialogFooter className="flex justify-between sm:justify-between w-full pt-4 border-t">
-                                <Button
-                                    variant="destructive"
-                                    onClick={() => {
-                                        if (confirm("Êtes-vous sûr de vouloir annuler cette commande ? Le stock sera restauré.")) {
-                                            cancelOrderMutation.mutate(selectedOrder.id);
-                                        }
-                                    }}
-                                    disabled={cancelOrderMutation.isPending}
-                                >
-                                    Annuler la Commande
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => openEditOrder(selectedOrder)}
-                                >
-                                    Modifier la Commande
-                                </Button>
+                                {canEditWholesalers && (
+                                    <>
+                                        <Button
+                                            variant="destructive"
+                                            onClick={() => {
+                                                if (confirm("Êtes-vous sûr de vouloir annuler cette commande ? Le stock sera restauré.")) {
+                                                    cancelOrderMutation.mutate(selectedOrder.id);
+                                                }
+                                            }}
+                                            disabled={cancelOrderMutation.isPending}
+                                        >
+                                            Annuler la Commande
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => openEditOrder(selectedOrder)}
+                                        >
+                                            Modifier la Commande
+                                        </Button>
+                                    </>
+                                )}
                             </DialogFooter>
                         </div>
                     )}

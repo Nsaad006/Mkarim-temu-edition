@@ -42,8 +42,8 @@ export const ordersApi = {
 
     // Update order status (admin)
     // Update order status (admin)
-    updateStatus: async (id: string, status: string): Promise<Order> => {
-        const { data } = await apiClient.patch<Order>(`/api/orders/${id}/status`, { status });
+    updateStatus: async (id: string, status: string, returnReason?: string): Promise<Order> => {
+        const { data } = await apiClient.patch<Order>(`/api/orders/${id}/status`, { status, returnReason });
         return data;
     },
 

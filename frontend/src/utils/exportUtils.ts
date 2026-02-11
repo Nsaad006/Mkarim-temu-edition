@@ -67,6 +67,9 @@ interface InvoiceSettings {
     invoiceTaxRate?: number;
     invoiceNotes?: string;
     logo?: string;
+    invoiceSubtitle?: string;
+    invoiceAddress?: string;
+    invoiceCustomerHeader?: string;
 }
 
 const createInvoiceDoc = (order: Order, currency: string, settings?: InvoiceSettings) => {
@@ -81,8 +84,8 @@ const createInvoiceDoc = (order: Order, currency: string, settings?: InvoiceSett
     doc.text("MKARIM SOLUTION", 14, 40);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text("Vente de PC & Matériel Gaming", 14, 46);
-    doc.text("Maroc", 14, 51);
+    doc.text(settings?.invoiceSubtitle || "Vente de PC & Matériel Gaming", 14, 46);
+    doc.text(settings?.invoiceAddress || "Maroc", 14, 51);
 
     // Invoice Info
     doc.setTextColor(0);
@@ -94,7 +97,7 @@ const createInvoiceDoc = (order: Order, currency: string, settings?: InvoiceSett
     // Customer Info
     doc.line(14, 60, 196, 60);
     doc.setFontSize(14);
-    doc.text("Destinataire:", 14, 70);
+    doc.text(settings?.invoiceCustomerHeader || "Destinataire:", 14, 70);
     doc.setFontSize(11);
     doc.text(order.customerName, 14, 78);
     doc.text(order.phone, 14, 84);
@@ -224,40 +227,52 @@ const createWholesaleInvoiceDoc = (order: any, currency: string, settings?: Invo
     // Header
     doc.setFontSize(22);
     doc.setTextColor(0);
-    doc.text("FACTURE GROSSISTE", 105, 20, { align: "center" });
+    doc.text("FACTURE", 105, 20, { align: "center" });
 
     doc.setFontSize(16);
     doc.text("MKARIM SOLUTION", 14, 40);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text("Vente de PC & Matériel Gaming", 14, 46);
-    doc.text("Maroc", 14, 51);
+    doc.text(settings?.invoiceSubtitle || "Vente de PC & Matériel Gaming", 14, 46);
+    doc.text(settings?.invoiceAddress || "Maroc", 14, 51);
 
     // Invoice Info
     doc.setTextColor(0);
     doc.setFontSize(12);
     doc.text(`Facture N°: ${order.orderNumber}`, 140, 40);
     doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, 140, 46);
-    doc.text(`Status: ${order.status === 'PAID' ? 'RÉGLÉE' : 'NON RÉGLÉE'}`, 140, 52);
 
     // Wholesaler Info
     doc.line(14, 60, 196, 60);
     doc.setFontSize(14);
-    doc.text("Client Grossiste:", 14, 70);
+    doc.text(settings?.invoiceCustomerHeader || "Facture pour :", 14, 70);
     doc.setFontSize(11);
     doc.text(order.wholesaler.name, 14, 78);
-    doc.text(order.wholesaler.phone, 14, 84);
-    if (order.wholesaler.email) doc.text(order.wholesaler.email, 14, 90);
-    doc.text(order.wholesaler.address, 14, order.wholesaler.email ? 96 : 90);
+
+    if (order.wholesaler.type === 'ENTREPRISE') {
+        if (order.wholesaler.ice) {
+            doc.text(`ICE: ${order.wholesaler.ice}`, 14, 84);
+        }
+    } else {
+        doc.text(order.wholesaler.phone, 14, 84);
+    }
+
+    // Table calculation
+    const taxRate = settings?.invoiceTaxRate || 20;
+    const factor = 1 + (taxRate / 100);
 
     // Table
-    const tableColumn = ["Produit", "Quantité", "Prix Unitaire", "Total"];
-    const tableRows = order.items.map((item: any) => [
-        item.product?.name || "Produit Inconnu",
-        item.quantity.toString(),
-        `${item.unitPrice} ${currency}`,
-        `${item.unitPrice * item.quantity} ${currency}`
-    ]);
+    const tableColumn = ["Produit", "Quantité", "Prix Unitaire HT", "Total HT"];
+    const tableRows = order.items.map((item: any) => {
+        const unitPriceHT = item.unitPrice / factor;
+        const totalHT = (item.unitPrice * item.quantity) / factor;
+        return [
+            item.product?.name || "Produit Inconnu",
+            item.quantity.toString(),
+            `${unitPriceHT.toFixed(2)} ${currency}`,
+            `${totalHT.toFixed(2)} ${currency}`
+        ];
+    });
 
     autoTable(doc, {
         head: [tableColumn],

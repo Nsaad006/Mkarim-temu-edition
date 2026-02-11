@@ -88,6 +88,9 @@ export interface GlobalSettings {
     invoiceShowTax?: boolean;
     invoiceTaxRate?: number;
     invoiceNotes?: string;
+    invoiceSubtitle?: string;
+    invoiceAddress?: string;
+    invoiceCustomerHeader?: string;
 }
 
 export const settingsApi = {

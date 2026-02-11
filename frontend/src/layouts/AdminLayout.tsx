@@ -27,17 +27,17 @@ import { authApi } from "@/api/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 
 const sidebarItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
+    { icon: LayoutDashboard, label: "Tableau de bord", path: "/admin", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
     { icon: ShoppingBag, label: "Commandes", path: "/admin/orders", roles: ["super_admin", "editor", "viewer", "commercial", "magasinier"], permission: PERMISSIONS.ORDERS_VIEW },
     { icon: Briefcase, label: "Grossistes", path: "/admin/wholesalers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
     { icon: Package, label: "Produits", path: "/admin/products", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.PRODUCTS_VIEW },
     { icon: Truck, label: "Fournisseurs", path: "/admin/suppliers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
     { icon: Package, label: "Approvisionnements", path: "/admin/procurements", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
-    { icon: FolderOpen, label: "Catégories", path: "/admin/categories", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.PRODUCTS_VIEW },
+    { icon: FolderOpen, label: "Catégories", path: "/admin/categories", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.CATEGORIES_VIEW },
     { icon: MapPin, label: "Livraison", path: "/admin/cities", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.LOGISTICS_VIEW },
     { icon: Users, label: "Clients", path: "/admin/customers", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.CUSTOMERS_VIEW },
     { icon: Mail, label: "Messages", path: "/admin/messages", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.MESSAGES_VIEW },
-    { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
+    { icon: BarChart3, label: "Analyses", path: "/admin/analytics", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
     { icon: ShieldCheck, label: "Utilisateurs", path: "/admin/users", roles: ["super_admin"], permission: PERMISSIONS.USERS_VIEW },
     { icon: ShieldCheck, label: "Rôles", path: "/admin/roles", roles: ["super_admin"], permission: PERMISSIONS.ROLES_VIEW },
     { icon: Settings, label: "Paramètres", path: "/admin/settings", roles: ["super_admin"], permission: PERMISSIONS.SETTINGS_VIEW },

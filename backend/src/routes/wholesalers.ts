@@ -11,7 +11,7 @@ const uploadPdf = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 // GET /api/wholesalers - List all wholesalers with optional search
-router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_VIEW, PERMISSIONS.LOGISTICS_VIEW]), async (req, res) => {
     try {
         const { search } = req.query;
         const where: any = {};
@@ -42,7 +42,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.L
 });
 
 // GET /api/wholesalers/orders - List all orders flat
-router.get('/orders', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
+router.get('/orders', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_VIEW, PERMISSIONS.LOGISTICS_VIEW]), async (req, res) => {
     try {
         const orders = await prisma.wholesaleOrder.findMany({
             include: {
@@ -75,7 +75,7 @@ router.get('/orders', authenticate, authorize(['super_admin', 'editor'], PERMISS
 });
 
 // GET /api/wholesalers/:id - Get details (with orders)
-router.get('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
+router.get('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_VIEW, PERMISSIONS.LOGISTICS_VIEW]), async (req, res) => {
     try {
         const { id } = req.params;
         const wholesaler = await prisma.wholesaler.findUnique({
@@ -106,14 +106,25 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
 });
 
 // POST /api/wholesalers - Create wholesaler
-router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_CREATE, PERMISSIONS.LOGISTICS_MANAGE]), async (req, res) => {
     try {
-        const { name, address, phone, email } = req.body;
+        const { type, name, address, phone, email, ice, responsibleName } = req.body;
 
         if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
+        if (type === 'ENTREPRISE' && (!ice || ice.length !== 15)) {
+            return res.status(400).json({ error: 'ICE valide (15 chiffres) est requis pour une entreprise' });
+        }
 
         const wholesaler = await prisma.wholesaler.create({
-            data: { name, address, phone, email }
+            data: {
+                type: type || 'PARTICULIER',
+                name,
+                address,
+                phone,
+                email,
+                ice: type === 'ENTREPRISE' ? ice : null,
+                responsibleName: type === 'ENTREPRISE' ? responsibleName : null
+            }
         });
         res.status(201).json(wholesaler);
     } catch (error) {
@@ -124,16 +135,27 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
 });
 
 // PUT /api/wholesalers/:id - Update wholesaler
-router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: Request, res: Response) => {
+router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_EDIT, PERMISSIONS.LOGISTICS_MANAGE]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, address, phone, email } = req.body;
+        const { type, name, address, phone, email, ice, responsibleName } = req.body;
 
         if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
+        if (type === 'ENTREPRISE' && (!ice || ice.length !== 15)) {
+            return res.status(400).json({ error: 'ICE valide (15 chiffres) est requis pour une entreprise' });
+        }
 
         const wholesaler = await prisma.wholesaler.update({
             where: { id },
-            data: { name, address, phone, email }
+            data: {
+                type,
+                name,
+                address,
+                phone,
+                email,
+                ice: type === 'ENTREPRISE' ? ice : null,
+                responsibleName: type === 'ENTREPRISE' ? responsibleName : null
+            }
         });
         res.json(wholesaler);
     } catch (error) {
@@ -144,7 +166,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
 });
 
 // POST /api/wholesalers/:id/orders - Create Order
-router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: any, res: Response) => {
+router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_CREATE, PERMISSIONS.LOGISTICS_MANAGE]), async (req: any, res: Response) => {
     try {
         const { id: wholesalerId } = req.params;
         // items: { productId, quantity, unitPrice }[]
@@ -226,7 +248,7 @@ router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], PE
 });
 
 // POST /api/wholesalers/orders/:orderId/payments - Add Payment
-router.post('/orders/:orderId/payments', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
+router.post('/orders/:orderId/payments', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_PAYMENTS, PERMISSIONS.LOGISTICS_MANAGE]), async (req, res) => {
     try {
         const { orderId } = req.params;
         const { amount, note } = req.body;

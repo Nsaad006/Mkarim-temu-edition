@@ -47,6 +47,7 @@ import { getImageUrl } from "@/lib/image-utils";
 import { useSettings } from "@/context/SettingsContext";
 
 import { Pagination } from "@/components/admin/Pagination";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const AdminProducts = () => {
     const { searchQuery: globalSearch } = useOutletContext<{ searchQuery: string }>();
@@ -66,7 +67,9 @@ const AdminProducts = () => {
     const [pageSize, setPageSize] = useState(20);
 
     // Get current user
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : { role: "viewer", permissions: [] };
+    const userPermissions = user.permissions || [];
 
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -312,10 +315,10 @@ const AdminProducts = () => {
             const newQty = productData.quantity;
 
             if (newQty > originalQty) {
-                if (user.role !== 'super_admin') {
+                if (user.role !== 'super_admin' && !userPermissions.includes(PERMISSIONS.PRODUCTS_STOCK_MANAGE)) {
                     toast({
                         title: "Accès refusé",
-                        description: "Seul le Super Admin peut ajouter du stock manuellement.",
+                        description: "Vous n'avez pas la permission d'ajouter du stock manuellement.",
                         variant: "destructive"
                     });
                     return;
@@ -482,7 +485,7 @@ const AdminProducts = () => {
                                 <TableHead>Nom du Produit</TableHead>
                                 <TableHead>Catégorie</TableHead>
                                 <TableHead>Prix Vente</TableHead>
-                                <TableHead>Coût (WAC)</TableHead>
+                                {userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW) && <TableHead>Coût (WAC)</TableHead>}
                                 <TableHead>Stock</TableHead>
                                 <TableHead>Publié</TableHead>
                                 <TableHead>Valeur</TableHead>
@@ -522,16 +525,18 @@ const AdminProducts = () => {
                                     <TableCell className="font-bold text-primary">
                                         {product.price.toLocaleString()} {currency}
                                     </TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">
-                                        {product.weightedAverageCost && product.weightedAverageCost > 0 ? (
-                                            <span className="font-mono">{product.weightedAverageCost.toLocaleString()} {currency}</span>
-                                        ) : (
-                                            <span className="text-destructive font-bold flex items-center gap-1">
-                                                <AlertCircle className="w-3 h-3" />
-                                                0 {currency}
-                                            </span>
-                                        )}
-                                    </TableCell>
+                                    {userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW) && (
+                                        <TableCell className="text-xs text-muted-foreground">
+                                            {product.weightedAverageCost && product.weightedAverageCost > 0 ? (
+                                                <span className="font-mono">{product.weightedAverageCost.toLocaleString()} {currency}</span>
+                                            ) : (
+                                                <span className="text-destructive font-bold flex items-center gap-1">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                    0 {currency}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    )}
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Switch
@@ -694,30 +699,62 @@ const AdminProducts = () => {
                                 )}
                             </div>
 
-                            {/* Supplier & Cost Price Section */}
-                            <div className="space-y-2">
-                                <Label>Prix d'Achat Unitaire ({currency})</Label>
-                                <div className="relative">
-                                    <Input
-                                        type="number"
-                                        required
-                                        value={formData.unitCostPrice}
-                                        onChange={(e) => setFormData({ ...formData, unitCostPrice: e.target.value })}
-                                        placeholder="Ex: 12000"
-                                        className={editingProduct && (editingProduct.weightedAverageCost || 0) > 0 ? "border-orange-500/50 bg-orange-50/5 pl-8" : "border-primary/50 bg-primary/5"}
-                                    />
-                                    {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
-                                        <div className="absolute left-2.5 top-2.5 text-orange-500">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                            {/* Supplier & Cost Price Section - Restricted to Admins */}
+                            {(user.role === 'super_admin' || userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW)) && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Prix d'Achat Unitaire ({currency})</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                required
+                                                value={formData.unitCostPrice}
+                                                onChange={(e) => setFormData({ ...formData, unitCostPrice: e.target.value })}
+                                                placeholder="Ex: 12000"
+                                                className={editingProduct && (editingProduct.weightedAverageCost || 0) > 0 ? "border-orange-500/50 bg-orange-50/5 pl-8" : "border-primary/50 bg-primary/5"}
+                                            />
+                                            {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
+                                                <div className="absolute left-2.5 top-2.5 text-orange-500">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
+                                            <p className="text-[10px] text-orange-600 font-medium italic">
+                                                Note: Une modification du coût nécessite votre mot de passe admin.
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Supplier Section */}
+                                    <div className="space-y-2">
+                                        <Label>Fournisseur (Obligatoire)</Label>
+                                        <Select
+                                            required
+                                            value={formData.supplierId}
+                                            onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
+                                        >
+                                            <SelectTrigger className="border-primary/50 bg-primary/5">
+                                                <SelectValue placeholder="Choisir un fournisseur" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {suppliers.map((s: any) => (
+                                                    <SelectItem key={s.id} value={s.id}>
+                                                        {s.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Info note for NEW product only */}
+                                    {!editingProduct && (
+                                        <div className="col-span-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs italic text-primary font-medium">
+                                            Note: L'ajout d'un nouveau produit générera automatiquement un <strong>Ordre d'Approvisionnement</strong> de <strong>{parseInt(formData.quantity) * (parseInt(formData.unitCostPrice) || 0)} {currency}</strong>.
                                         </div>
                                     )}
-                                </div>
-                                {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
-                                    <p className="text-[10px] text-orange-600 font-medium italic">
-                                        Note: Une modification du coût nécessite votre mot de passe admin.
-                                    </p>
-                                )}
-                            </div>
+                                </>
+                            )}
 
                             <div className="flex items-center space-x-2">
                                 <Switch
@@ -734,35 +771,6 @@ const AdminProducts = () => {
                                 />
                                 <Label>Publié sur le site</Label>
                             </div>
-
-                            {/* Supplier is only shown for New products (historical correction happens on the cost price directly if existing) */}
-                            {/* Supplier Section (Always Visible) */}
-                            <div className="space-y-2">
-                                <Label>Fournisseur (Obligatoire)</Label>
-                                <Select
-                                    required
-                                    value={formData.supplierId}
-                                    onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
-                                >
-                                    <SelectTrigger className="border-primary/50 bg-primary/5">
-                                        <SelectValue placeholder="Choisir un fournisseur" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {suppliers.map((s: any) => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Info note for NEW product only */}
-                            {!editingProduct && (
-                                <div className="col-span-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs italic text-primary font-medium">
-                                    Note: L'ajout d'un nouveau produit générera automatiquement un <strong>Ordre d'Approvisionnement</strong> de <strong>{parseInt(formData.quantity) * (parseInt(formData.unitCostPrice) || 0)} {currency}</strong>.
-                                </div>
-                            )}
 
                             <div className="space-y-2 col-span-2">
                                 <Label>Images du produit (max 6)</Label>

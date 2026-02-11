@@ -159,7 +159,7 @@ const Dashboard = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
                 <div className="flex gap-2">
 
                     <Link to="/admin/products">
@@ -368,7 +368,11 @@ const Dashboard = () => {
                                     tick={{ fontSize: 12 }}
                                     tickFormatter={(value) => `${value}${currency}`}
                                 />
-                                <Tooltip />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    labelStyle={{ color: '#9ca3af' }}
+                                />
                                 <Area
                                     type="monotone"
                                     dataKey="revenue"
@@ -401,6 +405,8 @@ const Dashboard = () => {
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                     contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    labelStyle={{ color: '#9ca3af' }}
                                 />
                                 <Bar dataKey="value" fill="#9b87f5" radius={[0, 4, 4, 0]} barSize={20} />
                             </BarChart>
@@ -430,6 +436,8 @@ const Dashboard = () => {
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} tickFormatter={(val) => `${val}${currency}`} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    labelStyle={{ color: '#9ca3af' }}
                                 />
                                 <Bar dataKey="revenue" name="CA Total" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={15} />
                                 <Bar dataKey="profit" name="Profit Est." fill="url(#dashProfitGradient)" radius={[4, 4, 0, 0]} barSize={15} />

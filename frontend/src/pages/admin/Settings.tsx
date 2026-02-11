@@ -183,6 +183,30 @@ const Settings = () => {
                                     </div>
 
                                     <div className="space-y-2">
+                                        <Label>Sous-titre (Header)</Label>
+                                        <Input
+                                            value={formData.invoiceSubtitle || ""}
+                                            onChange={(e) => setFormData({ ...formData, invoiceSubtitle: e.target.value })}
+                                            placeholder="Ex: Vente de PC & Matériel Gaming"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Adresse (Header)</Label>
+                                        <Input
+                                            value={formData.invoiceAddress || ""}
+                                            onChange={(e) => setFormData({ ...formData, invoiceAddress: e.target.value })}
+                                            placeholder="Ex: Casablanca, Maroc"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Libellé Destinataire</Label>
+                                        <Input
+                                            value={formData.invoiceCustomerHeader || ""}
+                                            onChange={(e) => setFormData({ ...formData, invoiceCustomerHeader: e.target.value })}
+                                            placeholder="Ex: Facture pour :"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
                                         <Label>Texte de pied de page</Label>
                                         <Input
                                             value={formData.invoiceFooterText || ""}
@@ -196,7 +220,7 @@ const Settings = () => {
                                             value={formData.invoiceNotes || ""}
                                             onChange={(e) => setFormData({ ...formData, invoiceNotes: e.target.value })}
                                             placeholder="Mentions légales, conditions de paiement..."
-                                            rows={3}
+                                            rows={2}
                                         />
                                     </div>
                                 </div>

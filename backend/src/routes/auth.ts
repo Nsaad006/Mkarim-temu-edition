@@ -100,7 +100,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 };
 
 // Middleware to authorize roles OR permissions
-export const authorize = (allowedRoles: string[], requiredPermission?: string) => {
+export const authorize = (allowedRoles: string[], requiredPermission?: string | string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = (req as AuthenticatedRequest).user;
 
@@ -114,8 +114,11 @@ export const authorize = (allowedRoles: string[], requiredPermission?: string) =
         }
 
         // 2. Check Permission (if this route requires one and user has it)
-        if (requiredPermission && user.permissions?.includes(requiredPermission)) {
-            return next();
+        if (requiredPermission) {
+            const perms = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+            if (perms.some(p => user.permissions?.includes(p))) {
+                return next();
+            }
         }
 
         return res.status(403).json({ error: 'Accès refusé - Privilèges insuffisants' });

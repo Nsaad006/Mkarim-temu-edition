@@ -4,7 +4,10 @@ const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/ap
 
 export interface Wholesaler {
     id: string;
+    type: 'PARTICULIER' | 'ENTREPRISE';
     name: string;
+    ice?: string;
+    responsibleName?: string;
     address: string;
     phone: string;
     email?: string;

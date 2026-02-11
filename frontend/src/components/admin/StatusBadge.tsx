@@ -21,6 +21,8 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
                 return { color: "bg-red-100 text-red-800 hover:bg-red-200", icon: XCircle, label: "Annulée" };
             case "returned":
                 return { color: "bg-gray-100 text-gray-800 hover:bg-gray-200", icon: RotateCcw, label: "Retournée" };
+            case "retour":
+                return { color: "bg-orange-100 text-orange-800 hover:bg-orange-200", icon: RotateCcw, label: "RETOUR" };
             default:
                 return { color: "bg-gray-100 text-gray-800", icon: Clock, label: s };
         }
