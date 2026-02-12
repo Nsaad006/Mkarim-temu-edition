@@ -29,4 +29,4 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Start Nginx
-CMD ["nginx", "-g", "daemon off; worker_processes 1;"]
+CMD ["nginx", "-g", "daemon off;"]
