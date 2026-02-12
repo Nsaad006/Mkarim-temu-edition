@@ -120,26 +120,29 @@ The application will be available at:
    cp .env.example .env
    ```
 
-2. **Update environment variables** in `.env`:
-   ```env
-   DATABASE_URL="postgresql://user:password@host:5432/dbname?sslmode=require"
-   VITE_API_URL=http://your-domain.com/api
-   FRONTEND_URL=http://your-domain.com
-   ```
+2. **Update environment variables** in the root `.env`:
+   - `DATABASE_URL`: Your PostgreSQL connection string.
+   - `VITE_API_URL`: The public-facing URL of your backend API (e.g., `http://localhost:3001` or `https://api.yourdomain.com`).
+   - `FRONTEND_URL`: The public-facing URL of your frontend.
 
 3. **Build and run**
    ```bash
-   docker-compose up -d
+   docker compose up -d --build
    ```
 
-4. **Run database migrations**
+4. **Verify Health**
+   You can monitor the service health:
+   - Backend: `http://localhost:3001/health`
+   - Frontend: `http://localhost/health`
+
+5. **Run database migrations (once running)**
    ```bash
-   docker-compose exec backend npx prisma migrate deploy
+   docker compose exec backend npx prisma migrate deploy
    ```
 
-5. **Seed database (optional)**
+6. **Seed database (optional)**
    ```bash
-   docker-compose exec backend npx tsx prisma/seed.ts
+   docker compose exec backend npx tsx prisma/seed.ts
    ```
 
 ### Individual Docker Builds
