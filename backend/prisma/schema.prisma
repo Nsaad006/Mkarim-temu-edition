@@ -201,6 +201,8 @@ model Settings {
   whatsappNumber    String   @default("+212600000000")
   currency          String   @default("DH")
   logo              String?  @default("/uploads/logo-placeholder.png")
+  favicon           String?  @default("/favicon.svg")
+
   
   // Contact Information
   contactAddress    String   @default("Casablanca, Maroc")

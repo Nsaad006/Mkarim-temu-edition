@@ -71,7 +71,7 @@ const Login = () => {
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="admin@mkarim.ma"
+                                placeholder="admin@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -100,9 +100,7 @@ const Login = () => {
                             )}
                         </Button>
 
-                        <div className="text-center text-xs text-muted-foreground mt-4">
-                            <p>Demo: admin@mkarim.ma / 123456</p>
-                        </div>
+
                     </form>
                 </CardContent>
             </Card>

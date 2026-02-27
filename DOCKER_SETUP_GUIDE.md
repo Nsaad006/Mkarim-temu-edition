@@ -45,7 +45,7 @@ sudo apt-get remove docker docker-engine docker.io containerd runc
       sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     ```
 
-4.  **Install Docker Engine, containerd, and Docker Compose:**
+4.  **Install Docker Engine & Compose Plugin:**
     ```bash
     sudo apt-get update
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
@@ -56,7 +56,7 @@ sudo apt-get remove docker docker-engine docker.io containerd runc
 ## **Task 4: Install Standalone Docker Compose (Optional but Recommended)**
 While the plugin works (`docker compose`), having the standalone binary (`docker-compose`) is often easier for compatibility with older scripts.
 
-1.  **Download the latest version:**
+1.  **Download the binary (for docker-compose compatibility):**
     ```bash
     sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     ```

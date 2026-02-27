@@ -109,7 +109,7 @@ const Settings = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-200">
+                                <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-200">
                                     <p className="font-semibold mb-1">💡 Instructions :</p>
                                     <ul className="list-disc pl-5 mt-2 space-y-1">
                                         <li>Activez la "Validation en deux étapes" sur votre compte Google.</li>
@@ -263,6 +263,18 @@ const Settings = () => {
                                         />
                                         <p className="text-xs text-muted-foreground mt-2">
                                             Format recommandé: PNG transparent, max 2MB. Si aucun logo n'est ajouté, le nom de la boutique sera affiché.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Favicon (Icône de l'onglet)</Label>
+                                    <div className="p-4 border border-border rounded-lg bg-background/50">
+                                        <ImageUpload
+                                            value={formData.favicon || ""}
+                                            onChange={(url) => setFormData({ ...formData, favicon: url })}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Icône affichée dans l'onglet du navigateur. Format recommandé: SVG ou PNG (32x32px), max 500KB.
                                         </p>
                                     </div>
                                 </div>

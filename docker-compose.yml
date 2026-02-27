@@ -1,6 +1,20 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: mkarim-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-mkarim_db}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mkarim_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build:
       context: ./backend
@@ -13,9 +27,12 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - DATABASE_URL=${DATABASE_URL}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - FRONTEND_URL=${FRONTEND_URL}
     volumes:
       - ./backend/uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health" ]
       interval: 30s
@@ -28,21 +45,25 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
+        - VITE_API_URL=${VITE_API_URL}
     container_name: mkarim-frontend
     restart: unless-stopped
     ports:
-      - "80:${PORT:-80}"
+      - "8080:80"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
-      - PORT=${PORT:-80}
+      - VITE_API_URL=${VITE_API_URL}
+      - PORT=80
     depends_on:
       - backend
     healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${PORT:-80}/health" ]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
+
+volumes:
+  postgres_data:
+
 
 networks:
   default:

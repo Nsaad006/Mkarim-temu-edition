@@ -11,6 +11,7 @@ export interface GlobalSettings {
     whatsappNumber: string;
     currency: string;
     logo?: string;
+    favicon?: string;
 
     // Contact Information
     contactAddress: string;

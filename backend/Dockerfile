@@ -1,5 +1,7 @@
-# Backend Dockerfile for Railway
-FROM node:18-alpine AS builder
+# Stage 1: Builder
+FROM node:20-alpine AS builder
+
+# Install build dependencies
 RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
@@ -20,27 +22,34 @@ RUN npx prisma generate
 # Build TypeScript
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
+# Stage 2: Runner (Production)
+FROM node:20-alpine AS runner
+
+# Install production dependencies
 RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
+# Set environment
+ENV NODE_ENV=production
 
-# Install ALL dependencies first (needed for prisma generate)
-RUN npm ci
-
-# Generate Prisma Client in production stage
-RUN npx prisma generate
-
-# Copy built files from builder
+# Copy necessary files from builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma/
 COPY --from=builder /app/dist ./dist
 
-# Create uploads directory
-RUN mkdir -p uploads/products
+# Install ONLY production dependencies
+RUN npm ci --omit=dev
+
+# Generate Prisma Client for the production node_modules
+RUN npx prisma generate
+
+# Create uploads directory and set permissions
+RUN mkdir -p uploads/products && \
+    chown -R node:node /app
+
+# Use non-root user
+USER node
 
 # Expose port
 EXPOSE 3001

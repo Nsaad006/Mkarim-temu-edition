@@ -23,8 +23,8 @@ Update system and install dependencies (Docker, Git, Nginx):
 # Update system
 apt update && apt upgrade -y
 
-# Install Docker & Compose
-apt install -y docker.io docker-compose git nginx certbot python3-certbot-nginx
+# Install Docker & Compose (Modern Plugin)
+apt install -y docker.io docker-compose-plugin git nginx certbot python3-certbot-nginx
 
 # Start Docker
 systemctl start docker
@@ -85,36 +85,48 @@ Ensure your `docker-compose.yml` is ready for production.
 Run `nano docker-compose.yml` and make sure it looks like this:
 
 ```yaml
-version: '3.8'
-
 services:
   backend:
-    build: ./backend
-    restart: always
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mkarim-backend
+    restart: unless-stopped
     ports:
       - "3001:3001"
     environment:
-      - DATABASE_URL=postgresql://postgres:mysecurepassword@db:5432/nadori?schema=public
+      - DATABASE_URL=${DATABASE_URL}
       - NODE_ENV=production
       - FRONTEND_URL=https://<YOUR_DOMAIN>
     volumes:
-      - ./uploads:/app/uploads  # <--- CRITICAL: PERSISTS IMAGES
+      - ./backend/uploads:/app/uploads
     depends_on:
       - db
 
   frontend:
-    build: ./frontend
-    restart: always
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=https://<YOUR_DOMAIN>/api
+    container_name: mkarim-frontend
+    restart: unless-stopped
     ports:
       - "8080:80"
+    environment:
+      - PORT=80
+      - VITE_API_URL=https://<YOUR_DOMAIN>/api
+    depends_on:
+      - backend
 
   db:
-    image: postgres:15
-    restart: always
+    image: postgres:15-alpine
+    container_name: mkarim-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecurepassword
-      POSTGRES_DB: nadori
+      POSTGRES_DB: mkarim_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -127,7 +139,7 @@ volumes:
 ## **Step 5: Start the App**
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 *   This will build your frontend and backend and start the database.
 *   It automatically runs migrations because of our `start` script change!
@@ -167,9 +179,9 @@ Now we expose the app to the world securely.
             proxy_cache_bypass $http_upgrade;
         }
 
-        # Backend API
-        location /api {
-            proxy_pass http://localhost:3001;
+        # Backend API Proxy
+        location /api/ {
+            proxy_pass http://localhost:3001/api/;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
