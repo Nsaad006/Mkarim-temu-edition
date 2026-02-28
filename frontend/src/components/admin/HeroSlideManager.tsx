@@ -33,7 +33,8 @@ export const HeroSlideManager = ({ onSlidesChange, onHasChanges }: HeroSlideMana
         if (onHasChanges) {
             onHasChanges(Object.keys(editedSlides).length > 0);
         }
-    }, [editedSlides, onSlidesChange, onHasChanges]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editedSlides]);
 
     const createMutation = useMutation({
         mutationFn: (data: CreateHeroSlide) => heroSlidesApi.create(data),
