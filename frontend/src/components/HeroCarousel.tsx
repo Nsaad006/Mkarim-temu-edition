@@ -168,12 +168,54 @@ export const HeroCarousel = () => {
                                                         )}
                                                     </div>
 
-                                                    <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-4 md:mb-6 leading-[1.05] tracking-tight text-white" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
-                                                        {slide.title.split(' ').map((word, i) => (
-                                                            <span key={i} className={i === 1 ? "text-primary block md:inline" : ""}>
-                                                                {word}{' '}
-                                                            </span>
-                                                        ))}
+                                                    <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-4 md:mb-6 leading-[1.05] tracking-tight text-white max-w-[12ch] sm:max-w-none" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
+                                                        {(() => {
+                                                            const text = slide.title || '';
+                                                            // Detect highlighted fragments e.g. "foo *bar baz* qux"
+                                                            // We'll split the entire string into words.
+                                                            const words = text.split(/\s+/).filter(Boolean);
+                                                            const result = [];
+                                                            let wordCounter = 0;
+                                                            let inHighlight = false;
+
+                                                            for (let i = 0; i < words.length; i++) {
+                                                                let word = words[i];
+                                                                let isHighlight = false;
+
+                                                                if (text.includes('*')) {
+                                                                    if (word.startsWith('*') && word.endsWith('*') && word.length > 1) {
+                                                                        word = word.slice(1, -1);
+                                                                        isHighlight = true;
+                                                                    } else if (word.startsWith('*')) {
+                                                                        inHighlight = true;
+                                                                        word = word.slice(1);
+                                                                        isHighlight = true;
+                                                                    } else if (word.endsWith('*')) {
+                                                                        word = word.slice(0, -1);
+                                                                        isHighlight = true;
+                                                                        inHighlight = false;
+                                                                    } else {
+                                                                        isHighlight = inHighlight;
+                                                                    }
+                                                                } else {
+                                                                    // Fallback
+                                                                    isHighlight = (i === 1);
+                                                                }
+
+                                                                result.push(
+                                                                    <span key={`word-${i}`} className={isHighlight ? "text-primary" : ""}>
+                                                                        {word}{' '}
+                                                                    </span>
+                                                                );
+
+                                                                wordCounter++;
+                                                                if (wordCounter === 3 && i !== words.length - 1) {
+                                                                    result.push(<br key={`br-${i}`} className="hidden md:block" />);
+                                                                    wordCounter = 0;
+                                                                }
+                                                            }
+                                                            return result;
+                                                        })()}
                                                     </h1>
 
                                                     {slide.description && (
