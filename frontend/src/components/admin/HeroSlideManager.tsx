@@ -195,11 +195,13 @@ export const HeroSlideManager = ({ onSlidesChange, onHasChanges }: HeroSlideMana
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label>Titre</Label>
-                                        <Input
+                                        <Textarea
                                             value={getSlideValue(slide, 'title') as string}
                                             onChange={(e) => updateSlideField(slide.id, 'title', e.target.value)}
+                                            rows={2}
+                                            className="resize-none"
                                         />
-                                        <p className="text-xs text-muted-foreground">Astuce: Entourez des mots avec des astérisques pour les mettre en rouge (ex: Dominez *le Champ* de Bataille)</p>
+                                        <p className="text-xs text-muted-foreground">Appuyez sur "Entrée" pour sauter une ligne. Entourez des mots avec * pour les mettre en rouge (ex: Dominez *le Champ* de Bataille).</p>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Sous-titre</Label>

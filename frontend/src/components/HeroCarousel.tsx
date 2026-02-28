@@ -140,8 +140,8 @@ export const HeroCarousel = () => {
                                 </div>
 
                                 {/* Content */}
-                                <div className="container-custom relative z-20 h-full flex flex-col justify-center pb-10 md:pb-16 max-h-full">
-                                    <div className="max-w-5xl text-left">
+                                <div className="container-custom relative z-20 h-full flex flex-col pt-24 sm:pt-32 md:pt-40 lg:pt-48 pb-10 md:pb-16 max-h-full">
+                                    <div className="max-w-5xl text-left flex-1 flex flex-col">
                                         <AnimatePresence mode="wait">
                                             {selectedIndex === index && (
                                                 <motion.div
@@ -149,98 +149,101 @@ export const HeroCarousel = () => {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, y: 20 }}
                                                     transition={{ duration: 0.6, ease: "easeOut" }}
+                                                    className="flex-1 flex flex-col"
                                                 >
-                                                    <div className="flex items-center justify-start gap-3 md:gap-4 mb-4 md:mb-6 flex-wrap">
-                                                        {slide.badge && (
-                                                            <div className="relative group">
-                                                                <div className="absolute inset-0 bg-primary blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
-                                                                <span className="relative px-4 py-1.5 md:px-5 md:py-2 bg-primary text-white text-xs md:text-sm font-black uppercase tracking-[0.25em] rounded-md transform -skew-x-12 inline-block border-l-4 border-white shadow-2xl">
-                                                                    <span className="transform skew-x-12 inline-block">
-                                                                        {slide.badge}
+                                                    <div className="flex-none">
+                                                        <div className="flex items-center justify-start gap-3 md:gap-4 mb-4 md:mb-6 flex-wrap">
+                                                            {slide.badge && (
+                                                                <div className="relative group">
+                                                                    <div className="absolute inset-0 bg-primary blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                                    <span className="relative px-4 py-1.5 md:px-5 md:py-2 bg-primary text-white text-xs md:text-sm font-black uppercase tracking-[0.25em] rounded-md transform -skew-x-12 inline-block border-l-4 border-white shadow-2xl">
+                                                                        <span className="transform skew-x-12 inline-block">
+                                                                            {slide.badge}
+                                                                        </span>
                                                                     </span>
+                                                                </div>
+                                                            )}
+                                                            {slide.subtitle && (
+                                                                <span className="text-white tracking-[0.25em] text-xs md:text-sm font-bold uppercase bg-zinc-900/90 backdrop-blur-sm px-4 py-1.5 md:px-5 md:py-2 rounded-md border border-zinc-700 shadow-lg">
+                                                                    {slide.subtitle}
                                                                 </span>
-                                                            </div>
-                                                        )}
-                                                        {slide.subtitle && (
-                                                            <span className="text-white tracking-[0.25em] text-xs md:text-sm font-bold uppercase bg-zinc-900/90 backdrop-blur-sm px-4 py-1.5 md:px-5 md:py-2 rounded-md border border-zinc-700 shadow-lg">
-                                                                {slide.subtitle}
-                                                            </span>
+                                                            )}
+                                                        </div>
+
+                                                        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-4 md:mb-6 leading-[1.05] tracking-tight text-white max-w-full sm:max-w-none" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
+                                                            {(() => {
+                                                                const text = slide.title || '';
+                                                                const lines = text.split(/\r?\n/);
+                                                                const result = [];
+                                                                let inHighlight = false;
+                                                                let totalWordIndex = 0;
+
+                                                                for (let l = 0; l < lines.length; l++) {
+                                                                    const words = lines[l].split(/\s+/).filter(Boolean);
+                                                                    for (let i = 0; i < words.length; i++) {
+                                                                        let word = words[i];
+                                                                        let isHighlight = false;
+
+                                                                        if (text.includes('*')) {
+                                                                            if (word.startsWith('*') && word.endsWith('*') && word.length > 1) {
+                                                                                word = word.slice(1, -1);
+                                                                                isHighlight = true;
+                                                                            } else if (word.startsWith('*')) {
+                                                                                inHighlight = true;
+                                                                                word = word.slice(1);
+                                                                                isHighlight = true;
+                                                                            } else if (word.endsWith('*')) {
+                                                                                word = word.slice(0, -1);
+                                                                                isHighlight = true;
+                                                                                inHighlight = false;
+                                                                            } else {
+                                                                                isHighlight = inHighlight;
+                                                                            }
+                                                                        } else {
+                                                                            isHighlight = (totalWordIndex === 1);
+                                                                        }
+
+                                                                        result.push(
+                                                                            <span key={`word-${l}-${i}`} className={isHighlight ? "text-primary" : ""}>
+                                                                                {word}{' '}
+                                                                            </span>
+                                                                        );
+                                                                        totalWordIndex++;
+                                                                    }
+                                                                    if (l < lines.length - 1) {
+                                                                        result.push(<br key={`br-${l}`} />);
+                                                                    }
+                                                                }
+                                                                return result;
+                                                            })()}
+                                                        </h1>
+
+                                                        {slide.description && (
+                                                            <p className="text-base md:text-xl text-white font-semibold leading-relaxed line-clamp-2 md:line-clamp-none mb-6 md:mb-8 max-w-2xl" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)' }}>
+                                                                {slide.description}
+                                                            </p>
                                                         )}
                                                     </div>
 
-                                                    <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-4 md:mb-6 leading-[1.05] tracking-tight text-white max-w-[12ch] sm:max-w-none" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
-                                                        {(() => {
-                                                            const text = slide.title || '';
-                                                            // Detect highlighted fragments e.g. "foo *bar baz* qux"
-                                                            // We'll split the entire string into words.
-                                                            const words = text.split(/\s+/).filter(Boolean);
-                                                            const result = [];
-                                                            let wordCounter = 0;
-                                                            let inHighlight = false;
-
-                                                            for (let i = 0; i < words.length; i++) {
-                                                                let word = words[i];
-                                                                let isHighlight = false;
-
-                                                                if (text.includes('*')) {
-                                                                    if (word.startsWith('*') && word.endsWith('*') && word.length > 1) {
-                                                                        word = word.slice(1, -1);
-                                                                        isHighlight = true;
-                                                                    } else if (word.startsWith('*')) {
-                                                                        inHighlight = true;
-                                                                        word = word.slice(1);
-                                                                        isHighlight = true;
-                                                                    } else if (word.endsWith('*')) {
-                                                                        word = word.slice(0, -1);
-                                                                        isHighlight = true;
-                                                                        inHighlight = false;
-                                                                    } else {
-                                                                        isHighlight = inHighlight;
-                                                                    }
-                                                                } else {
-                                                                    // Fallback
-                                                                    isHighlight = (i === 1);
-                                                                }
-
-                                                                result.push(
-                                                                    <span key={`word-${i}`} className={isHighlight ? "text-primary" : ""}>
-                                                                        {word}{' '}
-                                                                    </span>
-                                                                );
-
-                                                                wordCounter++;
-                                                                if (wordCounter === 3 && i !== words.length - 1) {
-                                                                    result.push(<br key={`br-${i}`} className="hidden md:block" />);
-                                                                    wordCounter = 0;
-                                                                }
-                                                            }
-                                                            return result;
-                                                        })()}
-                                                    </h1>
-
-                                                    {slide.description && (
-                                                        <p className="text-base md:text-xl text-white font-semibold leading-relaxed line-clamp-2 md:line-clamp-none mb-6 md:mb-8 max-w-2xl" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)' }}>
-                                                            {slide.description}
-                                                        </p>
-                                                    )}
-
-                                                    <div className="flex flex-col sm:flex-row gap-4 mb-8 md:mb-12 items-start justify-start">
-                                                        <Link to={slide.buttonLink} className="w-full sm:w-auto">
-                                                            <Button variant="gaming" size="xl" className="w-full sm:w-auto px-10">
-                                                                {slide.buttonText}
-                                                                <ArrowRight />
-                                                            </Button>
-                                                        </Link>
-                                                        <Link to="/products" className="w-full sm:w-auto">
-                                                            <Button
-                                                                size="xl"
-                                                                variant="outline"
-                                                                className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 group"
-                                                            >
-                                                                <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-                                                                Découvrir la Boutique
-                                                            </Button>
-                                                        </Link>
+                                                    <div className="flex-none mt-auto pt-4 md:pt-8">
+                                                        <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start justify-start">
+                                                            <Link to={slide.buttonLink} className="w-full sm:w-auto">
+                                                                <Button variant="gaming" size="xl" className="w-full sm:w-auto px-10">
+                                                                    {slide.buttonText}
+                                                                    <ArrowRight />
+                                                                </Button>
+                                                            </Link>
+                                                            <Link to="/products" className="w-full sm:w-auto">
+                                                                <Button
+                                                                    size="xl"
+                                                                    variant="outline"
+                                                                    className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 group"
+                                                                >
+                                                                    <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                                                                    Découvrir la Boutique
+                                                                </Button>
+                                                            </Link>
+                                                        </div>
                                                     </div>
 
                                                 </motion.div>
