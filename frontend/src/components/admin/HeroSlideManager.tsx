@@ -199,6 +199,7 @@ export const HeroSlideManager = ({ onSlidesChange, onHasChanges }: HeroSlideMana
                                             value={getSlideValue(slide, 'title') as string}
                                             onChange={(e) => updateSlideField(slide.id, 'title', e.target.value)}
                                         />
+                                        <p className="text-xs text-muted-foreground">Astuce: Entourez des mots avec des astérisques pour les mettre en rouge (ex: Dominez *le Champ* de Bataille)</p>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Sous-titre</Label>
