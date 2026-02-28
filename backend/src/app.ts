@@ -33,6 +33,8 @@ app.use(cors({
     origin: (origin, callback) => {
         const allowedOrigins = [
             process.env.FRONTEND_URL,
+            'https://mkarim.ma',
+            'https://www.mkarim.ma',
             'http://localhost:8080',
             'http://localhost:8081',
             'http://localhost:8082',
