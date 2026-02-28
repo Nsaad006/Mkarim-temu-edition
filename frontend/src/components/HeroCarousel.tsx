@@ -140,8 +140,8 @@ export const HeroCarousel = () => {
                                 </div>
 
                                 {/* Content */}
-                                <div className="container-custom relative z-20 h-full pt-28 sm:pt-32 md:pt-40 lg:pt-48 flex flex-col justify-start">
-                                    <div className="max-w-4xl text-left">
+                                <div className="container-custom relative z-20 h-full flex flex-col justify-center pb-10 md:pb-16 max-h-full">
+                                    <div className="max-w-5xl text-left">
                                         <AnimatePresence mode="wait">
                                             {selectedIndex === index && (
                                                 <motion.div
@@ -168,7 +168,7 @@ export const HeroCarousel = () => {
                                                         )}
                                                     </div>
 
-                                                    <h1 className="font-display text-3xl sm:text-4xl md:text-7xl lg:text-8xl font-black mb-4 md:mb-6 leading-[1.1] tracking-tight text-white" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
+                                                    <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-4 md:mb-6 leading-[1.05] tracking-tight text-white" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
                                                         {slide.title.split(' ').map((word, i) => (
                                                             <span key={i} className={i === 1 ? "text-primary block md:inline" : ""}>
                                                                 {word}{' '}
