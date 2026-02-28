@@ -119,7 +119,7 @@ export const HeroCarousel = () => {
 
     return (
         <div className="dark">
-            <div className="relative h-[700px] md:h-[85vh] lg:h-screen w-full overflow-hidden bg-[#070708] pt-16 md:pt-20">
+            <div className="relative h-[550px] sm:h-[650px] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden bg-[#070708] pt-16 md:pt-20">
                 <div className="overflow-hidden h-full" ref={emblaRef}>
                     <div className="flex h-full">
                         {slides.map((slide, index) => (
@@ -129,7 +129,7 @@ export const HeroCarousel = () => {
                                     <img
                                         src={slide.image}
                                         alt={slide.title}
-                                        className="w-[101%] h-full max-w-none object-cover transition-transform duration-[10s] scale-105 hover:scale-100"
+                                        className="w-[101%] h-full max-w-none object-cover object-top sm:object-center transition-transform duration-[10s] scale-105 hover:scale-100"
                                         style={{ filter: `blur(${settings?.homeHeroBlur ?? 0}px)` }}
                                     />
                                     <div
@@ -140,8 +140,8 @@ export const HeroCarousel = () => {
                                 </div>
 
                                 {/* Content */}
-                                <div className="container-custom relative z-20 h-full flex items-center justify-start py-8">
-                                    <div className="max-w-3xl text-left">
+                                <div className="container-custom relative z-20 h-full pt-28 sm:pt-32 md:pt-40 lg:pt-48 flex flex-col justify-start">
+                                    <div className="max-w-4xl text-left">
                                         <AnimatePresence mode="wait">
                                             {selectedIndex === index && (
                                                 <motion.div
@@ -201,36 +201,6 @@ export const HeroCarousel = () => {
                                                         </Link>
                                                     </div>
 
-                                                    {/* Slide features */}
-                                                    <div className="hidden md:flex items-center gap-8 border-t border-zinc-800 pt-8 mt-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                                                                <Zap className="w-5 h-5 text-yellow-500" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-zinc-100 text-sm font-bold">Livraison Rapide</p>
-                                                                <p className="text-zinc-400 text-xs">Partout au Maroc</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                                                                <ShieldCheck className="w-5 h-5 text-green-500" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-zinc-100 text-sm font-bold">Garantie 1 an</p>
-                                                                <p className="text-zinc-400 text-xs">Support 24/7</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                                                                <Trophy className="w-5 h-5 text-primary" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-zinc-100 text-sm font-bold">Qualité Premium</p>
-                                                                <p className="text-zinc-400 text-xs">Marques Officielles</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
