@@ -778,14 +778,10 @@ const Settings = () => {
 
                 <div className="flex justify-end sticky bottom-6 z-50 bg-background/80 backdrop-blur-sm p-4 rounded-xl border border-border/50">
                     <Button
-                        type="button"
-                        onClick={(e) => {
-                            console.log("Button clicked!");
-                            handleSave(e);
-                        }}
+                        type="submit"
+                        disabled={mutation.isPending}
                         size="xl"
                         className="shadow-lg"
-                        disabled={mutation.isPending}
                     >
                         {mutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
                         Enregistrer les changements
