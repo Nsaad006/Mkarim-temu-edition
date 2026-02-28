@@ -94,14 +94,20 @@ const AboutPage = () => {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-muted/20 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-6 skew-x-[-12deg] backdrop-blur-md shadow-lg shadow-primary/10">
                 <span className="skew-x-[12deg]">NOTRE HISTOIRE</span>
               </div>
-              <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-black mb-6 md:mb-8 tracking-tighter text-foreground uppercase italic leading-[0.9] drop-shadow-lg">
+              <h1
+                className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-4 md:mb-6 tracking-tighter text-white uppercase italic leading-[1.1]"
+                style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}
+              >
                 {settings?.aboutTitle || (
                   <>
                     L'EXCELLENCE <span className="text-primary italic">GAMING</span>
                   </>
                 )}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground font-semibold leading-relaxed max-w-2xl mx-auto drop-shadow-xl bg-background/20 backdrop-blur-sm p-3 rounded-2xl border border-border/10 shadow-lg">
+              <p
+                className="text-base md:text-xl text-white font-semibold leading-relaxed max-w-2xl mx-auto mb-6 md:mb-8"
+                style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)' }}
+              >
                 {settings?.aboutDescription || "Votre destination ultime pour le gaming au Maroc. Performance, passion et innovation au service des gamers."}
               </p>
             </motion.div>
