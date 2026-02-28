@@ -66,15 +66,15 @@ const AboutPage = () => {
         description="Découvrez l'histoire de MKARIM SOLUTION, votre expert e-commerce spécialisé dans le matériel informatique et gaming au Maroc."
       />
       <Navbar />
-      <main className="pt-24 lg:pt-32">
+      <main className="pt-20 lg:pt-24">
         {/* Hero Section */}
-        <section className="relative section-padding overflow-hidden min-h-[50vh] flex items-center">
+        <section className="relative px-4 sm:px-6 lg:px-8 py-10 md:py-20 overflow-hidden min-h-[40vh] md:min-h-[50vh] flex items-center">
           {/* Background Image with Overlay */}
           <div className="absolute inset-0 z-0">
             <img
               src={getImageUrl(settings?.aboutHeroImage || "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600&q=80")}
               alt="About Hero Background"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-top sm:object-center"
               style={{ filter: `blur(${settings?.aboutHeroBlur ?? 0}px)` }}
             />
             <div
@@ -89,19 +89,19 @@ const AboutPage = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="max-w-4xl mx-auto text-center"
+              className="max-w-4xl mx-auto text-center mt-4 md:mt-0"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-muted/20 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-8 skew-x-[-12deg] backdrop-blur-md shadow-lg shadow-primary/10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-muted/20 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-6 skew-x-[-12deg] backdrop-blur-md shadow-lg shadow-primary/10">
                 <span className="skew-x-[12deg]">NOTRE HISTOIRE</span>
               </div>
-              <h1 className="font-display text-5xl md:text-7xl font-black mb-8 tracking-tighter text-foreground uppercase italic leading-[0.9]">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-black mb-6 md:mb-8 tracking-tighter text-foreground uppercase italic leading-[0.9] drop-shadow-lg">
                 {settings?.aboutTitle || (
                   <>
                     L'EXCELLENCE <span className="text-primary italic">GAMING</span>
                   </>
                 )}
               </h1>
-              <p className="text-xl text-muted-foreground leading-relaxed font-medium max-w-2xl mx-auto">
+              <p className="text-lg sm:text-xl text-foreground font-semibold leading-relaxed max-w-2xl mx-auto drop-shadow-xl bg-background/20 backdrop-blur-sm p-3 rounded-2xl border border-border/10 shadow-lg">
                 {settings?.aboutDescription || "Votre destination ultime pour le gaming au Maroc. Performance, passion et innovation au service des gamers."}
               </p>
             </motion.div>
