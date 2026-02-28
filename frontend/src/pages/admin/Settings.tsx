@@ -776,12 +776,13 @@ const Settings = () => {
                     </div>
                 </Tabs>
 
-                <div className="flex justify-end sticky bottom-6 z-50 bg-background/80 backdrop-blur-sm p-4 rounded-xl border border-border/50">
+                <div className="flex justify-end sticky bottom-6 z-50 bg-background/80 backdrop-blur-sm p-4 rounded-xl border border-border/50 pointer-events-auto">
                     <Button
-                        type="submit"
+                        type="button"
+                        onClick={handleSave}
                         disabled={mutation.isPending}
                         size="xl"
-                        className="shadow-lg"
+                        className="shadow-lg relative z-50 cursor-pointer"
                     >
                         {mutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
                         Enregistrer les changements
