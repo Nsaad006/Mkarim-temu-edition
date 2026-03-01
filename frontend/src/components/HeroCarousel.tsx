@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronLeft, ChevronRight, Gamepad2, Zap, Trophy, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { heroSlidesApi } from '@/api/hero-slides';
@@ -56,7 +56,7 @@ export const HeroCarousel = () => {
     const slides = remoteSlides.length > 0 ? remoteSlides.map(s => ({
         ...s,
         image: getImageUrl(s.image) || s.image,
-        color: 'from-primary/20' // Default theme color
+        color: 'from-primary/20'
     })) : DEFAULT_SLIDES;
 
     const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 30 });
@@ -92,19 +92,14 @@ export const HeroCarousel = () => {
         const onInteraction = () => {
             stopAutoplay();
             clearTimeout(resumeTimeoutId);
-            // Resume after the configured interval + 2 seconds buffer
             resumeTimeoutId = setTimeout(startAutoplay, interval + 2000);
         };
 
         onSelect();
         emblaApi.on('select', onSelect);
-
-        // Listen for user interactions (dragging, clicking)
         emblaApi.on('pointerDown', stopAutoplay);
         emblaApi.on('pointerUp', onInteraction);
-        // Also captures when scroll settles (even if from buttons)
         emblaApi.on('settle', onInteraction);
-
         startAutoplay();
 
         return () => {
@@ -119,17 +114,18 @@ export const HeroCarousel = () => {
 
     return (
         <div className="dark">
-            <div className="relative h-[550px] sm:h-[650px] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden bg-[#070708] pt-16 md:pt-20">
+            <div className="relative h-[520px] sm:h-[650px] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden bg-[#070708]">
                 <div className="overflow-hidden h-full" ref={emblaRef}>
                     <div className="flex h-full">
                         {slides.map((slide, index) => (
                             <div key={index} className="relative flex-[0_0_100%] min-w-0 h-full pl-0">
-                                {/* Background Image with Overlay */}
+
+                                {/* ── Background ── */}
                                 <div className="absolute inset-0 z-0">
                                     <img
                                         src={slide.image}
                                         alt={slide.title}
-                                        className="w-[101%] h-full max-w-none object-cover object-top sm:object-center transition-transform duration-[10s] scale-105 hover:scale-100"
+                                        className="w-[101%] h-full max-w-none object-cover object-center transition-transform duration-[10s] scale-105 hover:scale-100"
                                         style={{ filter: `blur(${settings?.homeHeroBlur ?? 0}px)` }}
                                     />
                                     <div
@@ -139,9 +135,31 @@ export const HeroCarousel = () => {
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#070708] via-transparent to-transparent z-10" />
                                 </div>
 
-                                {/* Content */}
-                                <div className="container-custom relative z-20 h-full flex flex-col pt-24 sm:pt-32 md:pt-40 lg:pt-48 pb-10 md:pb-16 max-h-full">
-                                    <div className="max-w-5xl text-left flex-1 flex flex-col">
+                                {/* ── Robust Flexbox Layout Overlay ── */}
+                                {/* This ensures top and bottom are pinned, and middle text flexes/centers without pushing them out */}
+                                <div className="absolute inset-0 z-20 pointer-events-none container-custom flex flex-col pt-[5.5rem] md:pt-[100px] pb-10 md:pb-20">
+
+                                    {/* ── TOP: Badges ── */}
+                                    <div className="flex-none pointer-events-auto">
+                                        <div className="flex items-center justify-start gap-2 md:gap-4 flex-wrap">
+                                            {slide.badge && (
+                                                <div className="relative group">
+                                                    <div className="absolute inset-0 bg-primary blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                    <span className="relative px-3 py-1 md:px-5 md:py-2 bg-primary text-white text-[10px] md:text-sm font-black uppercase tracking-[0.2em] md:tracking-[0.25em] rounded-md transform -skew-x-12 inline-block border-l-[3px] md:border-l-4 border-white shadow-2xl">
+                                                        <span className="transform skew-x-12 inline-block">{slide.badge}</span>
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {slide.subtitle && (
+                                                <span className="text-white tracking-[0.2em] md:tracking-[0.25em] text-[10px] md:text-sm font-bold uppercase bg-zinc-900/90 backdrop-blur-sm px-3 py-1 md:px-5 md:py-2 rounded-md border border-zinc-700 shadow-lg">
+                                                    {slide.subtitle}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* ── MIDDLE: Title & Description ── */}
+                                    <div className="flex-1 min-h-0 flex flex-col justify-center max-w-4xl text-left pl-2 md:pl-0 pointer-events-auto py-4">
                                         <AnimatePresence mode="wait">
                                             {selectedIndex === index && (
                                                 <motion.div
@@ -149,115 +167,114 @@ export const HeroCarousel = () => {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, y: 20 }}
                                                     transition={{ duration: 0.6, ease: "easeOut" }}
-                                                    className="flex-1 flex flex-col"
+                                                    className="max-h-full overflow-hidden flex flex-col justify-center"
                                                 >
-                                                    <div className="flex-none">
-                                                        <div className="flex items-center justify-start gap-3 md:gap-4 mb-4 md:mb-6 flex-wrap">
-                                                            {slide.badge && (
-                                                                <div className="relative group">
-                                                                    <div className="absolute inset-0 bg-primary blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
-                                                                    <span className="relative px-4 py-1.5 md:px-5 md:py-2 bg-primary text-white text-xs md:text-sm font-black uppercase tracking-[0.25em] rounded-md transform -skew-x-12 inline-block border-l-4 border-white shadow-2xl">
-                                                                        <span className="transform skew-x-12 inline-block">
-                                                                            {slide.badge}
-                                                                        </span>
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {slide.subtitle && (
-                                                                <span className="text-white tracking-[0.25em] text-xs md:text-sm font-bold uppercase bg-zinc-900/90 backdrop-blur-sm px-4 py-1.5 md:px-5 md:py-2 rounded-md border border-zinc-700 shadow-lg">
-                                                                    {slide.subtitle}
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                    <h1
+                                                        className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-3 md:mb-6 leading-[1.05] tracking-tight text-white drop-shadow-2xl"
+                                                        style={{ textShadow: '0 4px 15px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8)' }}
+                                                    >
+                                                        {(() => {
+                                                            const text = slide.title || '';
+                                                            const hasManualBreaks = text.includes('\n');
 
-                                                        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-4 md:mb-6 leading-[1.05] tracking-tight text-white max-w-full sm:max-w-none" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}>
-                                                            {(() => {
-                                                                const text = slide.title || '';
-                                                                const lines = text.split(/\r?\n/);
-                                                                const result = [];
-                                                                let inHighlight = false;
-                                                                let totalWordIndex = 0;
+                                                            const lines: string[] = hasManualBreaks
+                                                                ? text.split(/\r?\n/)
+                                                                : (() => {
+                                                                    const cleanCount = text.replace(/\*/g, '').split(/\s+/).filter(Boolean).length;
+                                                                    if (cleanCount === 3) {
+                                                                        const raw = text.split(/\s+/).filter(Boolean);
+                                                                        return [raw[0], raw.slice(1).join(' ')];
+                                                                    }
+                                                                    return [text];
+                                                                })();
 
-                                                                for (let l = 0; l < lines.length; l++) {
-                                                                    const words = lines[l].split(/\s+/).filter(Boolean);
-                                                                    for (let i = 0; i < words.length; i++) {
-                                                                        let word = words[i];
-                                                                        let isHighlight = false;
+                                                            const result: React.ReactNode[] = [];
+                                                            let inHighlight = false;
+                                                            let totalWordIndex = 0;
 
-                                                                        if (text.includes('*')) {
-                                                                            if (word.startsWith('*') && word.endsWith('*') && word.length > 1) {
-                                                                                word = word.slice(1, -1);
-                                                                                isHighlight = true;
-                                                                            } else if (word.startsWith('*')) {
-                                                                                inHighlight = true;
-                                                                                word = word.slice(1);
-                                                                                isHighlight = true;
-                                                                            } else if (word.endsWith('*')) {
-                                                                                word = word.slice(0, -1);
-                                                                                isHighlight = true;
-                                                                                inHighlight = false;
-                                                                            } else {
-                                                                                isHighlight = inHighlight;
-                                                                            }
+                                                            for (let l = 0; l < lines.length; l++) {
+                                                                const words = lines[l].split(/\s+/).filter(Boolean);
+                                                                for (let i = 0; i < words.length; i++) {
+                                                                    let word = words[i];
+                                                                    let isHighlight = false;
+
+                                                                    if (text.includes('*')) {
+                                                                        if (word.startsWith('*') && word.endsWith('*') && word.length > 1) {
+                                                                            word = word.slice(1, -1);
+                                                                            isHighlight = true;
+                                                                        } else if (word.startsWith('*')) {
+                                                                            inHighlight = true;
+                                                                            word = word.slice(1);
+                                                                            isHighlight = true;
+                                                                        } else if (word.endsWith('*')) {
+                                                                            word = word.slice(0, -1);
+                                                                            isHighlight = true;
+                                                                            inHighlight = false;
                                                                         } else {
-                                                                            isHighlight = (totalWordIndex === 1);
+                                                                            isHighlight = inHighlight;
                                                                         }
+                                                                    } else {
+                                                                        isHighlight = (totalWordIndex === 1);
+                                                                    }
 
-                                                                        result.push(
-                                                                            <span key={`word-${l}-${i}`} className={isHighlight ? "text-primary" : ""}>
-                                                                                {word}{' '}
-                                                                            </span>
-                                                                        );
-                                                                        totalWordIndex++;
-                                                                    }
-                                                                    if (l < lines.length - 1) {
-                                                                        result.push(<br key={`br-${l}`} />);
-                                                                    }
+                                                                    result.push(
+                                                                        <span key={`w-${l}-${i}`} className={isHighlight ? 'text-primary' : ''}>
+                                                                            {word}{' '}
+                                                                        </span>
+                                                                    );
+                                                                    totalWordIndex++;
                                                                 }
-                                                                return result;
-                                                            })()}
-                                                        </h1>
+                                                                if (l < lines.length - 1) {
+                                                                    result.push(<br key={`br-${l}`} />);
+                                                                }
+                                                            }
+                                                            return result;
+                                                        })()}
+                                                    </h1>
 
-                                                        {slide.description && (
-                                                            <p className="text-base md:text-xl text-white font-semibold leading-relaxed line-clamp-2 md:line-clamp-none mb-6 md:mb-8 max-w-2xl" style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)' }}>
-                                                                {slide.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex-none mt-auto pt-4 md:pt-8">
-                                                        <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start justify-start">
-                                                            <Link to={slide.buttonLink} className="w-full sm:w-auto">
-                                                                <Button variant="gaming" size="xl" className="w-full sm:w-auto px-10">
-                                                                    {slide.buttonText}
-                                                                    <ArrowRight />
-                                                                </Button>
-                                                            </Link>
-                                                            <Link to="/products" className="w-full sm:w-auto">
-                                                                <Button
-                                                                    size="xl"
-                                                                    variant="outline"
-                                                                    className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 group"
-                                                                >
-                                                                    <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-                                                                    Découvrir la Boutique
-                                                                </Button>
-                                                            </Link>
-                                                        </div>
-                                                    </div>
-
+                                                    {slide.description && (
+                                                        <p
+                                                            className="text-sm md:text-xl text-white font-medium md:font-semibold leading-snug md:leading-relaxed line-clamp-2 md:line-clamp-3 max-w-2xl drop-shadow-xl"
+                                                            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}
+                                                        >
+                                                            {slide.description}
+                                                        </p>
+                                                    )}
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
                                     </div>
+
+                                    {/* ── BOTTOM: Buttons ── */}
+                                    <div className="flex-none pointer-events-auto shrink-0 pt-2">
+                                        <div className="flex flex-col sm:flex-row gap-4 items-start justify-start">
+                                            <Link to={slide.buttonLink} className="w-full sm:w-auto">
+                                                <Button variant="gaming" size="xl" className="w-full sm:w-auto px-10 shadow-lg shadow-primary/20">
+                                                    {slide.buttonText}
+                                                    <ArrowRight />
+                                                </Button>
+                                            </Link>
+                                            <Link to="/products" className="w-full sm:w-auto">
+                                                <Button
+                                                    size="xl"
+                                                    variant="outline"
+                                                    className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 group"
+                                                >
+                                                    <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                                                    Découvrir la Boutique
+                                                </Button>
+                                            </Link>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Navigation Buttons */}
-                <div className="hidden md:flex absolute bottom-10 right-10 z-30 gap-4">
+                {/* Prev / Next arrows */}
+                <div className="hidden md:flex absolute bottom-14 right-10 z-30 gap-4">
                     <button
                         onClick={scrollPrev}
                         className="w-12 h-12 rounded-full border border-zinc-800 bg-[#070708]/50 backdrop-blur-md flex items-center justify-center text-zinc-100 hover:bg-primary hover:text-white hover:border-primary transition-all group"
@@ -272,8 +289,8 @@ export const HeroCarousel = () => {
                     </button>
                 </div>
 
-                {/* Pagination indicators */}
-                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30 flex gap-3">
+                {/* Pagination dots */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-3">
                     {slides.map((_, index) => (
                         <button
                             key={index}
@@ -284,7 +301,7 @@ export const HeroCarousel = () => {
                     ))}
                 </div>
 
-                {/* Decorative element */}
+                {/* Decorative glows */}
                 <div className="absolute top-1/4 -right-20 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
                 <div className="absolute bottom-1/4 -left-20 w-96 h-96 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
             </div>
