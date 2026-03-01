@@ -114,7 +114,7 @@ export const HeroCarousel = () => {
 
     return (
         <div className="dark">
-            <div className="relative h-[100dvh] sm:h-[650px] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden bg-[#070708]">
+            <div className="relative h-[520px] sm:h-[650px] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden bg-[#070708]">
                 <div className="overflow-hidden h-full" ref={emblaRef}>
                     <div className="flex h-full">
                         {slides.map((slide, index) => (
@@ -125,7 +125,7 @@ export const HeroCarousel = () => {
                                     <img
                                         src={slide.image}
                                         alt={slide.title}
-                                        className="w-full h-full max-w-none object-cover sm:object-cover sm:object-center transition-transform duration-[10s] scale-105 hover:scale-100"
+                                        className="w-[101%] h-full max-w-none object-cover object-center transition-transform duration-[10s] scale-105 hover:scale-100"
                                         style={{ filter: `blur(${settings?.homeHeroBlur ?? 0}px)` }}
                                     />
                                     <div
