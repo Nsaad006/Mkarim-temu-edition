@@ -179,9 +179,12 @@ const ProductDetailPage = () => {
                 <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black text-foreground italic tracking-tighter leading-[0.9] mb-6 uppercase">
                   {product.name}
                 </h1>
-                <p className="text-muted-foreground text-lg font-medium leading-relaxed max-w-xl">
-                  {product.description}
-                </p>
+                <div className="text-muted-foreground text-lg font-medium leading-relaxed max-w-xl space-y-1">
+                  {product.description?.split(/;|\n/).map((line, index) => {
+                    const trimmedLine = line.trim();
+                    return trimmedLine ? <p key={index}>{trimmedLine}</p> : null;
+                  })}
+                </div>
               </div>
 
               {/* Price & Stock */}
