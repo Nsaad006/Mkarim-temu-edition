@@ -17,9 +17,7 @@ import { fr } from 'date-fns/locale';
 import axios from 'axios';
 import { useSettings } from "@/context/SettingsContext"; // Import hook
 import { PERMISSIONS } from "@/constants/permissions";
-
-
-const formatCurrency = (amount: number) => {
+import { getImageUrl } from "@/lib/image-utils"; const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD' }).format(amount);
 };
 
@@ -795,9 +793,9 @@ export default function Wholesalers() {
                                                     <SelectItem key={p.id} value={p.id}>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
-                                                                {p.images && p.images[0] ? (
+                                                                {p.image || (p.images && p.images.length > 0) ? (
                                                                     <img
-                                                                        src={`http://localhost:3001${p.images[0]}`}
+                                                                        src={getImageUrl(p.image || p.images[0])}
                                                                         alt={p.name}
                                                                         className="w-full h-full object-cover"
                                                                     />
@@ -1124,9 +1122,9 @@ export default function Wholesalers() {
                                                     <SelectItem key={p.id} value={p.id}>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
-                                                                {p.images && p.images[0] ? (
+                                                                {p.image || (p.images && p.images.length > 0) ? (
                                                                     <img
-                                                                        src={`http://localhost:3001${p.images[0]}`}
+                                                                        src={getImageUrl(p.image || p.images[0])}
                                                                         alt={p.name}
                                                                         className="w-full h-full object-cover"
                                                                     />
