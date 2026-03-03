@@ -108,8 +108,9 @@ export const authorize = (allowedRoles: string[], requiredPermission?: string | 
             return res.status(403).json({ error: 'Accès refusé' });
         }
 
-        // 1. Check Legacy/Static Role match
-        if (allowedRoles.includes(user.role)) {
+        // 1. Check Legacy/Static Role match (Case Insensitive)
+        const roleMatch = allowedRoles.some(r => r.toLowerCase() === (user.role || '').toLowerCase());
+        if (roleMatch) {
             return next();
         }
 

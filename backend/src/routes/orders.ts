@@ -185,7 +185,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'com
                 }
             },
             orderBy: {
-                createdAt: 'desc'
+                updatedAt: 'desc'
             }
         });
 
@@ -224,7 +224,7 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', '
 });
 
 // PATCH /api/orders/:id/status - Update order status (super_admin/editor/commercial/magasinier)
-router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor'], [
+router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [
     PERMISSIONS.ORDERS_MANAGE,
     PERMISSIONS.ORDERS_EDIT,
     PERMISSIONS.ORDERS_CONFIRM,
@@ -261,21 +261,22 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor'], [
 
         if (!isSuperAdmin && !hasManageAll) {
             const perms = user.permissions || [];
+            const userRole = (user.role || '').toLowerCase();
 
-            // Check specific status permissions
-            if (status === 'CONFIRMED' && !perms.includes(PERMISSIONS.ORDERS_CONFIRM)) {
+            // Check specific status permissions (with legacy role fallbacks)
+            if (status === 'CONFIRMED' && !perms.includes(PERMISSIONS.ORDERS_CONFIRM) && userRole !== 'commercial') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission de confirmer les commandes" });
             }
-            if (status === 'SHIPPED' && !perms.includes(PERMISSIONS.ORDERS_SHIP)) {
+            if (status === 'SHIPPED' && !perms.includes(PERMISSIONS.ORDERS_SHIP) && userRole !== 'magasinier') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission d'expédier les commandes" });
             }
-            if (status === 'DELIVERED' && !perms.includes(PERMISSIONS.ORDERS_DELIVER)) {
+            if (status === 'DELIVERED' && !perms.includes(PERMISSIONS.ORDERS_DELIVER) && userRole !== 'magasinier') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission de livrer les commandes" });
             }
-            if (status === 'CANCELLED' && !perms.includes(PERMISSIONS.ORDERS_CANCEL)) {
+            if (status === 'CANCELLED' && !perms.includes(PERMISSIONS.ORDERS_CANCEL) && userRole !== 'commercial') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission d'annuler les commandes" });
             }
-            if (status === 'RETOUR' && !perms.includes(PERMISSIONS.ORDERS_RETURN)) {
+            if (status === 'RETOUR' && !perms.includes(PERMISSIONS.ORDERS_RETURN) && userRole !== 'magasinier') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission d'effectuer un retour" });
             }
             if (status === 'PENDING' && !perms.includes(PERMISSIONS.ORDERS_EDIT)) {

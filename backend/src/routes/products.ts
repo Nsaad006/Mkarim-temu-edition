@@ -46,6 +46,9 @@ router.get('/', async (req, res) => {
                 procurements: {
                     select: { unitCostPrice: true, quantityPurchased: true, supplierId: true }
                 }
+            },
+            orderBy: {
+                updatedAt: 'desc'
             }
         });
 

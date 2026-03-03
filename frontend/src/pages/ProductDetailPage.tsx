@@ -13,7 +13,7 @@ import { productsApi } from "@/api/products";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { settingsApi } from "@/api/settings";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
@@ -25,6 +25,7 @@ const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currency } = useSettings();
+  const [quantity, setQuantity] = useState(1);
 
   // Fetch current product
   const { data: product, isLoading: isProductLoading } = useQuery({
@@ -121,11 +122,17 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addItem(product);
+    addItem(product, quantity);
+    toast({
+      title: "Ajouté au panier",
+      description: `${quantity}x ${product.name} ajouté à votre panier.`,
+    });
   };
 
   const handleOrderNow = () => {
-    navigate(`/checkout?product=${product.id}`);
+    if (!product) return;
+    addItem(product, quantity);
+    navigate(`/cart`);
   };
 
   return (
@@ -208,32 +215,55 @@ const ProductDetailPage = () => {
                 </div>
               </div>
 
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4">
+              {/* CTA Buttons & Quantity */}
+              <div className="flex flex-col gap-4">
                 {!storeAvailability ? (
                   <div className="p-6 bg-primary/5 text-primary border border-primary/20 rounded-2xl text-center flex-1 font-black uppercase tracking-widest text-sm italic">
                     ACCÈS AUX LOGISTIQUES TEMPORAIREMENT SUSPENDU.
                   </div>
                 ) : (
                   <>
-                    <Button
-                      size="xl"
-                      className="w-full sm:flex-[1.5] shrink-0 italic tracking-tighter sm:tracking-normal px-2 text-sm sm:text-lg shadow-[0_4px_20px_rgba(235,68,50,0.25)]"
-                      onClick={handleOrderNow}
-                      disabled={!product.inStock}
-                    >
-                      COMMANDER
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="xl"
-                      className="w-full sm:flex-1 shrink-0 px-2 text-sm sm:text-lg"
-                      onClick={handleAddToCart}
-                      disabled={!product.inStock}
-                    >
-                      <ShoppingCart />
-                      PANIER
-                    </Button>
+                    <div className="flex items-center gap-4 bg-muted/40 border border-border rounded-xl p-1.5 w-fit">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 hover:bg-background shrink-0 rounded-lg"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={!product.inStock || quantity <= 1}
+                      >
+                        -
+                      </Button>
+                      <span className="w-8 text-center font-bold text-lg select-none">{quantity}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 hover:bg-background shrink-0 rounded-lg"
+                        onClick={() => setQuantity(quantity + 1)}
+                        disabled={!product.inStock}
+                      >
+                        +
+                      </Button>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Button
+                        size="xl"
+                        className="w-full sm:flex-[1.5] shrink-0 italic tracking-tighter sm:tracking-normal px-2 text-sm sm:text-lg shadow-[0_4px_20px_rgba(235,68,50,0.25)]"
+                        onClick={handleOrderNow}
+                        disabled={!product.inStock}
+                      >
+                        COMMANDER
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="xl"
+                        className="w-full sm:flex-1 shrink-0 px-2 text-sm sm:text-lg"
+                        onClick={handleAddToCart}
+                        disabled={!product.inStock}
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        PANIER
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>

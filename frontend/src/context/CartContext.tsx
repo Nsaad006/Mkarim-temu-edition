@@ -11,7 +11,7 @@ interface CartState {
 }
 
 type CartAction =
-    | { type: 'ADD_ITEM'; product: Product }
+    | { type: 'ADD_ITEM'; product: Product; quantity?: number }
     | { type: 'REMOVE_ITEM'; productId: string }
     | { type: 'UPDATE_QUANTITY'; productId: string; quantity: number }
     | { type: 'CLEAR_CART' }
@@ -19,7 +19,7 @@ type CartAction =
 
 interface CartContextType {
     state: CartState;
-    addItem: (product: Product) => void;
+    addItem: (product: Product, quantity?: number) => void;
     removeItem: (productId: string) => void;
     updateQuantity: (productId: string, quantity: number) => void;
     clearCart: () => void;
@@ -35,18 +35,19 @@ const CART_STORAGE_KEY = 'mkarim-cart';
 function cartReducer(state: CartState, action: CartAction): CartState {
     switch (action.type) {
         case 'ADD_ITEM': {
+            const addedQty = action.quantity || 1;
             const existingItemIndex = state.items.findIndex(
                 (item) => item.product.id === action.product.id
             );
 
             if (existingItemIndex > -1) {
                 const newItems = JSON.parse(JSON.stringify(state.items)); // Deep copy to trigger state update
-                newItems[existingItemIndex].quantity += 1;
+                newItems[existingItemIndex].quantity += addedQty;
                 return { items: newItems };
             }
 
             return {
-                items: [...state.items, { product: action.product, quantity: 1 }],
+                items: [...state.items, { product: action.product, quantity: addedQty }],
             };
         }
 
@@ -97,8 +98,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
     }, [state.items]);
 
-    const addItem = (product: Product) => {
-        dispatch({ type: 'ADD_ITEM', product });
+    const addItem = (product: Product, quantity?: number) => {
+        dispatch({ type: 'ADD_ITEM', product, quantity });
         setLastAddedTime(Date.now());
     };
 

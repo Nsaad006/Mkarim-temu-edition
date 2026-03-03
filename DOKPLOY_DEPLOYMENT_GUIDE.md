@@ -53,74 +53,52 @@ Once installed, visit `http://<YOUR_VPS_IP>:3000` in your browser. Set up your a
 
 ---
 
-## ⚙️ Phase 3: Deploy the Backend (Node.js + Prisma)
+## 🚀 Phase 3: Deploy via Dokploy Composer (Docker Compose)
 
-### 1. Create the Application
-1. Go to **Applications** -> **Create Application**.
-2. Name it `mkarim-backend`.
-3. Select **GitHub** as the source and link your repository (`Nsaad006/Mkarim`).
-4. Set the **Branch** to `main` (or whichever branch you are deploying).
-5. Set the **Build Path** to `./backend`.
+Instead of deploying the frontend and backend as separate folders, we use Dokploy's **Composer** feature to deploy the entire stack at once using our `docker-compose.yml` file.
 
-### 2. Environment Variables
-Go to the **Environment** tab and add your `.env` variables:
+### 1. Create the Compose Project
+1. Open the Dokploy dashboard.
+2. Go to **Composer** -> **Create Compose**.
+3. Name it `mkarim-stack` (or similar).
+4. Select **GitHub** as the provider and link your repository (`Nsaad006/Mkarim`).
+5. Set the **Branch** to `main` (or your production branch).
+6. Set the **Compose Path** to `./docker-compose.yml`.
+
+### 2. Environment Variables (.env)
+Go to the **Environment** tab inside your Composer project and add all the necessary variables for both the backend and frontend:
 ```env
+# Shared / Backend Env
 PORT=3001
 NODE_ENV=production
 DATABASE_URL=<YOUR_INTERNAL_POSTGRES_CONNECTION_STRING>
 FRONTEND_URL=https://<YOUR_MAIN_DOMAIN>
 JWT_SECRET=super_secret_key_change_me
-# Add your SMTP settings here for NodeMailer (Hostinger Business Email / Resend)
+# Add your SMTP settings here for NodeMailer
+
+# Frontend Build Env
+VITE_API_URL=https://api.yourdomain.com/api
 ```
+*(Make sure to hit Save so these are injected during the build/run process).*
 
-### 3. Fixing the Uploads Folder (Docker Persistent Volume)
-*Crucial Step so you don't lose images on the next push!*
-1. Go to the **Volumes** tab in your Application settings.
-2. Add a new **Bind Mount**:
-   * **Host Path:** `/var/www/mkarim/uploads`
-   * **Container Path:** `/app/uploads`
-This physically maps the VPS drive to Docker.
+### 3. Deploying & Migrating
+1. Click **Deploy**. Dokploy will read your `docker-compose.yml`, build the `backend` and `frontend` images natively, and spin up the containers.
+2. Because your backend's `start` script contains `"npx prisma migrate deploy && node dist/server.js"`, the backend will **automatically migrate the database structure BEFORE starting up!**
+3. Your `docker-compose.yml` already maps the uploads volume, ensuring you **never lose your images** when you push new code.
 
-### 4. Deploying & Migrating
-1. Click **Deploy**.
-2. Because your `package.json` `start` script is `"npx prisma migrate deploy && node dist/server.js"`, the backend will **automatically migrate the database structure (including the `favicon` error field) BEFORE starting up!** This fixes the Railway error you had.
+### 4. Setting Up Domains
+Once the containers are running:
+1. Under your deployed Compose project, you may need to map the endpoints to your public domains depending on Dokploy's latest UI for Composer.
+2. Usually, for a standard Docker Compose inside Dokploy, you will add **Domains** and point them to the respective service names (`backend` port `3001` mapped to `api.yourdomain.com`, and `frontend` port `80` mapped to `yourdomain.com`).
+3. Turn on Let's Encrypt for automatic HTTPS.
 
 ### 5. Seeding the Database (Initial Setup Only)
-Once the backend is green (Running):
-1. Go to the **Terminal** tab for the backend in Dokploy.
-2. Run the seed script manually to insert the admin user, products, and categories:
+Once the backend container is fully up and running (`Running` status):
+1. Go to the **Terminal** tab for the backend container inside Dokploy.
+2. Run the seed script to create your admin user, initial products, etc.:
 ```bash
 npm run db:seed
 ```
-
-### 6. Set Up Backend Domain
-1. Go to the **Domains** tab for the backend.
-2. Add your api domain (e.g., `api.yourdomain.com`).
-3. Check the box to auto-generate a Let's Encrypt SSL certificate.
-
----
-
-## 🌐 Phase 4: Deploy the Frontend (Vite + React)
-
-### 1. Create the Application
-1. Go to **Applications** -> **Create Application**.
-2. Name it `mkarim-frontend`.
-3. Select the same **GitHub** repo.
-4. Set the **Build Path** to `./frontend`.
-
-### 2. Build Arguments (Crucial for Vite)
-Since Vite is a static builder, it needs to know the API URL **during the build process**, not just execution.
-1. Go to the **Environment** tab.
-2. Add the variable to the **Build Arguments** section (NOT just standard runtime variables):
-```env
-VITE_API_URL=https://api.yourdomain.com/api
-```
-
-### 3. Deploy and Set Domain
-1. Click **Deploy**. Dokploy will run the multi-stage Dockerfile and serve the files via Nginx.
-2. Once running, go to the **Domains** tab.
-3. Add your primary domain (`yourdomain.com` and `www.yourdomain.com`).
-4. Enable Let's Encrypt SSL.
 
 ---
 

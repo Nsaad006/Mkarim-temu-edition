@@ -44,6 +44,8 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
     Sheet,
@@ -73,6 +75,7 @@ import StatusBadge from "@/components/admin/StatusBadge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext } from "react-router-dom";
 import { ordersApi } from "@/api/orders";
+import { productsApi } from "@/api/products";
 import { Order } from "@/data/mock-admin-data";
 import { toast } from "@/hooks/use-toast";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
@@ -85,6 +88,7 @@ const Orders = () => {
     const { currency, settings } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [productFilter, setProductFilter] = useState("all");
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
@@ -123,6 +127,11 @@ const Orders = () => {
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['orders'],
         queryFn: () => ordersApi.getAll(),
+    });
+
+    const { data: products = [] } = useQuery({
+        queryKey: ['products'],
+        queryFn: () => productsApi.getAll(),
     });
 
     const updateStatusMutation = useMutation({
@@ -225,9 +234,11 @@ const Orders = () => {
             const matchesSearch =
                 order.customerName.toLowerCase().includes(combinedSearch) ||
                 order.orderNumber.toLowerCase().includes(combinedSearch) ||
-                order.phone.includes(combinedSearch);
+                order.phone.includes(combinedSearch) ||
+                order.items.some((item: any) => item.product?.name?.toLowerCase().includes(combinedSearch));
 
             const matchesStatus = statusFilter === "all" || order.status.toLowerCase() === statusFilter.toLowerCase();
+            const matchesProduct = productFilter === "all" || order.items.some((item: any) => item.productId === productFilter);
 
             let matchesDate = true;
             if (dateRange?.from) {
@@ -239,7 +250,7 @@ const Orders = () => {
                 }
             }
 
-            return matchesSearch && matchesStatus && matchesDate;
+            return matchesSearch && matchesStatus && matchesDate && matchesProduct;
         })
         .sort((a, b) => {
             // Role based sorting priority
@@ -258,13 +269,13 @@ const Orders = () => {
             }
 
             // Default sort by date
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         });
 
     // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter, dateRange, globalSearch]);
+    }, [searchTerm, statusFilter, productFilter, dateRange, globalSearch]);
 
     // Apply pagination
     const totalPages = Math.ceil(filteredOrders.length / pageSize);
@@ -393,9 +404,30 @@ const Orders = () => {
                         <div className="h-9 w-full sm:w-auto">
                             <DatePickerWithRange date={dateRange} setDate={setDateRange} className="w-full sm:w-auto" />
                         </div>
-                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 hidden sm:inline-flex">
-                            <Filter className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant={productFilter === 'all' ? "outline" : "default"} size="icon" className="h-9 w-9 shrink-0 hidden sm:inline-flex" title="Filtrer par produit">
+                                    <Filter className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[300px]">
+                                <DropdownMenuLabel>Filtrer par produit</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <div className="max-h-[300px] overflow-y-auto">
+                                    <DropdownMenuRadioGroup value={productFilter} onValueChange={setProductFilter}>
+                                        <DropdownMenuRadioItem value="all">Tous les produits</DropdownMenuRadioItem>
+                                        {products.map((p: any) => (
+                                            <DropdownMenuRadioItem key={p.id} value={p.id} className="cursor-pointer">
+                                                <div className="flex flex-col">
+                                                    <span className="truncate max-w-[240px] text-sm font-medium">{p.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{p.category?.name || p.categoryId}</span>
+                                                </div>
+                                            </DropdownMenuRadioItem>
+                                        ))}
+                                    </DropdownMenuRadioGroup>
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
