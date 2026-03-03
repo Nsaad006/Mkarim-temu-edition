@@ -330,8 +330,9 @@ const Orders = () => {
     };
 
     const openWhatsApp = (phone: string, orderNumber: string) => {
+        const formattedPhone = phone.replace(/^\+?212/, '212').replace(/^0/, '212').replace(/\s+/g, '');
         const message = encodeURIComponent(`Bonjour, c'est à propos de votre commande ${orderNumber} sur MKARIM SOLUTION.`);
-        window.open(`https://wa.me/${phone.replace(/\s+/g, '')}?text=${message}`, "_blank");
+        window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
     };
 
     const handleEmailInvoice = async (order: Order) => {
