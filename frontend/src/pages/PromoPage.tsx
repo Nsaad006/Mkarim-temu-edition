@@ -18,6 +18,7 @@ import {
     Keyboard, MousePointer2, Target, Palette, Terminal, Layers
 } from "lucide-react";
 import { AxiosError } from "axios";
+import { getImageUrl } from "@/lib/image-utils";
 
 const PromoPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -182,7 +183,7 @@ const PromoPage = () => {
             {/* Header/Logo Line */}
             <div className="w-full bg-white dark:bg-zinc-900 border-b border-border shadow-sm sticky top-0 z-50 py-4 px-6 flex justify-center items-center">
                 {settings?.logo ? (
-                    <img src={settings.logo.startsWith('http') ? settings.logo : `http://localhost:3000${settings.logo}`} alt="Logo" className="h-8 md:h-10 object-contain" />
+                    <img src={getImageUrl(settings.logo)} alt="Logo" className="h-8 md:h-10 object-contain" />
                 ) : (
                     <h1 className="text-xl md:text-2xl font-black italic tracking-tighter uppercase text-primary">
                         MKARIM <span className="text-foreground">SOLUTION</span>
@@ -196,7 +197,7 @@ const PromoPage = () => {
                     <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-border shadow-xl">
                         <div className="aspect-square relative mb-6 rounded-2xl overflow-hidden bg-muted/30">
                             <img
-                                src={product.image.startsWith('http') ? product.image : `http://localhost:3000${product.image}`}
+                                src={getImageUrl(product.image)}
                                 alt={product.name}
                                 className="w-full h-full object-contain p-4"
                             />
