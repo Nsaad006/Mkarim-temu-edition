@@ -7,6 +7,7 @@ export interface ProductFilters {
     search?: string;
     featured?: boolean;
     published?: boolean;
+    trashed?: boolean;
 }
 
 export const productsApi = {
@@ -17,6 +18,7 @@ export const productsApi = {
         if (filters?.inStock !== undefined) params.append('inStock', String(filters.inStock));
         if (filters?.featured !== undefined) params.append('featured', String(filters.featured));
         if (filters?.published !== undefined) params.append('published', String(filters.published));
+        if (filters?.trashed !== undefined) params.append('trashed', String(filters.trashed));
         if (filters?.search) params.append('search', filters.search);
 
         const { data } = await apiClient.get<Product[]>(`/api/products?${params}`);
@@ -53,5 +55,15 @@ export const productsApi = {
             password
         });
         return data;
+    },
+
+    // Restore product from trash
+    restore: async (id: string): Promise<void> => {
+        await apiClient.post(`/api/products/${id}/restore`);
+    },
+
+    // Force delete product permanently
+    forceDelete: async (id: string): Promise<void> => {
+        await apiClient.delete(`/api/products/${id}/force`);
     },
 };

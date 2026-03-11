@@ -15,7 +15,11 @@ import {
     Download,
     FileSpreadsheet,
     Mail,
-    RotateCcw
+    RotateCcw,
+    Plus,
+    Minus,
+    Trash2,
+    Edit2
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -102,6 +106,11 @@ const Orders = () => {
     const [returnReason, setReturnReason] = useState("");
     const [orderToReturn, setOrderToReturn] = useState<string | null>(null);
 
+    // Edit Order State
+    const [isEditingOrder, setIsEditingOrder] = useState(false);
+    const [editItems, setEditItems] = useState<any[]>([]);
+    const [newProductSelect, setNewProductSelect] = useState<string>("");
+
     // Safety cleanup for stuck backdrops (Radix UI)
     // If the page is frozen, it's usually because 'pointer-events: none' is left on the body
     useEffect(() => {
@@ -161,6 +170,120 @@ const Orders = () => {
             });
         }
     });
+
+    const updateItemsMutation = useMutation({
+        mutationFn: ({ id, items }: { id: string; items: { productId: string; quantity: number; price: number }[] }) =>
+            ordersApi.updateItems(id, items),
+        onSuccess: (updatedOrder) => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            setSelectedOrder(updatedOrder);
+            setIsEditingOrder(false);
+            toast({ title: "Succès", description: "La commande a été modifiée avec succès." });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erreur",
+                description: error.response?.data?.error || "Impossible de modifier la commande.",
+                variant: "destructive",
+            });
+        }
+    });
+
+    const handleSaveEditOrder = () => {
+        if (!selectedOrder) return;
+        if (editItems.length === 0) {
+            toast({ title: "Erreur", description: "La commande doit contenir au moins un article.", variant: "destructive" });
+            return;
+        }
+        updateItemsMutation.mutate({
+            id: selectedOrder.id,
+            items: editItems.map(item => ({
+                productId: item.productId || item.product?.id,
+                quantity: item.quantity,
+                price: item.price
+            }))
+        });
+    };
+
+    const startEditingOrder = () => {
+        if (selectedOrder) {
+            setEditItems(selectedOrder.items.map(item => ({ ...item })));
+            setIsEditingOrder(true);
+        }
+    };
+
+    const cancelEditingOrder = () => {
+        setIsEditingOrder(false);
+        setEditItems([]);
+        setNewProductSelect("");
+    };
+
+    const addProductToEditOrder = () => {
+        if (!newProductSelect) return;
+        const prod = products.find((p: any) => p.id === newProductSelect);
+        if (!prod) return;
+
+        const existing = editItems.find(item => item.productId === prod.id || item.product?.id === prod.id);
+        if (existing) {
+            setEditItems(editItems.map(item =>
+                (item.productId === prod.id || item.product?.id === prod.id)
+                    ? { ...item, quantity: item.quantity + 1 }
+                    : item
+            ));
+        } else {
+            setEditItems([...editItems, {
+                productId: prod.id,
+                quantity: 1,
+                price: prod.price,
+                product: prod
+            }]);
+        }
+        setNewProductSelect("");
+    };
+
+    const removeEditItem = (idx: number) => {
+        const newItems = [...editItems];
+        newItems.splice(idx, 1);
+        setEditItems(newItems);
+    };
+
+    const updateEditItemQty = (idx: number, delta: number) => {
+        const newItems = [...editItems];
+        const newQty = newItems[idx].quantity + delta;
+        if (newQty > 0) {
+            newItems[idx].quantity = newQty;
+            setEditItems(newItems);
+        }
+    };
+
+    const canEditCurrentOrder = () => {
+        if (!selectedOrder) return false;
+
+        // Super admin/admin or ManageAll can edit orders in any status
+        if (userRole === 'super_admin' || userRole === 'admin' || userPermissions.includes(PERMISSIONS.ORDERS_MANAGE)) return true;
+
+        const status = selectedOrder.status;
+
+        // General editing rule: must have ORDERS_EDIT or legacy roles
+        const hasEditPerm = userPermissions.includes(PERMISSIONS.ORDERS_EDIT) || userRole === 'magasinier' || userRole === 'commercial';
+        if (!hasEditPerm) return false;
+
+        // PENDING and CONFIRMED are editable by anyone with Edit permission
+        if (['PENDING', 'CONFIRMED'].includes(status)) {
+            return true;
+        }
+
+        // Magasinier or users with specific status permissions can edit deeper statuses
+        if (status === 'SHIPPED' && (userRole === 'magasinier' || userPermissions.includes(PERMISSIONS.ORDERS_SHIP))) {
+            return true;
+        }
+
+        if (status === 'DELIVERED' && (userRole === 'magasinier' || userPermissions.includes(PERMISSIONS.ORDERS_DELIVER))) {
+            return true;
+        }
+
+        return false;
+    };
 
     // Helper function to check if user can perform an action based on permissions or role
     const canUpdateStatus = (status: string): boolean => {
@@ -286,6 +409,7 @@ const Orders = () => {
 
     const openOrderDetails = (order: Order) => {
         setSelectedOrder(order);
+        setIsEditingOrder(false);
         setIsDetailsOpen(true);
     };
 
@@ -609,7 +733,15 @@ const Orders = () => {
                     {selectedOrder && (
                         <>
                             <SheetHeader className="mb-6">
-                                <SheetTitle className="text-2xl">Commande {selectedOrder.orderNumber}</SheetTitle>
+                                <SheetTitle className="text-2xl flex items-center gap-3">
+                                    Commande {selectedOrder.orderNumber}
+                                    {!isEditingOrder && canEditCurrentOrder() && (
+                                        <Button variant="outline" size="sm" onClick={startEditingOrder}>
+                                            <Edit2 className="w-4 h-4 mr-2" />
+                                            Modifier
+                                        </Button>
+                                    )}
+                                </SheetTitle>
                                 <SheetDescription>
                                     Détails complets de la commande et informations client
                                 </SheetDescription>
@@ -709,31 +841,118 @@ const Orders = () => {
 
                                 {/* Items */}
                                 <div>
-                                    <h3 className="font-semibold text-lg mb-3">Articles</h3>
+                                    <h3 className="font-semibold text-lg mb-3">
+                                        Articles {isEditingOrder && <span className="text-sm font-normal text-muted-foreground ml-2">(Mode Édition)</span>}
+                                    </h3>
+
+                                    {isEditingOrder && (
+                                        <div className="mb-4 flex gap-2 items-center p-3 bg-secondary/20 rounded-lg border border-border">
+                                            <Select value={newProductSelect} onValueChange={setNewProductSelect}>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Ajouter un produit..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {products.map((p: any) => (
+                                                        <SelectItem key={p.id} value={p.id}>
+                                                            {p.name} - {p.price} {currency}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button size="icon" variant="secondary" onClick={addProductToEditOrder} disabled={!newProductSelect}>
+                                                <Plus className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+
                                     <div className="border rounded-lg divide-y">
-                                        {selectedOrder.items.map((item, idx) => (
-                                            <div key={idx} className="p-3 flex justify-between items-center">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                                        {(isEditingOrder ? editItems : selectedOrder.items).map((item, idx) => (
+                                            <div key={idx} className="p-3 flex justify-between items-center bg-card hover:bg-muted/10 transition-colors">
+                                                <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                                    <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center shrink-0 overflow-hidden">
                                                         {item.product?.image ? (
-                                                            <img src={getImageUrl(item.product.image)} alt={item.product.name} className="w-full h-full object-cover" />
+                                                            <img src={getImageUrl(item.product.image)} alt={item.product?.name || "produit"} className="w-full h-full object-cover" />
                                                         ) : (
                                                             <Package className="w-5 h-5 text-gray-500" />
                                                         )}
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium">{item.product?.name || 'Produit inconnu'}</p>
-                                                        <p className="text-sm text-muted-foreground">Qté: {item.quantity}</p>
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium truncate">{item.product?.name || 'Produit inconnu'}</p>
+                                                        {!isEditingOrder && <p className="text-sm text-muted-foreground">Qté: {item.quantity}</p>}
                                                     </div>
                                                 </div>
-                                                <p className="font-medium">{item.price.toLocaleString()} {currency}</p>
+
+                                                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 sm:gap-6 shrink-0">
+                                                    {isEditingOrder && (
+                                                        <div className="flex items-center gap-1 bg-secondary hover:bg-secondary/80 rounded-md border p-0.5">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 rounded-sm"
+                                                                onClick={() => updateEditItemQty(idx, -1)}
+                                                                disabled={item.quantity <= 1}
+                                                            >
+                                                                <Minus className="w-3 h-3" />
+                                                            </Button>
+                                                            <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 rounded-sm"
+                                                                onClick={() => updateEditItemQty(idx, 1)}
+                                                            >
+                                                                <Plus className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex items-center gap-3">
+                                                        <p className="font-medium whitespace-nowrap hidden sm:block">
+                                                            {(item.price * item.quantity).toLocaleString()} {currency}
+                                                        </p>
+                                                        {isEditingOrder && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                onClick={() => removeEditItem(idx)}
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         ))}
+                                        {(isEditingOrder ? editItems : selectedOrder.items).length === 0 && (
+                                            <div className="p-6 text-center text-muted-foreground">
+                                                Aucun article dans cette commande.
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex justify-between items-center mt-4 pt-4 border-t">
                                         <span className="font-semibold text-lg">Total à payer</span>
-                                        <span className="font-bold text-xl text-primary">{selectedOrder.total.toLocaleString()} {currency}</span>
+                                        <span className="font-bold text-xl text-primary">
+                                            {(isEditingOrder ? editItems : selectedOrder.items)
+                                                .reduce((acc, item) => acc + (item.price * item.quantity), 0)
+                                                .toLocaleString()} {currency}
+                                        </span>
                                     </div>
+
+                                    {isEditingOrder && (
+                                        <div className="flex gap-2 justify-end mt-6">
+                                            <Button variant="outline" onClick={cancelEditingOrder}>
+                                                Annuler
+                                            </Button>
+                                            <Button
+                                                onClick={handleSaveEditOrder}
+                                                disabled={updateItemsMutation.isPending || editItems.length === 0}
+                                            >
+                                                {updateItemsMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Enregistrer les modifications
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="pt-4 border-t">

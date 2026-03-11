@@ -28,6 +28,7 @@ model Product {
   updatedAt     DateTime @updatedAt
   isFeatured    Boolean  @default(false)
   published     Boolean  @default(true)
+  deletedAt     DateTime?
   
   category      Category    @relation(fields: [categoryId], references: [id])
   orderItems    OrderItem[]

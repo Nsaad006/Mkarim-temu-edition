@@ -9,9 +9,30 @@ const router = Router();
 // GET /api/products - List all products with optional filters
 router.get('/', async (req, res) => {
     try {
-        const { categoryId, category, inStock, search, featured, published } = req.query;
+        const { categoryId, category, inStock, search, featured, published, trashed } = req.query;
 
         const where: any = {};
+
+        // Auto-cleanup logic: permanently delete products in trash > 3 days that have no orders
+        try {
+            const threeDaysAgo = new Date();
+            threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+            await prisma.product.deleteMany({
+                where: {
+                    deletedAt: { lt: threeDaysAgo },
+                    orderItems: { none: {} },
+                    wholesaleItems: { none: {} }
+                }
+            });
+        } catch (err) {
+            console.error('Error during auto-cleanup of trashed products:', err);
+        }
+
+        if (trashed === 'true') {
+            where.deletedAt = { not: null };
+        } else {
+            where.deletedAt = null;
+        }
 
         const categoryIdentifier = categoryId || category;
         if (categoryIdentifier) {
@@ -204,16 +225,57 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
     }
 });
 
-router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.PRODUCTS_DELETE), async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_DELETE]), async (req: Request, res: Response) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
-        if (await prisma.orderItem.findFirst({ where: { productId: id } })) return res.status(400).json({ error: 'Cannot delete product that exists in orders.' });
-        if (await prisma.wholesaleOrderItem.findFirst({ where: { productId: id } })) return res.status(400).json({ error: 'Cannot delete product that exists in wholesale orders.' });
+        const id = req.params.id;
+        // Soft delete: move to trash
+        await prisma.product.update({
+            where: { id },
+            data: { deletedAt: new Date(), published: false }
+        });
+        res.status(204).send();
+    } catch (error) {
+        console.error('Error softly deleting product:', error);
+        res.status(500).json({ error: 'Failed to move product to trash' });
+    }
+});
+
+// Restore product from trash
+router.post('/:id/restore', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_EDIT]), async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id;
+        await prisma.product.update({
+            where: { id },
+            data: { deletedAt: null }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error restoring product:', error);
+        res.status(500).json({ error: 'Failed to restore product' });
+    }
+});
+
+// Force delete product permanently
+router.delete('/:id/force', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_DELETE]), async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id;
+
+        // Check if it exists in orders first
+        const inOrders = await prisma.orderItem.findFirst({ where: { productId: id } });
+        const inWholesale = await prisma.wholesaleOrderItem.findFirst({ where: { productId: id } });
+
+        if (inOrders) {
+            return res.status(400).json({ error: `Cannot permanently delete product. Found in OrderItem ID: ${inOrders.id} (OrderId: ${inOrders.orderId})` });
+        }
+        if (inWholesale) {
+            return res.status(400).json({ error: `Cannot permanently delete product. Found in WholesaleOrderItem ID: ${inWholesale.id} (WholesaleOrderId: ${inWholesale.wholesaleOrderId})` });
+        }
+
         await prisma.product.delete({ where: { id } });
         res.status(204).send();
     } catch (error) {
-        console.error('Error deleting product:', error);
-        res.status(500).json({ error: 'Failed to delete product' });
+        console.error('Error force deleting product:', error);
+        res.status(500).json({ error: 'Failed to permanently delete product' });
     }
 });
 

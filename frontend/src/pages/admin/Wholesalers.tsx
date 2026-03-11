@@ -10,8 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, MapPin, Phone, Mail, ShoppingCart, Eye, DollarSign, FileText, Pencil } from 'lucide-react';
+import { Plus, Search, MapPin, Phone, Mail, ShoppingCart, Eye, DollarSign, FileText, Pencil, Check, ChevronsUpDown, Trash2 } from 'lucide-react';
+import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import axios from 'axios';
@@ -22,6 +25,103 @@ import { getImageUrl } from "@/lib/image-utils"; const formatCurrency = (amount:
 };
 
 import { generateWholesaleInvoicePDF, getWholesaleInvoiceBlob } from '@/utils/exportUtils';
+
+function ProductCombobox({ products, value, onChange }: { products: any[], value: string, onChange: (val: string) => void }) {
+    const [open, setOpen] = useState(false);
+    const selectedProduct = products.find(p => p.id === value);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen} modal={true}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between font-normal h-auto py-2 px-3 bg-background"
+                >
+                    {selectedProduct ? (
+                        <div className="flex items-center gap-2 w-full overflow-hidden">
+                            <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
+                                {selectedProduct.image || (selectedProduct.images && selectedProduct.images.length > 0) ? (
+                                    <img
+                                        src={getImageUrl(selectedProduct.image || selectedProduct.images[0])}
+                                        alt={selectedProduct.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                                        IMG
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex flex-col text-left flex-1 overflow-hidden">
+                                <span className="font-medium text-sm truncate">{selectedProduct.name}</span>
+                                <div className="flex gap-2 text-xs text-muted-foreground">
+                                    <span>Stock: {selectedProduct.quantity}</span>
+                                    <span>•</span>
+                                    <span className="text-green-600 font-medium whitespace-nowrap">Coût: {formatCurrency(selectedProduct.weightedAverageCost || 0)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <span className="truncate flex-1 text-left hover:text-muted-foreground transition-colors">Rechercher un produit...</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] max-w-[90vw] p-0" align="start">
+                <Command>
+                    <CommandInput placeholder="Tapez pour chercher..." />
+                    <CommandList>
+                        <CommandEmpty>Aucun produit ne correspond.</CommandEmpty>
+                        <CommandGroup>
+                            {products.map((p) => (
+                                <CommandItem
+                                    key={p.id}
+                                    value={p.name}
+                                    onSelect={() => {
+                                        onChange(p.id);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2 w-full">
+                                        <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
+                                            {p.image || (p.images && p.images.length > 0) ? (
+                                                <img
+                                                    src={getImageUrl(p.image || p.images[0])}
+                                                    alt={p.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                                                    IMG
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col text-left flex-1">
+                                            <span className="font-medium text-sm">{p.name}</span>
+                                            <div className="flex gap-2 text-xs text-muted-foreground">
+                                                <span>Stock: {p.quantity}</span>
+                                                <span>•</span>
+                                                <span className="text-green-600 font-medium">Coût: {formatCurrency(p.weightedAverageCost || 0)}</span>
+                                            </div>
+                                        </div>
+                                        <Check
+                                            className={cn(
+                                                "ml-auto h-4 w-4",
+                                                value === p.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                    </div>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 export default function Wholesalers() {
     const userStr = localStorage.getItem("user");
@@ -36,6 +136,7 @@ export default function Wholesalers() {
     const queryClient = useQueryClient();
     const { settings, currency } = useSettings(); // Get settings and currency
     const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState<'orders' | 'wholesalers'>('orders');
 
     // State for Dialogs
     const [isAddWholesalerOpen, setIsAddWholesalerOpen] = useState(false);
@@ -68,6 +169,13 @@ export default function Wholesalers() {
     const filteredOrders = orders.filter((order: any) =>
         order.wholesaler?.name.toLowerCase().includes(search.toLowerCase()) ||
         order.orderNumber.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const filteredWholesalers = wholesalers.filter((w: any) =>
+        w.name?.toLowerCase().includes(search.toLowerCase()) ||
+        w.ice?.toLowerCase().includes(search.toLowerCase()) ||
+        w.phone?.toLowerCase().includes(search.toLowerCase()) ||
+        w.email?.toLowerCase().includes(search.toLowerCase())
     );
 
     // --- Mutations ---
@@ -103,6 +211,18 @@ export default function Wholesalers() {
         },
         onError: () => {
             toast({ title: "Erreur", description: "Impossible de mettre à jour", variant: "destructive" });
+        }
+    });
+
+    const deleteWholesalerMutation = useMutation({
+        mutationFn: wholesalersApi.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
+            toast({ title: "Succès", description: "Grossiste supprimé avec succès" });
+        },
+        onError: (error: any) => {
+            const errorMsg = error.response?.data?.error || "Impossible de supprimer le grossiste";
+            toast({ title: "Erreur", description: errorMsg, variant: "destructive" });
         }
     });
 
@@ -366,22 +486,22 @@ export default function Wholesalers() {
             {/* Tabs for Orders and Wholesalers */}
             <div className="flex space-x-4 border-b">
                 <button
-                    className={`pb-2 px-4 border-b-2 font-medium transition-colors ${!search.startsWith('type:wholesaler') ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
+                    className={`pb-2 px-4 border-b-2 font-medium transition-colors ${activeTab === 'orders' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
                         }`}
-                    onClick={() => setSearch('')}
+                    onClick={() => { setActiveTab('orders'); setSearch(''); }}
                 >
                     Historique des Commandes
                 </button>
                 <button
-                    className={`pb-2 px-4 border-b-2 font-medium transition-colors ${search.startsWith('type:wholesaler') ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
+                    className={`pb-2 px-4 border-b-2 font-medium transition-colors ${activeTab === 'wholesalers' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
                         }`}
-                    onClick={() => setSearch('type:wholesaler')}
+                    onClick={() => { setActiveTab('wholesalers'); setSearch(''); }}
                 >
                     Liste des Grossistes
                 </button>
             </div>
 
-            {!search.startsWith('type:wholesaler') ? (
+            {activeTab === 'orders' ? (
                 <Card>
                     <CardHeader>
                         <CardTitle>Historique des Commandes B2B</CardTitle>
@@ -474,7 +594,7 @@ export default function Wholesalers() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {wholesalers.map((w: any) => (
+                                    {filteredWholesalers.map((w: any) => (
                                         <TableRow key={w.id}>
                                             <TableCell className="font-medium whitespace-nowrap">
                                                 <div className="flex flex-col">
@@ -513,10 +633,19 @@ export default function Wholesalers() {
                                                 <Button variant="ghost" size="sm" onClick={() => openWholesalerHistory(w)}>
                                                     <Eye className="w-4 h-4" />
                                                 </Button>
+                                                {canEditWholesalers && (
+                                                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                                                        if (window.confirm("Êtes-vous sûr de vouloir supprimer ce grossiste ?")) {
+                                                            deleteWholesalerMutation.mutate(w.id);
+                                                        }
+                                                    }}>
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {wholesalers.length === 0 && (
+                                    {filteredWholesalers.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                                 Aucun grossiste enregistré
@@ -781,43 +910,11 @@ export default function Wholesalers() {
                                 <div key={idx} className="flex gap-2 items-end">
                                     <div className="flex-1">
                                         <Label className="text-xs">Produit</Label>
-                                        <Select
+                                        <ProductCombobox
+                                            products={products}
                                             value={item.productId}
-                                            onValueChange={(val) => handleUpdateOrderItem(idx, 'productId', val)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Produit" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {products.map((p: any) => (
-                                                    <SelectItem key={p.id} value={p.id}>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
-                                                                {p.image || (p.images && p.images.length > 0) ? (
-                                                                    <img
-                                                                        src={getImageUrl(p.image || p.images[0])}
-                                                                        alt={p.name}
-                                                                        className="w-full h-full object-cover"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
-                                                                        IMG
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex flex-col text-left">
-                                                                <span className="font-medium text-sm">{p.name}</span>
-                                                                <div className="flex gap-2 text-xs text-muted-foreground">
-                                                                    <span>Stock: {p.quantity}</span>
-                                                                    <span>•</span>
-                                                                    <span className="text-green-600 font-medium">Coût: {formatCurrency(p.weightedAverageCost || 0)}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            onChange={(val) => handleUpdateOrderItem(idx, 'productId', val)}
+                                        />
                                     </div>
                                     <div className="w-24">
                                         <Label className="text-xs">Qté</Label>
@@ -831,7 +928,7 @@ export default function Wholesalers() {
                                         const updated = newOrderItems.filter((_, i) => i !== idx);
                                         setNewOrderItems(updated);
                                     }}>
-                                        <div className="w-4 h-4 bg-white/20" />X
+                                        <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
                             ))}
@@ -1110,43 +1207,11 @@ export default function Wholesalers() {
                                 <div key={idx} className="flex gap-2 items-end">
                                     <div className="flex-1">
                                         <Label className="text-xs">Produit</Label>
-                                        <Select
+                                        <ProductCombobox
+                                            products={products}
                                             value={item.productId}
-                                            onValueChange={(val) => handleUpdateOrderItem(idx, 'productId', val)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Produit" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {products.map((p: any) => (
-                                                    <SelectItem key={p.id} value={p.id}>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
-                                                                {p.image || (p.images && p.images.length > 0) ? (
-                                                                    <img
-                                                                        src={getImageUrl(p.image || p.images[0])}
-                                                                        alt={p.name}
-                                                                        className="w-full h-full object-cover"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
-                                                                        IMG
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex flex-col text-left">
-                                                                <span className="font-medium text-sm">{p.name}</span>
-                                                                <div className="flex gap-2 text-xs text-muted-foreground">
-                                                                    <span>Stock: {p.quantity}</span>
-                                                                    <span>•</span>
-                                                                    <span className="text-green-600 font-medium">Coût: {formatCurrency(p.weightedAverageCost || 0)}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            onChange={(val) => handleUpdateOrderItem(idx, 'productId', val)}
+                                        />
                                     </div>
                                     <div className="w-24">
                                         <Label className="text-xs">Qté</Label>
@@ -1160,7 +1225,7 @@ export default function Wholesalers() {
                                         const updated = newOrderItems.filter((_, i) => i !== idx);
                                         setNewOrderItems(updated);
                                     }}>
-                                        <div className="w-4 h-4 bg-white/20" />X
+                                        <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
                             ))}

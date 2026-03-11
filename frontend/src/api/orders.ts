@@ -47,6 +47,12 @@ export const ordersApi = {
         return data;
     },
 
+    // Update order items (admin)
+    updateItems: async (id: string, items: { productId: string; quantity: number; price: number }[]): Promise<Order> => {
+        const { data } = await apiClient.put<Order>(`/api/orders/${id}/items`, { items });
+        return data;
+    },
+
     // Send invoice email
     sendInvoiceEmail: async (id: string, pdfBlob: Blob) => {
         const formData = new FormData();

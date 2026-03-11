@@ -28,6 +28,15 @@ const createOrderSchema = z.object({
     bypassStockCheck: z.boolean().optional()
 });
 
+const updateOrderItemsSchema = z.object({
+    items: z.array(z.object({
+        productId: z.string(),
+        quantity: z.number().int().positive(),
+        price: z.number().positive()
+    })).min(1, 'Votre panier est vide')
+});
+
+
 // Generate order number
 function generateOrderNumber(): string {
     const timestamp = Date.now().toString().slice(-6);
@@ -35,8 +44,8 @@ function generateOrderNumber(): string {
     return `ORD-${timestamp}${random}`;
 }
 
-// import { sendOrderEmails } from '../lib/email';
-import { sendOrderEmails } from '../lib/email';
+// import { sendOrderEmails, sendOrderUpdatedEmails } from '../lib/email';
+import { sendOrderEmails, sendOrderUpdatedEmails } from '../lib/email';
 
 // POST /api/orders - Create new COD order (Multi-item)
 router.post('/', async (req, res) => {
@@ -223,7 +232,150 @@ router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', '
     }
 });
 
+// PUT /api/orders/:id/items - Update order items
+router.put('/:id/items', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [PERMISSIONS.ORDERS_EDIT, PERMISSIONS.ORDERS_MANAGE]), async (req: Request, res: Response) => {
+    try {
+        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+
+        const validatedData = updateOrderItemsSchema.parse(req.body);
+
+        // Calculate new total and prepare items data
+        let total = 0;
+        const newItemsData: { productId: string; quantity: number; price: number }[] = [];
+        const itemsForEmail: any[] = [];
+
+        for (const item of validatedData.items) {
+            const product = await prisma.product.findUnique({
+                where: { id: item.productId }
+            });
+
+            if (!product) {
+                return res.status(404).json({ error: `Product ${item.productId} not found` });
+            }
+
+            total += item.price * item.quantity;
+            newItemsData.push({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price
+            });
+            itemsForEmail.push({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price,
+                product: { name: product.name }
+            });
+        }
+
+        const currentOrder = await prisma.order.findUnique({
+            where: { id },
+            include: { items: true }
+        });
+
+        if (!currentOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const user = (req as any).user;
+        const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin';
+        const perms = user.permissions || [];
+
+        if (!isSuperAdmin && !perms.includes(PERMISSIONS.ORDERS_MANAGE)) {
+            const hasEditPerm = perms.includes(PERMISSIONS.ORDERS_EDIT) || user.role === 'magasinier' || user.role === 'commercial';
+            if (!hasEditPerm) {
+                return res.status(403).json({ error: "Vous n'avez pas la permission de modifier les commandes." });
+            }
+
+            const status = currentOrder.status;
+
+            if (!['PENDING', 'CONFIRMED'].includes(status)) {
+                if (status === 'SHIPPED' && !(user.role === 'magasinier' || perms.includes(PERMISSIONS.ORDERS_SHIP))) {
+                    return res.status(403).json({ error: "Vous n'avez pas la permission de modifier une commande expédiée." });
+                }
+                if (status === 'DELIVERED' && !(user.role === 'magasinier' || perms.includes(PERMISSIONS.ORDERS_DELIVER))) {
+                    return res.status(403).json({ error: "Vous n'avez pas la permission de modifier une commande livrée." });
+                }
+                if (status === 'CANCELLED' || status === 'RETOUR') {
+                    return res.status(403).json({ error: "Vous ne pouvez pas modifier une commande annulée ou retournée." });
+                }
+            }
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            const DEDUCT_STATUSES = ['CONFIRMED', 'SHIPPED', 'DELIVERED'];
+            const isDeducted = DEDUCT_STATUSES.includes(currentOrder.status);
+
+            if (isDeducted) {
+                // Restore old stock
+                for (const oldItem of currentOrder.items) {
+                    await tx.product.update({
+                        where: { id: oldItem.productId },
+                        data: {
+                            quantity: { increment: oldItem.quantity },
+                            inStock: true
+                        }
+                    });
+                }
+                // Deduct new stock
+                for (const newItem of newItemsData) {
+                    const product = await tx.product.findUnique({ where: { id: newItem.productId } });
+                    if (!product) throw new Error(`Product ${newItem.productId} not found`);
+                    if (product.quantity < newItem.quantity) {
+                        throw new Error(`Stock insuffisant pour le produit (Requis: ${newItem.quantity}, Dispo: ${product.quantity})`);
+                    }
+                    await tx.product.update({
+                        where: { id: newItem.productId },
+                        data: {
+                            quantity: { decrement: newItem.quantity },
+                            inStock: product.quantity - newItem.quantity > 0
+                        }
+                    });
+                }
+            }
+
+            // Delete existing items
+            await tx.orderItem.deleteMany({
+                where: { orderId: id }
+            });
+
+            // Create new items and update total
+            const updatedOrder = await tx.order.update({
+                where: { id },
+                data: {
+                    total,
+                    items: {
+                        create: newItemsData
+                    }
+                },
+                include: {
+                    items: {
+                        include: {
+                            product: true
+                        }
+                    }
+                }
+            });
+
+            return updatedOrder;
+        });
+
+        // Send emails
+        await sendOrderUpdatedEmails(result, itemsForEmail);
+
+        res.json(result);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.issues
+            });
+        }
+        res.status(500).json({ error: (error as Error).message || 'Failed to update order items' });
+    }
+});
+
 // PATCH /api/orders/:id/status - Update order status (super_admin/editor/commercial/magasinier)
+
 router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [
     PERMISSIONS.ORDERS_MANAGE,
     PERMISSIONS.ORDERS_EDIT,

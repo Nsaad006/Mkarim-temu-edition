@@ -162,3 +162,94 @@ export const sendOrderEmails = async (order: any) => {
         console.error('❌ Error in sendOrderEmails main block:', error);
     }
 };
+
+/**
+ * Send order update notification to customer and admin
+ */
+export const sendOrderUpdatedEmails = async (order: any, newItems: any[]) => {
+    try {
+        const settings = await prisma.settings.findFirst();
+        if (!settings || !settings.emailEnabled) {
+            console.log('⏭️ Skipping update emails: disabled or no settings');
+            return;
+        }
+
+        const currency = settings.currency || 'MAD';
+        const storeName = settings.storeName || 'MKARIM Store';
+
+        // Prepare items HTML for the new items
+        const itemsHtml = newItems.map((item: any) => `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.product?.name || 'Produit'}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">x${item.quantity}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${item.price.toLocaleString()} ${currency}</td>
+            </tr>
+        `).join('');
+
+        const emailTemplate = (isForAdmin: boolean) => `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+                <div style="background-color: #eb4432; padding: 20px; text-align: center; color: white;">
+                    <h1 style="margin: 0;">${storeName}</h1>
+                    <p style="margin: 5px 0 0;">Mise à jour de la commande</p>
+                </div>
+                <div style="padding: 30px;">
+                    <p>Bonjour ${isForAdmin ? 'Admin' : order.customerName},</p>
+                    <p>${isForAdmin
+                ? `La commande <strong>#${order.orderNumber}</strong> vient d'être modifiée.`
+                : `Votre commande <strong>#${order.orderNumber}</strong> a été modifiée avec succès.`
+            }</p>
+                    
+                    <h3 style="border-bottom: 2px solid #eb4432; padding-bottom: 5px; margin-top: 30px;">Nouveau récapitulatif de la commande</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f9f9f9;">
+                                <th style="padding: 10px; text-align: left;">Produit</th>
+                                <th style="padding: 10px; text-align: center;">Qté</th>
+                                <th style="padding: 10px; text-align: right;">Prix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" style="padding: 20px 10px 10px; text-align: right; font-weight: bold;">TOTAL :</td>
+                                <td style="padding: 20px 10px 10px; text-align: right; font-weight: bold; color: #eb4432; font-size: 1.2em;">${order.total.toLocaleString()} ${currency}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    ${!isForAdmin ? `
+                    <div style="margin-top: 30px; text-align: center;">
+                        <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+                    </div>
+                    ` : `
+                    <div style="margin-top: 30px; text-align: center;">
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:8080'}/admin/orders" style="background-color: #333; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Voir dans le Dashboard</a>
+                    </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+        if (order.email) {
+            console.log(`📧 Sending update notification to customer: ${order.email}`);
+            await sendEmail(
+                order.email,
+                `Mise à jour de votre commande #${order.orderNumber} - ${storeName}`,
+                emailTemplate(false)
+            ).catch(err => console.error('❌ Failed to send customer update email:', err));
+        }
+
+        if (settings.emailAdminReceiver) {
+            console.log(`📧 Sending update notification to admin: ${settings.emailAdminReceiver}`);
+            await sendEmail(
+                settings.emailAdminReceiver,
+                `🚨 Commande mise à jour #${order.orderNumber} - ${order.customerName}`,
+                emailTemplate(true)
+            ).catch(err => console.error('❌ Failed to send admin update email:', err));
+        }
+    } catch (error) {
+        console.error('❌ Error in sendOrderUpdatedEmails main block:', error);
+    }
+};

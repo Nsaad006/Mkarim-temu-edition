@@ -92,6 +92,13 @@ export const wholesalersApi = {
         return response.data;
     },
 
+    delete: async (id: string) => {
+        const response = await axios.delete(`${API_URL}/wholesalers/${id}`, {
+            headers: getAuthHeader()
+        });
+        return response.data;
+    },
+
     createOrder: async (wholesalerId: string, data: { items: { productId: string; quantity: number; unitPrice: number }[]; advanceAmount: number }) => {
         const response = await axios.post<WholesaleOrder>(`${API_URL}/wholesalers/${wholesalerId}/orders`, data, {
             headers: getAuthHeader()

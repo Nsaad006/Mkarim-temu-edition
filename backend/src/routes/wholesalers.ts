@@ -165,6 +165,31 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
     }
 });
 
+// DELETE /api/wholesalers/:id - Delete wholesaler
+router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_EDIT, PERMISSIONS.LOGISTICS_MANAGE]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        // Check if wholesaler has any orders
+        const ordersCount = await prisma.wholesaleOrder.count({
+            where: { wholesalerId: id }
+        });
+
+        if (ordersCount > 0) {
+            return res.status(400).json({ error: "impossible de supprimer un grossiste disposant d'une commande" });
+        }
+
+        await prisma.wholesaler.delete({
+            where: { id }
+        });
+
+        res.status(204).send();
+    } catch (error) {
+        console.error('Error deleting wholesaler:', error);
+        res.status(500).json({ error: 'Failed to delete wholesaler' });
+    }
+});
+
 // POST /api/wholesalers/:id/orders - Create Order
 router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_CREATE, PERMISSIONS.LOGISTICS_MANAGE]), async (req: any, res: Response) => {
     try {

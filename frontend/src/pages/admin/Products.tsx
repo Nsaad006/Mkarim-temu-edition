@@ -5,7 +5,8 @@ import {
     Cpu, Zap, HardDrive, Tag, Monitor, Terminal, Power, Box,
     Wind, Maximize, Activity, Wifi, Battery, Weight, Layers,
     Keyboard, MousePointer2, Palette, ShieldCheck, CircuitBoard,
-    Target, Snowflake, RefreshCw, Layout, Scale
+    Target, Snowflake, RefreshCw, Layout, Scale, ArchiveRestore,
+    ArrowLeft
 } from "lucide-react";
 import {
     Table,
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -60,6 +62,8 @@ const AdminProducts = () => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [passwordActionType, setPasswordActionType] = useState<'COST' | 'STOCK'>('COST');
     const [pendingProductData, setPendingProductData] = useState<any>(null);
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+    const [showTrash, setShowTrash] = useState(false);
     const queryClient = useQueryClient();
 
     // Pagination state
@@ -104,8 +108,8 @@ const AdminProducts = () => {
 
     // Fetch products
     const { data: products = [], isLoading } = useQuery({
-        queryKey: ['admin-products'],
-        queryFn: () => productsApi.getAll(),
+        queryKey: ['admin-products', showTrash],
+        queryFn: () => productsApi.getAll({ trashed: showTrash }),
     });
 
     // Check for edit query param
@@ -194,13 +198,14 @@ const AdminProducts = () => {
 
     // Delete product mutation
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => productsApi.delete(id),
+        mutationFn: (id: string) => showTrash ? productsApi.forceDelete(id) : productsApi.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
+            setSelectedProducts([]);
             toast({
-                title: "Produit supprimé",
-                description: "Le produit a été supprimé avec succès.",
+                title: showTrash ? "Produit supprimé définitivement" : "Produit déplacé vers la corbeille",
+                description: "L'opération a été effectuée avec succès.",
             });
         },
         onError: (error: AxiosError<{ error: string }>) => {
@@ -210,18 +215,69 @@ const AdminProducts = () => {
             if (errorMessage.includes("exists in orders") || error.response?.status === 400) {
                 toast({
                     title: "Impossible de supprimer",
-                    description: "Ce produit est lié à des commandes existantes. Veuillez plutôt le marquer comme 'Hors stock' ou le désactiver.",
+                    description: showTrash ? "Impossible de supprimer définitivement car il figure dans des commandes." : "Ce produit est lié à des commandes existantes.",
                     variant: "destructive",
                     duration: 5000,
                 });
             } else {
                 toast({
                     title: "Erreur",
-                    description: errorMessage || "Impossible de supprimer le produit.",
+                    description: errorMessage || "Impossible de réaliser l'opération.",
                     variant: "destructive",
                 });
             }
         },
+    });
+
+    // Bulk delete mutation
+    const bulkDeleteMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const deleteFn = showTrash ? productsApi.forceDelete : productsApi.delete;
+            const results = await Promise.allSettled(ids.map(id => deleteFn(id)));
+            const failed = results.filter(r => r.status === 'rejected');
+            if (failed.length > 0) {
+                throw new Error(`${failed.length} produit(s) n'ont pas pu être traités.`);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            setSelectedProducts([]);
+            toast({
+                title: "Opération réussie",
+                description: showTrash ? "Les produits ont été supprimés définitivement." : "Les produits ont été mis à la corbeille.",
+            });
+        },
+        onError: (error: Error) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] }); // Refresh anyway because some might have succeeded
+            setSelectedProducts([]);
+            toast({
+                title: "Opération partielle ou échouée",
+                description: error.message || "Une erreur est survenue lors de l'opération.",
+                variant: "destructive",
+                duration: 5000,
+            });
+        },
+    });
+
+    // Restore mutation
+    const restoreMutation = useMutation({
+        mutationFn: (id: string) => productsApi.restore(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast({
+                title: "Produit restauré",
+                description: "Le produit a été restauré avec succès dans le catalogue.",
+            });
+        },
+        onError: () => {
+            toast({
+                title: "Erreur",
+                description: "Impossible de restaurer le produit.",
+                variant: "destructive",
+            });
+        }
     });
 
     const resetForm = () => {
@@ -432,6 +488,28 @@ const AdminProducts = () => {
         currentPage * pageSize
     );
 
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedProducts(paginatedProducts.map(p => p.id));
+        } else {
+            setSelectedProducts([]);
+        }
+    };
+
+    const handleSelectProduct = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelectedProducts(prev => [...prev, id]);
+        } else {
+            setSelectedProducts(prev => prev.filter(pId => pId !== id));
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (window.confirm(`Êtes-vous sûr de vouloir supprimer les ${selectedProducts.length} produit(s) sélectionné(s) ?`)) {
+            bulkDeleteMutation.mutate(selectedProducts);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -443,10 +521,39 @@ const AdminProducts = () => {
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">Produits</h1>
-                <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter
-                </Button>
+                <h1 className="text-2xl font-bold tracking-tight">Produits {showTrash && <span className="text-muted-foreground text-sm font-normal">/ Corbeille</span>}</h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                    {selectedProducts.length > 0 && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                            disabled={bulkDeleteMutation.isPending}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" /> {showTrash ? "Supprimer déf." : "À la corbeille"} ({selectedProducts.length})
+                        </Button>
+                    )}
+                    <Button
+                        variant={showTrash ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                            setShowTrash(!showTrash);
+                            setSelectedProducts([]);
+                            setCurrentPage(1);
+                        }}
+                    >
+                        {showTrash ? (
+                            <><ArrowLeft className="mr-2 h-4 w-4" /> Retour aux Produits</>
+                        ) : (
+                            <><Trash2 className="mr-2 h-4 w-4" /> Corbeille</>
+                        )}
+                    </Button>
+                    {!showTrash && (
+                        <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+                            <Plus className="mr-2 h-4 w-4" /> Ajouter
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Search and Filter Section */}
@@ -481,6 +588,12 @@ const AdminProducts = () => {
                     <Table>
                         <TableHeader className="bg-muted/30">
                             <TableRow>
+                                <TableHead className="w-[40px] px-4">
+                                    <Checkbox
+                                        checked={paginatedProducts.length > 0 && selectedProducts.length === paginatedProducts.length}
+                                        onCheckedChange={handleSelectAll}
+                                    />
+                                </TableHead>
                                 <TableHead className="w-[80px]">Image</TableHead>
                                 <TableHead>Nom du Produit</TableHead>
                                 <TableHead>Catégorie</TableHead>
@@ -495,6 +608,12 @@ const AdminProducts = () => {
                         <TableBody>
                             {paginatedProducts.map((product) => (
                                 <TableRow key={product.id} className="hover:bg-muted/5 transition-colors">
+                                    <TableCell className="px-4">
+                                        <Checkbox
+                                            checked={selectedProducts.includes(product.id)}
+                                            onCheckedChange={(checked) => handleSelectProduct(product.id, checked as boolean)}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-secondary border border-border">
                                             <img
@@ -572,22 +691,49 @@ const AdminProducts = () => {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 hover:bg-muted"
-                                                onClick={() => handleEdit(product)}
-                                            >
-                                                <Pencil className="w-4 h-4 text-muted-foreground" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
-                                                onClick={() => handleDelete(product.id, product.name)}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {showTrash ? (
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 hover:bg-green-100 hover:text-green-600"
+                                                        onClick={() => restoreMutation.mutate(product.id)}
+                                                        title="Restaurer"
+                                                    >
+                                                        <ArchiveRestore className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
+                                                        onClick={() => handleDelete(product.id, product.name)}
+                                                        title="Supprimer définitivement"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 hover:bg-muted"
+                                                        onClick={() => handleEdit(product)}
+                                                        title="Modifier"
+                                                    >
+                                                        <Pencil className="w-4 h-4 text-muted-foreground" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
+                                                        onClick={() => handleDelete(product.id, product.name)}
+                                                        title="Mettre à la corbeille"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>

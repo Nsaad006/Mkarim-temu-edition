@@ -22,6 +22,7 @@ export interface Order {
   status: OrderStatus;
   returnReason?: string;
   createdAt: string;
+  updatedAt?: string;
   items: {
     id: string;
     productId: string;
