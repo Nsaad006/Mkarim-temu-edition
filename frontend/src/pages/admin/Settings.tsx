@@ -468,6 +468,54 @@ const Settings = () => {
                                         </div>
                                     </div>
 
+                                    <div className="border-t border-border pt-4 space-y-4">
+                                        <h3 className="font-semibold text-lg">Cartes "Pourquoi Nous" (6 Cartes Homepage)</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {Array.isArray(formData.whyFeatures) && formData.whyFeatures.map((feat: any, idx: number) => (
+                                                <div key={idx} className="p-4 bg-muted/30 border rounded-lg space-y-2">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="text-xs font-bold uppercase text-muted-foreground">Carte #{idx + 1}</p>
+                                                        <span className="text-xs font-mono bg-background px-2 py-1 rounded border">{feat.icon}</span>
+                                                    </div>
+                                                    <Label>Titre</Label>
+                                                    <Input
+                                                        value={feat.title}
+                                                        onChange={(e) => {
+                                                            const newFeats = [...(formData.whyFeatures as any[])];
+                                                            newFeats[idx] = { ...newFeats[idx], title: e.target.value };
+                                                            setFormData({ ...formData, whyFeatures: newFeats });
+                                                        }}
+                                                    />
+                                                    <Label>Description</Label>
+                                                    <Textarea
+                                                        value={feat.description}
+                                                        onChange={(e) => {
+                                                            const newFeats = [...(formData.whyFeatures as any[])];
+                                                            newFeats[idx] = { ...newFeats[idx], description: e.target.value };
+                                                            setFormData({ ...formData, whyFeatures: newFeats });
+                                                        }}
+                                                        rows={2}
+                                                    />
+                                                </div>
+                                            ))}
+                                            {(!formData.whyFeatures || formData.whyFeatures.length === 0) && (
+                                                <Button type="button" variant="outline" onClick={() => setFormData({
+                                                    ...formData,
+                                                    whyFeatures: [
+                                                        { icon: "CreditCard", title: "Paiement à la Livraison", description: "Payez en cash à la réception..." },
+                                                        { icon: "Truck", title: "Livraison Rapide", description: "Livraison partout au Maroc..." },
+                                                        { icon: "ShieldCheck", title: "Garantie Produits", description: "Tous nos produits..." },
+                                                        { icon: "Award", title: "Qualité Premium", description: "Nous sélectionnons..." },
+                                                        { icon: "Headphones", title: "Support Client", description: "Notre équipe..." },
+                                                        { icon: "Clock", title: "Réponse Rapide", description: "Confirmation..." }
+                                                    ]
+                                                })}>
+                                                    Initialiser les cartes par défaut
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="border-t border-border pt-4 grid md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Titre "Contact"</Label>
@@ -485,18 +533,7 @@ const Settings = () => {
                                         </div>
                                     </div>
 
-                                    <div className="border-t border-border pt-4">
-                                        <h3 className="text-lg font-medium mb-3">Seuil de stock bas</h3>
-                                        <div className="space-y-2 max-w-xs">
-                                            <Label>Seuil d'alerte</Label>
-                                            <Input
-                                                type="number"
-                                                value={formData.lowStockThreshold || 5}
-                                                onChange={(e) => setFormData({ ...formData, lowStockThreshold: parseInt(e.target.value) || 0 })}
-                                            />
-                                            <p className="text-xs text-muted-foreground">Les produits avec un stock inférieur à ce nombre afficheront un badge "Stock Faible".</p>
-                                        </div>
-                                    </div>
+
                                 </div>
                             </div>
 
@@ -741,6 +778,18 @@ const Settings = () => {
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             Les commandes au-dessus de ce montant bénéficieront de la livraison gratuite (si activée).
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Texte badge de livraison (Panier)</Label>
+                                        <Input
+                                            value={formData.cartShippingText || "Logistique incluse"}
+                                            onChange={(e) => setFormData({ ...formData, cartShippingText: e.target.value })}
+                                            placeholder="Logistique incluse"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Texte qui s'affiche sur la page panier (ex: Logistique incluse, Livraison Gratuite).
                                         </p>
                                     </div>
                                 </div>

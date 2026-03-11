@@ -45,6 +45,23 @@ const WhyChooseUs = () => {
   const sectionTitle = settings?.whyTitle || "L'EXCELLENCE MKARIM SOLUTION";
   const sectionSubtitle = settings?.whySubtitle || "Nous redéfinissons le standard du gaming au Maroc avec un service irréprochable.";
 
+  // Maps string representation of icon from db to actual Lucide component
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'CreditCard': return CreditCard;
+      case 'Truck': return Truck;
+      case 'ShieldCheck': return ShieldCheck;
+      case 'Award': return Award;
+      case 'Headphones': return Headphones;
+      case 'Clock': return Clock;
+      default: return ShieldCheck; // Fallback
+    }
+  };
+
+  const currentFeatures = settings?.whyFeatures && Array.isArray(settings.whyFeatures) && settings.whyFeatures.length > 0
+    ? settings.whyFeatures.map((f: any) => ({ ...f, icon: getIconComponent(f.icon) }))
+    : features;
+
   return (
     <section className="section-padding relative overflow-hidden bg-background">
       {/* Background Decorative elements */}
@@ -67,7 +84,7 @@ const WhyChooseUs = () => {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 px-2 md:px-0">
-          {features.map((feature, index) => (
+          {currentFeatures.map((feature: any, index: number) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 30 }}

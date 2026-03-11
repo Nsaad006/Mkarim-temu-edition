@@ -99,6 +99,28 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
+// Middleware to optionally verify JWT
+export const optionalAuthenticate = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return next();
+    }
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as {
+            id: string;
+            email: string;
+            role: string;
+            permissions?: string[];
+        };
+        (req as AuthenticatedRequest).user = decoded;
+    } catch (error) {
+        // Just ignore invalid tokens for optional auth
+    }
+    next();
+};
+
 // Middleware to authorize roles OR permissions
 export const authorize = (allowedRoles: string[], requiredPermission?: string | string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {

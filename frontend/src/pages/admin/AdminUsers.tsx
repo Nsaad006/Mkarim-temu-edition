@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -44,7 +45,8 @@ const AdminUsers = () => {
         name: "",
         email: "",
         password: "",
-        role: "viewer"
+        role: "viewer",
+        allowedCategories: [] as string[]
     });
 
     // Fetch admins
@@ -62,6 +64,15 @@ const AdminUsers = () => {
         },
     });
 
+    // Fetch categories
+    const { data: categories = [] } = useQuery({
+        queryKey: ['categories'],
+        queryFn: async () => {
+            const { data } = await apiClient.get<any[]>('/api/categories');
+            return data;
+        },
+    });
+
     // Create admin
     const createMutation = useMutation({
         mutationFn: (data: typeof formData) => adminsApi.create(data),
@@ -72,7 +83,7 @@ const AdminUsers = () => {
                 description: "Le nouvel administrateur a été créé avec succès.",
             });
             setIsDialogOpen(false);
-            setFormData({ name: "", email: "", password: "", role: "viewer" });
+            setFormData({ name: "", email: "", password: "", role: "viewer", allowedCategories: [] });
         },
         onError: (error: AxiosError<{ error: string }>) => {
             toast({
@@ -105,6 +116,14 @@ const AdminUsers = () => {
     // Status toggle
     const statusMutation = useMutation({
         mutationFn: ({ id, active }: { id: string; active: boolean }) => adminsApi.updateStatus(id, active),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        }
+    });
+
+    // Update categories mutation
+    const updateCategoriesMutation = useMutation({
+        mutationFn: ({ id, allowedCategories }: { id: string; allowedCategories: string[] }) => adminsApi.updateCategories(id, allowedCategories),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
         }
@@ -161,6 +180,9 @@ const AdminUsers = () => {
             // Update role
             const rolePayload = editingUser.roleId || editingUser.role;
             await updateRoleMutation.mutateAsync({ id: editingUser.id, role: rolePayload });
+
+            // Update categories
+            await updateCategoriesMutation.mutateAsync({ id: editingUser.id, allowedCategories: editingUser.allowedCategories || [] });
 
             // Update password if provided
             if (newPassword.trim()) {
@@ -337,6 +359,27 @@ const AdminUsers = () => {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-3 pt-2">
+                            <Label>Catégories autorisées (Laissez vide pour autoriser toutes)</Label>
+                            <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg border max-h-40 overflow-y-auto">
+                                {categories.map((cat: any) => (
+                                    <div key={cat.id} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`cat-${cat.id}`}
+                                            checked={formData.allowedCategories.includes(cat.id)}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setFormData({ ...formData, allowedCategories: [...formData.allowedCategories, cat.id] });
+                                                } else {
+                                                    setFormData({ ...formData, allowedCategories: formData.allowedCategories.filter(id => id !== cat.id) });
+                                                }
+                                            }}
+                                        />
+                                        <Label htmlFor={`cat-${cat.id}`} className="text-sm cursor-pointer mb-0 pb-0">{cat.name}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                         <div className="pt-2 flex justify-end gap-2">
                             <Button
                                 type="button"
@@ -404,7 +447,29 @@ const AdminUsers = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-3 pt-2">
+                                <Label>Catégories autorisées (Laissez vide pour autoriser toutes)</Label>
+                                <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg border max-h-40 overflow-y-auto">
+                                    {categories.map((cat: any) => (
+                                        <div key={cat.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`edit-cat-${cat.id}`}
+                                                checked={(editingUser.allowedCategories || []).includes(cat.id)}
+                                                onCheckedChange={(checked) => {
+                                                    const current = editingUser.allowedCategories || [];
+                                                    if (checked) {
+                                                        setEditingUser({ ...editingUser, allowedCategories: [...current, cat.id] });
+                                                    } else {
+                                                        setEditingUser({ ...editingUser, allowedCategories: current.filter(id => id !== cat.id) });
+                                                    }
+                                                }}
+                                            />
+                                            <Label htmlFor={`edit-cat-${cat.id}`} className="text-sm cursor-pointer mb-0 pb-0">{cat.name}</Label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-2 pt-2">
                                 <Label>Nouveau Mot de passe (optionnel)</Label>
                                 <Input
                                     type="password"

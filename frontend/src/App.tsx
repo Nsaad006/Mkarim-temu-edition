@@ -11,6 +11,7 @@ import OrderSuccess from "./pages/OrderSuccess";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import CartPage from "./pages/CartPage";
+import PromoPage from "./pages/PromoPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/cart" element={<CartPage />} />
+                <Route path="/promo/:id" element={<PromoPage />} />
 
                 <Route path="/login" element={<Login />} />
 

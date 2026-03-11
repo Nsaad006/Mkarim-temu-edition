@@ -19,7 +19,8 @@ import {
     Plus,
     Minus,
     Trash2,
-    Edit2
+    Edit2,
+    ChevronsUpDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -51,6 +52,19 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import {
     Sheet,
     SheetContent,
@@ -105,11 +119,13 @@ const Orders = () => {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [returnReason, setReturnReason] = useState("");
     const [orderToReturn, setOrderToReturn] = useState<string | null>(null);
+    const [returnItems, setReturnItems] = useState<{ productId: string, name: string, quantity: number, maxQuantity: number }[]>([]);
 
     // Edit Order State
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editItems, setEditItems] = useState<any[]>([]);
     const [newProductSelect, setNewProductSelect] = useState<string>("");
+    const [isProductComboboxOpen, setIsProductComboboxOpen] = useState(false);
 
     // Safety cleanup for stuck backdrops (Radix UI)
     // If the page is frozen, it's usually because 'pointer-events: none' is left on the body
@@ -166,6 +182,26 @@ const Orders = () => {
             toast({
                 title: "Erreur",
                 description: error.response?.data?.error || "Impossible de mettre à jour le statut de la commande.",
+                variant: "destructive",
+            });
+        }
+    });
+
+    const partialReturnMutation = useMutation({
+        mutationFn: ({ id, items, reason }: { id: string; items: { productId: string; quantity: number }[]; reason?: string }) =>
+            ordersApi.partialReturn(id, items, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+            toast({
+                title: "Retour enregistré",
+                description: "Le retour a été traité avec succès.",
+            });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erreur",
+                description: error.response?.data?.error || "Impossible de traiter le retour.",
                 variant: "destructive",
             });
         }
@@ -306,6 +342,9 @@ const Orders = () => {
             return ['SHIPPED', 'DELIVERED', 'RETOUR'].includes(status);
         }
 
+        // Catch-all: check specific permission again just in case (already checked above safely)
+        if (status === 'RETOUR' && userPermissions.includes(PERMISSIONS.ORDERS_RETURN)) return true;
+
         return false;
     };
 
@@ -333,6 +372,9 @@ const Orders = () => {
             return ['PENDING', 'CONFIRMED'].includes(currentStatus);
         }
         if (targetStatus === 'RETOUR') {
+            // Also allow PENDING if they have the specific permission, but generally CONFIRMED/SHIPPED/DELIVERED
+            // If they have the explicit PERMISSION, we let them return from any post-confirmed state.
+            if (userPermissions.includes(PERMISSIONS.ORDERS_RETURN)) return true;
             return ['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(currentStatus);
         }
 
@@ -415,8 +457,19 @@ const Orders = () => {
 
     const handleStatusChange = (orderId: string, newStatus: string) => {
         if (newStatus === "RETOUR") {
+            const order = orders.find((o: Order) => o.id === orderId);
             setOrderToReturn(orderId);
             setReturnReason("");
+            if (order) {
+                setReturnItems(order.items.map(item => ({
+                    productId: item.productId,
+                    name: item.product?.name || 'Produit inconnu',
+                    quantity: item.quantity,
+                    maxQuantity: item.quantity
+                })));
+            } else {
+                setReturnItems([]);
+            }
 
             // Serialize transition: close sheet first, wait for Radix to cleanup, then open dialog
             // This prevents the "stacking backdrop" issue that leads to UI freezes.
@@ -435,9 +488,18 @@ const Orders = () => {
 
     const confirmReturn = () => {
         if (orderToReturn) {
-            updateStatusMutation.mutate({
+            const itemsToReturn = returnItems
+                .filter(item => item.quantity > 0)
+                .map(item => ({ productId: item.productId, quantity: item.quantity }));
+
+            if (itemsToReturn.length === 0) {
+                toast({ title: "Erreur", description: "Veuillez sélectionner au moins un article à retourner.", variant: "destructive" });
+                return;
+            }
+
+            partialReturnMutation.mutate({
                 id: orderToReturn,
-                status: "RETOUR",
+                items: itemsToReturn,
                 reason: returnReason
             }, {
                 onSuccess: () => {
@@ -820,13 +882,27 @@ const Orders = () => {
                                             <p className="font-medium">{selectedOrder.customerName}</p>
                                         </div>
                                         <div>
-                                            <p className="text-muted-foreground">Téléphone</p>
-                                            <p className="font-medium flex items-center gap-2">
-                                                {selectedOrder.phone}
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openWhatsApp(selectedOrder.phone, selectedOrder.orderNumber)}>
-                                                    <MessageCircle className="w-3 h-3 text-green-600" />
+                                            <p className="text-muted-foreground mb-1">Téléphone</p>
+                                            <div className="flex flex-col gap-2 items-start">
+                                                <div className="font-medium flex items-center gap-2">
+                                                    {selectedOrder.phone}
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openWhatsApp(selectedOrder.phone, selectedOrder.orderNumber)} title="WhatsApp">
+                                                        <MessageCircle className="w-4 h-4 text-green-600" />
+                                                    </Button>
+                                                </div>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="h-7 text-xs bg-primary/10 text-primary hover:bg-primary/20"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(selectedOrder.phone);
+                                                        toast({ title: "Numéro copié", description: "Prêt à être collé pour l'appel." });
+                                                        window.location.href = `tel:${selectedOrder.phone}`;
+                                                    }}
+                                                >
+                                                    <Phone className="w-3 h-3 mr-1.5" /> Appeler
                                                 </Button>
-                                            </p>
+                                            </div>
                                         </div>
                                         <div>
                                             <p className="text-muted-foreground">Ville</p>
@@ -847,20 +923,62 @@ const Orders = () => {
 
                                     {isEditingOrder && (
                                         <div className="mb-4 flex gap-2 items-center p-3 bg-secondary/20 rounded-lg border border-border">
-                                            <Select value={newProductSelect} onValueChange={setNewProductSelect}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Ajouter un produit..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {products.map((p: any) => (
-                                                        <SelectItem key={p.id} value={p.id}>
-                                                            {p.name} - {p.price} {currency}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button size="icon" variant="secondary" onClick={addProductToEditOrder} disabled={!newProductSelect}>
-                                                <Plus className="w-4 h-4" />
+                                            <Popover modal={true} open={isProductComboboxOpen} onOpenChange={setIsProductComboboxOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={isProductComboboxOpen}
+                                                        className="flex-1 justify-between font-normal h-12 bg-background border-input px-3"
+                                                    >
+                                                        {newProductSelect
+                                                            ? products.find((p: any) => p.id === newProductSelect)?.name || "Produit inconnu"
+                                                            : "Ajouter un produit..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                                    <Command className="w-full">
+                                                        <CommandInput placeholder="Tapez pour chercher..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {products.map((p: any) => (
+                                                                    <CommandItem
+                                                                        key={p.id}
+                                                                        value={`${p.name} ${p.price}`}
+                                                                        onSelect={() => {
+                                                                            setNewProductSelect(p.id);
+                                                                            setIsProductComboboxOpen(false);
+                                                                        }}
+                                                                        className="cursor-pointer mb-1 border-b last:border-0 border-border"
+                                                                    >
+                                                                        <div className="flex items-center gap-3 w-full p-1">
+                                                                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center shrink-0 overflow-hidden">
+                                                                                {p.image ? (
+                                                                                    <img src={getImageUrl(p.image)} alt={p.name} className="w-full h-full object-cover" />
+                                                                                ) : (
+                                                                                    <Package className="w-5 h-5 text-gray-500" />
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex flex-col flex-1 min-w-0 items-start text-left">
+                                                                                <span className="font-semibold text-[13px] truncate w-full">{p.name}</span>
+                                                                                <div className="flex items-center gap-2 text-[11px] mt-0.5 w-full">
+                                                                                    <span className="text-muted-foreground whitespace-nowrap">Stock: {p.quantity}</span>
+                                                                                    <span className="text-muted-foreground">•</span>
+                                                                                    <span className="text-emerald-600 font-bold whitespace-nowrap">Coût: {p.price.toLocaleString()} {currency}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Button size="icon" variant="secondary" className="h-12 w-12 shrink-0 bg-secondary/80 hover:bg-secondary border shadow-sm" onClick={addProductToEditOrder} disabled={!newProductSelect}>
+                                                <Plus className="w-5 h-5" />
                                             </Button>
                                         </div>
                                     )}
@@ -983,23 +1101,61 @@ const Orders = () => {
                             Veuillez indiquer la raison du retour. Les articles seront remis en stock.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4">
-                        <Input
-                            placeholder="Ex: Produit cassé, erreur de commande..."
-                            value={returnReason}
-                            onChange={(e) => setReturnReason(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && returnReason.trim()) confirmReturn();
-                            }}
-                        />
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
+                            <h4 className="font-semibold text-sm">Quels articles voulez-vous retourner ?</h4>
+                            {returnItems.map((item, index) => (
+                                <div key={item.productId} className="flex items-center justify-between gap-4 p-2 bg-muted/30 rounded-md border">
+                                    <div className="truncate text-sm font-medium flex-1">
+                                        {item.name}
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => {
+                                                const newItems = [...returnItems];
+                                                newItems[index].quantity = Math.max(0, newItems[index].quantity - 1);
+                                                setReturnItems(newItems);
+                                            }}
+                                            disabled={item.quantity <= 0}
+                                        >-</Button>
+                                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => {
+                                                const newItems = [...returnItems];
+                                                newItems[index].quantity = Math.min(newItems[index].maxQuantity, newItems[index].quantity + 1);
+                                                setReturnItems(newItems);
+                                            }}
+                                            disabled={item.quantity >= item.maxQuantity}
+                                        >+</Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold">Mémo ou Raison du retour</label>
+                            <Input
+                                placeholder="Ex: Produit cassé, retour d'une seule pièce..."
+                                value={returnReason}
+                                onChange={(e) => setReturnReason(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && returnReason.trim()) confirmReturn();
+                                }}
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsReturnDialogOpen(false)}>Annuler</Button>
                         <Button
-                            disabled={!returnReason.trim() || updateStatusMutation.isPending}
+                            disabled={!returnReason.trim() || partialReturnMutation.isPending}
                             onClick={confirmReturn}
                         >
-                            {updateStatusMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+                            {partialReturnMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : null}
                             Confirmer le retour
                         </Button>
                     </DialogFooter>

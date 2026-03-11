@@ -6,7 +6,7 @@ import {
     Wind, Maximize, Activity, Wifi, Battery, Weight, Layers,
     Keyboard, MousePointer2, Palette, ShieldCheck, CircuitBoard,
     Target, Snowflake, RefreshCw, Layout, Scale, ArchiveRestore,
-    ArrowLeft
+    ArrowLeft, Link
 } from "lucide-react";
 import {
     Table,
@@ -36,6 +36,12 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext, useSearchParams } from "react-router-dom";
@@ -64,6 +70,12 @@ const AdminProducts = () => {
     const [pendingProductData, setPendingProductData] = useState<any>(null);
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [showTrash, setShowTrash] = useState(false);
+
+    // Restock dialog state
+    const [isRestockDialogOpen, setIsRestockDialogOpen] = useState(false);
+    const [selectedItemToRestock, setSelectedItemToRestock] = useState<any>(null);
+    const [restockQuantity, setRestockQuantity] = useState("1");
+
     const queryClient = useQueryClient();
 
     // Pagination state
@@ -110,6 +122,12 @@ const AdminProducts = () => {
     const { data: products = [], isLoading } = useQuery({
         queryKey: ['admin-products', showTrash],
         queryFn: () => productsApi.getAll({ trashed: showTrash }),
+    });
+
+    // Fetch returned products
+    const { data: returnedProducts = [] } = useQuery({
+        queryKey: ['admin-returned-products'],
+        queryFn: productsApi.getReturns,
     });
 
     // Check for edit query param
@@ -275,6 +293,30 @@ const AdminProducts = () => {
             toast({
                 title: "Erreur",
                 description: "Impossible de restaurer le produit.",
+                variant: "destructive",
+            });
+        }
+    });
+
+    // Restock Return mutation
+    const restockMutation = useMutation({
+        mutationFn: ({ id, quantity }: { id: string, quantity: number }) => productsApi.restockReturn(id, quantity),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-returned-products'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast({
+                title: "Stock mis à jour",
+                description: "Le produit a été remis en stock avec succès.",
+            });
+            setIsRestockDialogOpen(false);
+            setSelectedItemToRestock(null);
+            setRestockQuantity("1");
+        },
+        onError: (error: AxiosError<{ error: string }>) => {
+            toast({
+                title: "Erreur",
+                description: error.response?.data?.error || "Impossible de remettre le produit en stock.",
                 variant: "destructive",
             });
         }
@@ -520,240 +562,332 @@ const AdminProducts = () => {
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">Produits {showTrash && <span className="text-muted-foreground text-sm font-normal">/ Corbeille</span>}</h1>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {selectedProducts.length > 0 && (
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleBulkDelete}
-                            disabled={bulkDeleteMutation.isPending}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" /> {showTrash ? "Supprimer déf." : "À la corbeille"} ({selectedProducts.length})
-                        </Button>
-                    )}
-                    <Button
-                        variant={showTrash ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                            setShowTrash(!showTrash);
-                            setSelectedProducts([]);
+            <Tabs defaultValue="products" className="space-y-4">
+                <TabsList>
+                    <TabsTrigger value="products">Tous les Produits</TabsTrigger>
+                    <TabsTrigger value="returns">Produits Retournés</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="products" className="space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h1 className="text-2xl font-bold tracking-tight">Produits {showTrash && <span className="text-muted-foreground text-sm font-normal">/ Corbeille</span>}</h1>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {selectedProducts.length > 0 && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={handleBulkDelete}
+                                    disabled={bulkDeleteMutation.isPending}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> {showTrash ? "Supprimer déf." : "À la corbeille"} ({selectedProducts.length})
+                                </Button>
+                            )}
+                            <Button
+                                variant={showTrash ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => {
+                                    setShowTrash(!showTrash);
+                                    setSelectedProducts([]);
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                {showTrash ? (
+                                    <><ArrowLeft className="mr-2 h-4 w-4" /> Retour aux Produits</>
+                                ) : (
+                                    <><Trash2 className="mr-2 h-4 w-4" /> Corbeille</>
+                                )}
+                            </Button>
+                            {!showTrash && (
+                                <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+                                    <Plus className="mr-2 h-4 w-4" /> Ajouter
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Search and Filter Section */}
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-2 items-start sm:items-center bg-card p-4 rounded-xl border border-border">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <Input
+                                placeholder="Rechercher produit, SKU..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10 bg-background h-9"
+                            />
+                        </div>
+                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger className="w-full sm:w-[200px] bg-background h-9">
+                                <SelectValue placeholder="Toutes les catégories" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Toutes les catégories</SelectItem>
+                                {categories.filter(cat => cat.active).map((category) => (
+                                    <SelectItem key={category.id} value={category.id}>
+                                        {category.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Products Table */}
+                    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/30">
+                                    <TableRow>
+                                        <TableHead className="w-[40px] px-4">
+                                            <Checkbox
+                                                checked={paginatedProducts.length > 0 && selectedProducts.length === paginatedProducts.length}
+                                                onCheckedChange={handleSelectAll}
+                                            />
+                                        </TableHead>
+                                        <TableHead className="w-[80px]">Image</TableHead>
+                                        <TableHead>Nom du Produit</TableHead>
+                                        <TableHead>Catégorie</TableHead>
+                                        <TableHead>Prix Vente</TableHead>
+                                        {userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW) && <TableHead>Coût (WAC)</TableHead>}
+                                        <TableHead>Stock</TableHead>
+                                        <TableHead>Publié</TableHead>
+                                        <TableHead>Valeur</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedProducts.map((product) => (
+                                        <TableRow key={product.id} className="hover:bg-muted/5 transition-colors">
+                                            <TableCell className="px-4">
+                                                <Checkbox
+                                                    checked={selectedProducts.includes(product.id)}
+                                                    onCheckedChange={(checked) => handleSelectProduct(product.id, checked as boolean)}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-secondary border border-border">
+                                                    <img
+                                                        src={getImageUrl(product.image)}
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="font-medium">
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span>{product.name}</span>
+                                                        {(product as any).isFeatured && <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />}
+                                                    </div>
+                                                    {product.badge && (
+                                                        <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded-md w-fit mt-1">
+                                                            {product.badge}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
+                                                    {product.category?.name || 'Sans catégorie'}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="font-bold text-primary">
+                                                {product.price.toLocaleString()} {currency}
+                                            </TableCell>
+                                            {userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW) && (
+                                                <TableCell className="text-xs text-muted-foreground">
+                                                    {product.weightedAverageCost && product.weightedAverageCost > 0 ? (
+                                                        <span className="font-mono">{product.weightedAverageCost.toLocaleString()} {currency}</span>
+                                                    ) : (
+                                                        <span className="text-destructive font-bold flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" />
+                                                            0 {currency}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                            )}
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <Switch
+                                                        checked={product.inStock}
+                                                        onCheckedChange={() => handleStockToggle(product)}
+                                                        disabled={product.quantity === 0}
+                                                        className="scale-75 data-[state=checked]:bg-green-500"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${product.quantity > 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                                            {product.quantity > 0 ? 'EN STOCK' : 'ÉPUISÉ'}
+                                                        </span>
+                                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                                            {product.quantity} unités
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Switch
+                                                    checked={product.published ?? true}
+                                                    onCheckedChange={(checked) => {
+                                                        updateMutation.mutate({
+                                                            id: product.id,
+                                                            data: { published: checked }
+                                                        });
+                                                    }}
+                                                    className="scale-75 data-[state=checked]:bg-blue-500"
+                                                />
+                                            </TableCell>
+                                            <TableCell className="font-bold text-sm">
+                                                {(product.stockValue || 0).toLocaleString()} {currency}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    {showTrash ? (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 hover:bg-green-100 hover:text-green-600"
+                                                                onClick={() => restoreMutation.mutate(product.id)}
+                                                                title="Restaurer"
+                                                            >
+                                                                <ArchiveRestore className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
+                                                                onClick={() => handleDelete(product.id, product.name)}
+                                                                title="Supprimer définitivement"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 hover:bg-muted"
+                                                                onClick={() => handleEdit(product)}
+                                                                title="Modifier"
+                                                            >
+                                                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 hover:bg-muted text-blue-500 hover:text-blue-600"
+                                                                onClick={() => {
+                                                                    const url = `${window.location.origin}/promo/${product.id}`;
+                                                                    navigator.clipboard.writeText(url);
+                                                                    toast({
+                                                                        title: "Lien copié !",
+                                                                        description: "Le lien de la page promo a été copié dans le presse-papiers."
+                                                                    });
+                                                                }}
+                                                                title="Copier le lien de la page Promo"
+                                                            >
+                                                                <Link className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
+                                                                onClick={() => handleDelete(product.id, product.name)}
+                                                                title="Mettre à la corbeille"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(newSize) => {
+                            setPageSize(newSize);
                             setCurrentPage(1);
                         }}
-                    >
-                        {showTrash ? (
-                            <><ArrowLeft className="mr-2 h-4 w-4" /> Retour aux Produits</>
-                        ) : (
-                            <><Trash2 className="mr-2 h-4 w-4" /> Corbeille</>
-                        )}
-                    </Button>
-                    {!showTrash && (
-                        <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                            <Plus className="mr-2 h-4 w-4" /> Ajouter
-                        </Button>
-                    )}
-                </div>
-            </div>
-
-            {/* Search and Filter Section */}
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-2 items-start sm:items-center bg-card p-4 rounded-xl border border-border">
-                <div className="relative flex-1 w-full">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                        placeholder="Rechercher produit, SKU..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 bg-background h-9"
+                        totalItems={filteredProducts.length}
                     />
-                </div>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-full sm:w-[200px] bg-background h-9">
-                        <SelectValue placeholder="Toutes les catégories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Toutes les catégories</SelectItem>
-                        {categories.filter(cat => cat.active).map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                                {category.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+                </TabsContent>
 
-            {/* Products Table */}
-            <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader className="bg-muted/30">
-                            <TableRow>
-                                <TableHead className="w-[40px] px-4">
-                                    <Checkbox
-                                        checked={paginatedProducts.length > 0 && selectedProducts.length === paginatedProducts.length}
-                                        onCheckedChange={handleSelectAll}
-                                    />
-                                </TableHead>
-                                <TableHead className="w-[80px]">Image</TableHead>
-                                <TableHead>Nom du Produit</TableHead>
-                                <TableHead>Catégorie</TableHead>
-                                <TableHead>Prix Vente</TableHead>
-                                {userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW) && <TableHead>Coût (WAC)</TableHead>}
-                                <TableHead>Stock</TableHead>
-                                <TableHead>Publié</TableHead>
-                                <TableHead>Valeur</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {paginatedProducts.map((product) => (
-                                <TableRow key={product.id} className="hover:bg-muted/5 transition-colors">
-                                    <TableCell className="px-4">
-                                        <Checkbox
-                                            checked={selectedProducts.includes(product.id)}
-                                            onCheckedChange={(checked) => handleSelectProduct(product.id, checked as boolean)}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-secondary border border-border">
-                                            <img
-                                                src={getImageUrl(product.image)}
-                                                alt={product.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="font-medium">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-1.5">
-                                                <span>{product.name}</span>
-                                                {(product as any).isFeatured && <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />}
-                                            </div>
-                                            {product.badge && (
-                                                <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded-md w-fit mt-1">
-                                                    {product.badge}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
-                                            {product.category?.name || 'Sans catégorie'}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="font-bold text-primary">
-                                        {product.price.toLocaleString()} {currency}
-                                    </TableCell>
-                                    {userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW) && (
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {product.weightedAverageCost && product.weightedAverageCost > 0 ? (
-                                                <span className="font-mono">{product.weightedAverageCost.toLocaleString()} {currency}</span>
-                                            ) : (
-                                                <span className="text-destructive font-bold flex items-center gap-1">
-                                                    <AlertCircle className="w-3 h-3" />
-                                                    0 {currency}
-                                                </span>
-                                            )}
-                                        </TableCell>
+                <TabsContent value="returns" className="space-y-4">
+                    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/30">
+                                    <TableRow>
+                                        <TableHead>Date Initiale</TableHead>
+                                        <TableHead>Produit</TableHead>
+                                        <TableHead>Commande</TableHead>
+                                        <TableHead>Quantité</TableHead>
+                                        <TableHead>Raison</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {returnedProducts.length > 0 ? returnedProducts.map((ret: any) => (
+                                        <TableRow key={ret.id}>
+                                            <TableCell>{new Date(ret.createdAt).toLocaleDateString('fr-FR')}</TableCell>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-secondary border border-border">
+                                                        <img
+                                                            src={getImageUrl(ret.product?.image)}
+                                                            alt={ret.product?.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                    {ret.product?.name}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                #{ret.order?.orderNumber} ({ret.order?.customerName})
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="font-bold text-orange-600">{ret.quantity}</span>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate" title={ret.reason}>
+                                                {ret.reason || '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {ret.quantity > 0 && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                                        onClick={() => {
+                                                            setSelectedItemToRestock(ret);
+                                                            setRestockQuantity("1");
+                                                            setIsRestockDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Activity className="w-4 h-4 mr-1" /> Réparer
+                                                    </Button>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center">Aucun produit retourné.</TableCell>
+                                        </TableRow>
                                     )}
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Switch
-                                                checked={product.inStock}
-                                                onCheckedChange={() => handleStockToggle(product)}
-                                                disabled={product.quantity === 0}
-                                                className="scale-75 data-[state=checked]:bg-green-500"
-                                            />
-                                            <div className="flex flex-col">
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${product.quantity > 0 ? 'text-green-500' : 'text-destructive'}`}>
-                                                    {product.quantity > 0 ? 'EN STOCK' : 'ÉPUISÉ'}
-                                                </span>
-                                                <span className="text-[11px] font-medium text-muted-foreground">
-                                                    {product.quantity} unités
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Switch
-                                            checked={product.published ?? true}
-                                            onCheckedChange={(checked) => {
-                                                updateMutation.mutate({
-                                                    id: product.id,
-                                                    data: { published: checked }
-                                                });
-                                            }}
-                                            className="scale-75 data-[state=checked]:bg-blue-500"
-                                        />
-                                    </TableCell>
-                                    <TableCell className="font-bold text-sm">
-                                        {(product.stockValue || 0).toLocaleString()} {currency}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            {showTrash ? (
-                                                <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 hover:bg-green-100 hover:text-green-600"
-                                                        onClick={() => restoreMutation.mutate(product.id)}
-                                                        title="Restaurer"
-                                                    >
-                                                        <ArchiveRestore className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
-                                                        onClick={() => handleDelete(product.id, product.name)}
-                                                        title="Supprimer définitivement"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 hover:bg-muted"
-                                                        onClick={() => handleEdit(product)}
-                                                        title="Modifier"
-                                                    >
-                                                        <Pencil className="w-4 h-4 text-muted-foreground" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 hover:bg-destructive/10 text-destructive/80 hover:text-destructive"
-                                                        onClick={() => handleDelete(product.id, product.name)}
-                                                        title="Mettre à la corbeille"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(newSize) => {
-                    setPageSize(newSize);
-                    setCurrentPage(1);
-                }}
-                totalItems={filteredProducts.length}
-            />
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1281,7 +1415,56 @@ const AdminProducts = () => {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+
+            {/* Restock Dialog */}
+            <Dialog open={isRestockDialogOpen} onOpenChange={setIsRestockDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Remettre en stock</DialogTitle>
+                        <DialogDescription>
+                            Combien d'unités voulez-vous remettre en stock ("Réparer") ?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="space-y-4">
+                            <p className="text-sm font-medium">Produit : {selectedItemToRestock?.product?.name}</p>
+                            <div className="space-y-2">
+                                <Label>Quantité à réparer (Max: {selectedItemToRestock?.quantity})</Label>
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    max={selectedItemToRestock?.quantity}
+                                    value={restockQuantity}
+                                    onChange={(e) => setRestockQuantity(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsRestockDialogOpen(false)}>
+                            Annuler
+                        </Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            disabled={restockMutation.isPending || !restockQuantity || parseInt(restockQuantity) < 1 || parseInt(restockQuantity) > (selectedItemToRestock?.quantity || 1)}
+                            onClick={() => {
+                                if (selectedItemToRestock) {
+                                    if (window.confirm(`Êtes-vous sûr de vouloir rediriger ${restockQuantity} unité(s) de ce produit en stock ?`)) {
+                                        restockMutation.mutate({
+                                            id: selectedItemToRestock.id,
+                                            quantity: parseInt(restockQuantity)
+                                        });
+                                    }
+                                }
+                            }}
+                        >
+                            {restockMutation.isPending ? "Traitement..." : "Réparer"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+        </div >
     );
 };
 

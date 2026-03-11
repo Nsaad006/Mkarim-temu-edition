@@ -48,6 +48,8 @@ export interface GlobalSettings {
 
     whyTitle?: string;
     whySubtitle?: string;
+    whyFeatures?: any;
+    cartShippingText?: string;
 
     ctaTitle?: string;
     ctaSubtitle?: string;

@@ -29,8 +29,8 @@ router.get('/summary', async (req: Request, res: Response) => {
     }
 });
 
-// GET /api/stats - Dashboard statistics (admin/editor/viewer)
-router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+// GET /api/stats - Dashboard statistics (all authenticated admin users)
+router.get('/', authenticate, async (req: Request, res: Response) => {
     try {
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -166,8 +166,8 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer'], PER
     }
 });
 
-// GET /api/stats/analytics - Detailed analytics (admin/editor)
-router.get('/analytics', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+// GET /api/stats/analytics - Detailed analytics (all authenticated admin users, though full data might be limited by role logic inside)
+router.get('/analytics', authenticate, async (req: Request, res: Response) => {
     try {
         const { days = 30, from, to, year } = req.query;
 

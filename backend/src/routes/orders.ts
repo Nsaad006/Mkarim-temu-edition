@@ -151,8 +151,15 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /api/orders - List all orders (admin/editor/viewer/commercial/magasinier)
-router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'], PERMISSIONS.ORDERS_VIEW), async (req: Request, res: Response) => {
+// GET /api/orders - List all orders (admin/editor/viewer/commercial/magasinier or any order permission)
+router.get('/', authenticate, authorize(
+    ['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'],
+    [
+        PERMISSIONS.ORDERS_VIEW, PERMISSIONS.ORDERS_MANAGE, PERMISSIONS.ORDERS_EDIT,
+        PERMISSIONS.ORDERS_CONFIRM, PERMISSIONS.ORDERS_SHIP, PERMISSIONS.ORDERS_DELIVER,
+        PERMISSIONS.ORDERS_CANCEL, PERMISSIONS.ORDERS_RETURN
+    ]
+), async (req: Request, res: Response) => {
     try {
         const { status, city } = req.query;
         const user = (req as any).user; // Get authenticated user
@@ -161,9 +168,9 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'com
 
         // Role-based filtering
         if (user.role === 'magasinier') {
-            // Magasinier can only see CONFIRMED, SHIPPED, and DELIVERED orders
+            // Magasinier can only see CONFIRMED, SHIPPED, DELIVERED and RETOUR orders
             where.status = {
-                in: ['CONFIRMED', 'SHIPPED', 'DELIVERED']
+                in: ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR']
             };
         }
         // Commercial and other roles can see all orders
@@ -172,7 +179,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'com
             // If magasinier, ensure they can only filter within their allowed statuses
             if (user.role === 'magasinier') {
                 const requestedStatus = String(status) as import('@prisma/client').OrderStatus;
-                if (['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(requestedStatus)) {
+                if (['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR'].includes(requestedStatus)) {
                     where.status = requestedStatus;
                 }
             } else {
@@ -205,8 +212,15 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer', 'com
     }
 });
 
-// GET /api/orders/:id - Get order details (admin/editor/viewer/commercial/magasinier)
-router.get('/:id', authenticate, authorize(['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'], PERMISSIONS.ORDERS_VIEW), async (req: Request, res: Response) => {
+// GET /api/orders/:id - Get order details (admin/editor/viewer/commercial/magasinier or any order permission)
+router.get('/:id', authenticate, authorize(
+    ['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'],
+    [
+        PERMISSIONS.ORDERS_VIEW, PERMISSIONS.ORDERS_MANAGE, PERMISSIONS.ORDERS_EDIT,
+        PERMISSIONS.ORDERS_CONFIRM, PERMISSIONS.ORDERS_SHIP, PERMISSIONS.ORDERS_DELIVER,
+        PERMISSIONS.ORDERS_CANCEL, PERMISSIONS.ORDERS_RETURN
+    ]
+), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
 
@@ -374,6 +388,122 @@ router.put('/:id/items', authenticate, authorize(['super_admin', 'editor', 'comm
     }
 });
 
+// POST /api/orders/:id/partial-return - Handle returning specific items
+router.post('/:id/partial-return', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [
+    PERMISSIONS.ORDERS_MANAGE,
+    PERMISSIONS.ORDERS_RETURN
+]), async (req: Request, res: Response) => {
+    try {
+        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+        const { items, returnReason } = req.body;
+        const user = (req as any).user;
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'No items provided for return' });
+        }
+
+        const currentOrder = await prisma.order.findUnique({
+            where: { id },
+            include: { items: true }
+        });
+
+        if (!currentOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const isSuperAdmin = user.role === 'super_admin';
+        const hasManageAll = user.permissions?.includes(PERMISSIONS.ORDERS_MANAGE);
+        const perms = user.permissions || [];
+        const userRole = (user.role || '').toLowerCase();
+
+        if (!isSuperAdmin && !hasManageAll && !perms.includes(PERMISSIONS.ORDERS_RETURN) && userRole !== 'magasinier') {
+            return res.status(403).json({ error: "Vous n'avez pas la permission d'effectuer un retour" });
+        }
+
+        if (!['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(currentOrder.status)) {
+            return res.status(400).json({ error: 'Vous ne pouvez retourner que des commandes confirmées, expédiées ou livrées.' });
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            let totalDeductionFromOrder = 0;
+            let totalRemainingQuantityInOrder = 0;
+
+            for (const orderItem of currentOrder.items) {
+                const returnedItem = items.find(i => i.productId === orderItem.productId);
+                let newQuantity = orderItem.quantity;
+
+                if (returnedItem && returnedItem.quantity > 0) {
+                    if (returnedItem.quantity > orderItem.quantity) {
+                        throw new Error(`Quantité retournée superieure à la quantité commandée pour le produit ${orderItem.productId}`);
+                    }
+
+                    const refundQuantity = returnedItem.quantity;
+                    newQuantity -= refundQuantity;
+                    totalDeductionFromOrder += refundQuantity * orderItem.price;
+
+                    // Restock
+                    await tx.product.update({
+                        where: { id: orderItem.productId },
+                        data: {
+                            quantity: { increment: refundQuantity },
+                            inStock: true
+                        }
+                    });
+
+                    // Log return
+                    await tx.returnedItem.create({
+                        data: {
+                            orderId: id,
+                            productId: orderItem.productId,
+                            quantity: refundQuantity,
+                            price: orderItem.price,
+                            reason: returnReason || 'Retour partiel'
+                        }
+                    });
+
+                    // Update or Delete OrderItem
+                    if (newQuantity === 0) {
+                        await tx.orderItem.delete({
+                            where: { id: orderItem.id }
+                        });
+                    } else {
+                        await tx.orderItem.update({
+                            where: { id: orderItem.id },
+                            data: { quantity: newQuantity }
+                        });
+                    }
+                }
+                totalRemainingQuantityInOrder += newQuantity;
+            }
+
+            const newTotal = Math.max(0, currentOrder.total - totalDeductionFromOrder);
+            const isFullReturn = totalRemainingQuantityInOrder === 0;
+
+            const existingReason = currentOrder.returnReason ? currentOrder.returnReason + ' | ' : '';
+            const newReason = `${existingReason}Retour partiel: ${returnReason || 'Non spécifié'}`;
+
+            const updatedOrder = await tx.order.update({
+                where: { id },
+                data: {
+                    total: newTotal,
+                    status: isFullReturn ? 'RETOUR' : currentOrder.status,
+                    returnReason: isFullReturn ? returnReason : newReason
+                },
+                include: {
+                    items: { include: { product: true } }
+                }
+            });
+
+            return updatedOrder;
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error('Error in partial return:', error);
+        res.status(500).json({ error: (error as Error).message || 'Failed to process partial return' });
+    }
+});
+
 // PATCH /api/orders/:id/status - Update order status (super_admin/editor/commercial/magasinier)
 
 router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [
@@ -443,10 +573,16 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
                 }
             }
 
-            // Example: Magasinier logic (if they only have ship/deliver)
-            if (perms.includes(PERMISSIONS.ORDERS_SHIP) && !perms.includes(PERMISSIONS.ORDERS_CONFIRM)) {
-                if (!['CONFIRMED', 'SHIPPED'].includes(oldStatus)) {
-                    return res.status(403).json({ error: 'Vous ne pouvez traiter que les commandes confirmées ou expédiées' });
+            // Example: Magasinier logic (if they only have ship/deliver/return)
+            if (!perms.includes(PERMISSIONS.ORDERS_CONFIRM)) {
+                if (status === 'RETOUR') {
+                    if (!['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(oldStatus)) {
+                        return res.status(403).json({ error: 'Vous ne pouvez retourner que les commandes confirmées, expédiées ou livrées' });
+                    }
+                } else {
+                    if (!['CONFIRMED', 'SHIPPED'].includes(oldStatus)) {
+                        return res.status(403).json({ error: 'Vous ne pouvez traiter que les commandes confirmées ou expédiées' });
+                    }
                 }
             }
         }
@@ -497,6 +633,19 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
                             inStock: true // Definitely in stock now
                         }
                     });
+
+                    // Log return if status is RETOUR
+                    if (status === 'RETOUR') {
+                        await tx.returnedItem.create({
+                            data: {
+                                orderId: id,
+                                productId: item.productId,
+                                quantity: item.quantity,
+                                price: item.price,
+                                reason: returnReason || 'Retour complet de commande'
+                            }
+                        });
+                    }
                 }
                 console.log(`Order ${currentOrder.orderNumber}: Stock restored.`);
             }
@@ -531,7 +680,7 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
 });
 
 // POST /api/orders/:id/email-invoice - Send content via email
-router.post('/:id/email-invoice', authenticate, authorize(['super_admin', 'editor', 'commercial']), uploadPdf.single('invoice'), async (req: Request, res: Response) => {
+router.post('/:id/email-invoice', authenticate, authorize(['super_admin', 'editor', 'commercial'], [PERMISSIONS.ORDERS_VIEW, PERMISSIONS.ORDERS_MANAGE, PERMISSIONS.ORDERS_EDIT, PERMISSIONS.ORDERS_CONFIRM, PERMISSIONS.ORDERS_SHIP, PERMISSIONS.ORDERS_DELIVER, PERMISSIONS.ORDERS_CANCEL, PERMISSIONS.ORDERS_RETURN]), uploadPdf.single('invoice'), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const file = req.file;

@@ -14,6 +14,7 @@ const createAdminSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     role: z.string(), // Can be legacy role name OR role UUID
+    allowedCategories: z.array(z.string()).optional(),
 });
 
 const LEGACY_ROLES = ['super_admin', 'editor', 'viewer', 'commercial', 'magasinier'];
@@ -46,6 +47,7 @@ router.get('/', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_VIEW)
                 active: true,
                 createdAt: true,
                 roleId: true,
+                allowedCategories: true,
                 assignedRole: {
                     select: { id: true, name: true, permissions: true }
                 }
@@ -86,6 +88,7 @@ router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANA
                 email: validatedData.email,
                 password: hashedPassword,
                 active: true,
+                allowedCategories: validatedData.allowedCategories || [],
                 ...roleFields
             },
             select: {
@@ -94,6 +97,7 @@ router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANA
                 name: true,
                 role: true,
                 roleId: true,
+                allowedCategories: true,
                 assignedRole: { select: { name: true } },
                 active: true,
                 createdAt: true
@@ -208,6 +212,45 @@ router.patch('/:id/role', authenticate, authorize(['super_admin'], PERMISSIONS.U
             return res.status(404).json({ error: 'Admin not found' });
         }
         res.status(500).json({ error: 'Failed to update role' });
+    }
+});
+
+// PATCH /api/admins/:id/categories - Update admin allowed categories
+router.patch('/:id/categories', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
+    try {
+        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+        const { allowedCategories } = req.body;
+
+        const admin = await prisma.admin.findUnique({ where: { id } });
+        if (!admin) return res.status(404).json({ error: 'Admin not found' });
+
+        if (!Array.isArray(allowedCategories)) {
+            return res.status(400).json({ error: 'allowedCategories must be an array' });
+        }
+
+        const updatedAdmin = await prisma.admin.update({
+            where: { id },
+            data: { allowedCategories },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                roleId: true,
+                allowedCategories: true,
+                assignedRole: { select: { name: true } },
+                active: true,
+                createdAt: true
+            }
+        });
+
+        res.json(updatedAdmin);
+    } catch (error) {
+        console.error("Error updating categories:", error);
+        if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2025') {
+            return res.status(404).json({ error: 'Admin not found' });
+        }
+        res.status(500).json({ error: 'Failed to update categories' });
     }
 });
 

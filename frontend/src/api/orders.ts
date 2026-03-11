@@ -40,7 +40,12 @@ export const ordersApi = {
         return data;
     },
 
-    // Update order status (admin)
+    // Handle partial item returns
+    partialReturn: async (id: string, items: { productId: string, quantity: number }[], returnReason?: string): Promise<Order> => {
+        const { data } = await apiClient.post<Order>(`/api/orders/${id}/partial-return`, { items, returnReason });
+        return data;
+    },
+
     // Update order status (admin)
     updateStatus: async (id: string, status: string, returnReason?: string): Promise<Order> => {
         const { data } = await apiClient.patch<Order>(`/api/orders/${id}/status`, { status, returnReason });

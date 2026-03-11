@@ -34,6 +34,7 @@ model Product {
   orderItems    OrderItem[]
   procurements  Procurement[]
   wholesaleItems WholesaleOrderItem[]
+  returnedItems ReturnedItem[]
 }
 
 model Category {
@@ -66,6 +67,7 @@ model Order {
   
   customer     Customer?   @relation(fields: [customerId], references: [id])
   items        OrderItem[]
+  returnedItems ReturnedItem[]
 }
 
 model Customer {
@@ -92,6 +94,22 @@ model OrderItem {
   
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model ReturnedItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Int      // Price at time of return (for analytics if needed)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -134,6 +152,7 @@ model Admin {
   roleId    String?
   assignedRole Role?   @relation(fields: [roleId], references: [id])
   active    Boolean  @default(true)
+  allowedCategories String[] @default([])
   createdAt DateTime @default(now())
 
   procurements Procurement[]
@@ -231,6 +250,8 @@ model Settings {
   featuredSubtitle    String   @default("Les meilleures ventes et nouveautés sélectionnées pour vous.")
   whyTitle            String   @default("L'EXCELLENCE MKARIM SOLUTION")
   whySubtitle         String   @default("Nous redéfinissons le standard du gaming au Maroc avec un service irréprochable.")
+  whyFeatures         Json     @default("[{\"icon\":\"CreditCard\",\"title\":\"Paiement à la Livraison\",\"description\":\"Payez en cash à la réception de votre commande. Simple et sécurisé.\"},{\"icon\":\"Truck\",\"title\":\"Livraison Rapide\",\"description\":\"Livraison partout au Maroc en 24-72h selon votre ville.\"},{\"icon\":\"ShieldCheck\",\"title\":\"Garantie Produits\",\"description\":\"Tous nos produits sont couverts par une garantie officielle.\"},{\"icon\":\"Award\",\"title\":\"Qualité Premium\",\"description\":\"Nous sélectionnons uniquement des produits de qualité supérieure.\"},{\"icon\":\"Headphones\",\"title\":\"Support Client\",\"description\":\"Notre équipe est disponible pour vous accompagner avant et après achat.\"},{\"icon\":\"Clock\",\"title\":\"Réponse Rapide\",\"description\":\"Confirmation de commande sous 24h et suivi personnalisé.\"}]")
+  cartShippingText    String   @default("Logistique incluse")
   
   // CTA Section
   ctaTitle             String   @default("PRÊT À RÉVOLUTIONNER VOTRE SETUP ?")

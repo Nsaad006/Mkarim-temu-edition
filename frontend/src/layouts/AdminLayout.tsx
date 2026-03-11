@@ -28,7 +28,7 @@ import { PERMISSIONS } from "@/constants/permissions";
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Tableau de bord", path: "/admin", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
-    { icon: ShoppingBag, label: "Commandes", path: "/admin/orders", roles: ["super_admin", "editor", "viewer", "commercial", "magasinier"], permission: PERMISSIONS.ORDERS_VIEW },
+    { icon: ShoppingBag, label: "Commandes", path: "/admin/orders", roles: ["super_admin", "editor", "viewer", "commercial", "magasinier"], permission: [PERMISSIONS.ORDERS_VIEW, PERMISSIONS.ORDERS_MANAGE, PERMISSIONS.ORDERS_EDIT, PERMISSIONS.ORDERS_CONFIRM, PERMISSIONS.ORDERS_SHIP, PERMISSIONS.ORDERS_DELIVER, PERMISSIONS.ORDERS_CANCEL, PERMISSIONS.ORDERS_RETURN] },
     { icon: Briefcase, label: "Grossistes", path: "/admin/wholesalers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
     { icon: Package, label: "Produits", path: "/admin/products", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.PRODUCTS_VIEW },
     { icon: Truck, label: "Fournisseurs", path: "/admin/suppliers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
@@ -70,12 +70,30 @@ const AdminLayout = () => {
         // Legacy Role Match
         if (item.roles.includes(user.role)) return true;
         // Permission Match
-        if (item.permission && user.permissions?.includes(item.permission)) return true;
+        if (item.permission) {
+            if (Array.isArray(item.permission)) {
+                if (item.permission.some(p => user.permissions?.includes(p))) return true;
+            } else {
+                if (user.permissions?.includes(item.permission)) return true;
+            }
+        }
         return false;
     });
 
+    // Auto-redirect from Dashboard if not authorized, or any unauthorized protected path
+    useEffect(() => {
+        // The dashboard is at path "/admin"
+        const isAuthorizedForCurrentPath = filteredSidebarItems.some(item => item.path === location.pathname);
+
+        // If they are at the root `/admin` and don't have dashboard access, OR they are at another unauthorized URL
+        if (!isAuthorizedForCurrentPath && filteredSidebarItems.length > 0) {
+            // Default to redirecting them to their first available menu item
+            navigate(filteredSidebarItems[0].path, { replace: true });
+        }
+    }, [location.pathname, filteredSidebarItems, navigate]);
+
     return (
-        <div className="min-h-screen bg-gaming-admin flex">
+        <div className="h-screen bg-gaming-admin flex overflow-hidden">
             {/* Background Glow Elements */}
             <div className="gaming-glow-top" />
             <div className="gaming-glow-bottom" />
@@ -121,9 +139,9 @@ const AdminLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 lg:ml-60">
+            <div className="flex-1 flex flex-col min-w-0 lg:ml-60 h-screen">
                 {/* Header */}
-                <header className="h-16 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
+                <header className="flex-shrink-0 h-16 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 z-30">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
@@ -160,7 +178,7 @@ const AdminLayout = () => {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:p-6 relative z-10">
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10">
                     <Outlet context={{ searchQuery }} />
                 </main>
             </div>

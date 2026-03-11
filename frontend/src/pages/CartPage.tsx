@@ -58,7 +58,8 @@ const QuantityInput = ({
 
 const CartPage = () => {
     const { state, removeItem, updateQuantity, getTotal } = useCart();
-    const { currency } = useSettings();
+    const { currency, settings } = useSettings();
+    const shippingText = settings?.cartShippingText || "Logistique incluse";
 
     if (state.items.length === 0) {
         return (
@@ -192,8 +193,8 @@ const CartPage = () => {
                                     <span className="text-foreground">{getTotal().toLocaleString()} {currency}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-xs sm:text-sm font-bold">
-                                    <span className="text-muted-foreground uppercase tracking-[0.2em]">Logistique nationale</span>
-                                    <span className="text-green-500 uppercase italic font-black">Calculée au déploiement</span>
+                                    <span className="text-muted-foreground uppercase tracking-[0.2em]">{shippingText}</span>
+                                    <span className="text-green-500 uppercase italic font-black">✔</span>
                                 </div>
                                 <div className="pt-4 border-t border-white/5 flex flex-col gap-1">
                                     <span className="font-display text-lg sm:text-xl font-black text-foreground italic uppercase tracking-tighter leading-none">Total arsenal</span>
@@ -241,7 +242,7 @@ const CartPage = () => {
                                 <span className="text-[9px] sm:text-[10px] md:text-xs font-black text-muted-foreground uppercase tracking-widest leading-none mb-1.5 sm:mb-2 text-left">Total arsenal</span>
                                 <span className="text-xl sm:text-2xl md:text-3xl font-black text-primary italic tracking-tighter leading-none">{(getTotal()).toLocaleString()} <span className="text-[10px] sm:text-xs not-italic text-muted-foreground ml-0.5">{currency}</span></span>
                             </div>
-                            <span className="text-[8px] sm:text-[10px] md:text-xs font-black text-green-500 uppercase italic tracking-tighter bg-green-500/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md border border-green-500/20">Logistique incluse</span>
+                            <span className="text-[8px] sm:text-[10px] md:text-xs font-black text-green-500 uppercase italic tracking-tighter bg-green-500/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md border border-green-500/20">{shippingText}</span>
                         </div>
 
                         <div className="flex flex-col gap-3 sm:gap-4">

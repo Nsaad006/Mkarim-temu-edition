@@ -31,6 +31,18 @@ export const productsApi = {
         return data;
     },
 
+    // Get returned items
+    getReturns: async (): Promise<any[]> => {
+        const { data } = await apiClient.get<any[]>('/api/products/returns/all');
+        return data;
+    },
+
+    // Restock a returned item
+    restockReturn: async (id: string, quantityToRestock: number): Promise<any> => {
+        const { data } = await apiClient.post(`/api/products/returns/${id}/restock`, { quantityToRestock });
+        return data;
+    },
+
     // Create product (admin)
     create: async (product: Omit<Product, 'id'>): Promise<Product> => {
         const { data } = await apiClient.post<Product>('/api/products', product);

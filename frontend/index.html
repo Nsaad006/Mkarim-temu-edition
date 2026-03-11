@@ -1,26 +1,49 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MKARIM SOLUTION – PC & Gaming au Maroc | Paiement à la Livraison</title>
-    <meta name="description" content="MKARIM SOLUTION - Votre partenaire pour les PC, accessoires gaming et solutions IT au Maroc. Paiement à la livraison. Livraison rapide partout au Maroc." />
-    <meta name="keywords" content="PC Gamer Maroc, Gaming PC, PC portable Maroc, accessoires gaming, paiement à la livraison, MKARIM SOLUTION" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://www.mkarim.ma" />
-    
-    <!-- Open Graph / Social -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="MKARIM SOLUTION – PC & Gaming au Maroc" />
-    <meta property="og:description" content="PC haute performance & accessoires gaming. Paiement à la livraison partout au Maroc." />
-    <meta property="og:locale" content="fr_MA" />
-    
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#E53935" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MKARIM" />
+  <title>MKARIM SOLUTION – PC & Gaming au Maroc | Paiement à la Livraison</title>
+  <meta name="description"
+    content="MKARIM SOLUTION - Votre partenaire pour les PC, accessoires gaming et solutions IT au Maroc. Paiement à la livraison. Livraison rapide partout au Maroc." />
+  <meta name="keywords"
+    content="PC Gamer Maroc, Gaming PC, PC portable Maroc, accessoires gaming, paiement à la livraison, MKARIM SOLUTION" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.mkarim.ma" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="MKARIM SOLUTION – PC & Gaming au Maroc" />
+  <meta property="og:description"
+    content="PC haute performance & accessoires gaming. Paiement à la livraison partout au Maroc." />
+  <meta property="og:locale" content="fr_MA" />
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#E53935" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          console.log('SW registered!', reg);
+        }).catch(err => {
+          console.error('SW registration failed: ', err);
+        });
+      });
+    }
+  </script>
+</body>
+
 </html>

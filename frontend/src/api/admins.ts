@@ -12,6 +12,7 @@ export interface AdminUser {
         permissions: string[];
     };
     active: boolean;
+    allowedCategories?: string[];
 }
 
 export const adminsApi = {
@@ -33,6 +34,10 @@ export const adminsApi = {
     },
     updatePassword: async (id: string, password: string): Promise<AdminUser> => {
         const { data } = await apiClient.patch<AdminUser>(`/api/admins/${id}/password`, { password });
+        return data;
+    },
+    updateCategories: async (id: string, allowedCategories: string[]): Promise<AdminUser> => {
+        const { data } = await apiClient.patch<AdminUser>(`/api/admins/${id}/categories`, { allowedCategories });
         return data;
     },
     delete: async (id: string): Promise<void> => {

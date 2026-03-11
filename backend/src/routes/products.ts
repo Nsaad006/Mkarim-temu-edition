@@ -1,14 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
-import { authenticate, authorize } from './auth';
+import { authenticate, authorize, optionalAuthenticate, AuthenticatedRequest } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // GET /api/products - List all products with optional filters
-router.get('/', async (req, res) => {
+router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
     try {
+        const user = (req as AuthenticatedRequest).user;
         const { categoryId, category, inStock, search, featured, published, trashed } = req.query;
 
         const where: any = {};
@@ -60,6 +61,24 @@ router.get('/', async (req, res) => {
             ];
         }
 
+        // Apply admin category permission restriction if necessary
+        if (user && user.role !== 'super_admin') {
+            const adminData: any = await prisma.admin.findUnique({
+                where: { id: user.id },
+                select: { allowedCategories: true } as any
+            });
+
+            if (adminData && adminData.allowedCategories && adminData.allowedCategories.length > 0) {
+                if (where.categoryId) {
+                    if (!adminData.allowedCategories.includes(where.categoryId as string)) {
+                        return res.json([]);
+                    }
+                } else {
+                    where.categoryId = { in: adminData.allowedCategories };
+                }
+            }
+        }
+
         const products = await prisma.product.findMany({
             where: { ...where, category: { active: true } },
             include: {
@@ -86,6 +105,83 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// GET /api/products/returns/all - List all returned items
+router.get('/returns/all', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [PERMISSIONS.PRODUCTS_VIEW]), async (req, res) => {
+    try {
+        const returns = await prisma.returnedItem.findMany({
+            include: {
+                product: {
+                    select: { name: true, image: true, price: true }
+                },
+                order: {
+                    select: { orderNumber: true, customerName: true, status: true }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+        res.json(returns);
+    } catch (error) {
+        console.error('Error fetching returned items:', error);
+        res.status(500).json({ error: 'Failed to fetch returned items' });
+    }
+});
+
+// POST /api/products/returns/:id/restock - Restock returned item
+router.post('/returns/:id/restock', authenticate, authorize(['super_admin', 'editor', 'commercial', 'magasinier'], [PERMISSIONS.PRODUCTS_EDIT]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { quantityToRestock } = req.body;
+
+        if (!quantityToRestock || quantityToRestock <= 0) {
+            return res.status(400).json({ error: 'Invalid quantity' });
+        }
+
+        const returnedItem = await prisma.returnedItem.findUnique({
+            where: { id }
+        });
+
+        if (!returnedItem) {
+            return res.status(404).json({ error: 'Returned item not found' });
+        }
+
+        if (quantityToRestock > returnedItem.quantity) {
+            return res.status(400).json({ error: 'Cannot restock more than the returned quantity' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Update the product's main quantity (restock)
+            await tx.product.update({
+                where: { id: returnedItem.productId },
+                data: {
+                    quantity: { increment: quantityToRestock }
+                }
+            });
+
+            // If we're fully restocking the returned item, we can delete the record or set quantity to 0
+            if (quantityToRestock === returnedItem.quantity) {
+                await tx.returnedItem.delete({
+                    where: { id: returnedItem.id }
+                });
+            } else {
+                // Otherwise just decrement its quantity
+                await tx.returnedItem.update({
+                    where: { id: returnedItem.id },
+                    data: {
+                        quantity: { decrement: quantityToRestock }
+                    }
+                });
+            }
+        });
+
+        res.json({ success: true, message: 'Produit remis en stock avec succès' });
+    } catch (error) {
+        console.error('Error restocking returned item:', error);
+        res.status(500).json({ error: 'Failed to fetch returned items' });
     }
 });
 

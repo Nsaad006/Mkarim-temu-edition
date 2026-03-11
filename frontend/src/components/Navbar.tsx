@@ -259,13 +259,7 @@ const Navbar = () => {
                 </motion.div>
               </Link>
 
-              {/* Phone Line - Large Desktop Only (xl) */}
-              <a href={`tel:${whatsappNumber.replace(/\s+/g, "")}`} className="hidden xl:flex shrink-0">
-                <div className="px-3 py-1.5 bg-muted hover:bg-accent border border-border rounded-xl transition-all group flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[9px] font-black text-muted-foreground group-hover:text-foreground tracking-widest uppercase">DIRECT</span>
-                </div>
-              </a>
+
 
               {/* Mobile/Tablet Menu Button */}
               <Button
