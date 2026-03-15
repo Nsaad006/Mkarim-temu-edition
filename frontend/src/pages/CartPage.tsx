@@ -110,11 +110,11 @@ const CartPage = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, x: -50 }}
-                                className="bg-card backdrop-blur-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 border border-border group hover:border-primary/30 transition-all duration-300 shadow-lg"
+                                className="bg-card backdrop-blur-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 border border-border group hover:border-primary/30 transition-all duration-300 shadow-lg overflow-hidden"
                             >
-                                <div className="flex flex-row gap-3 sm:gap-4 md:gap-6">
-                                    {/* Product Image */}
-                                    <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden bg-muted border border-border flex-shrink-0 group-hover:border-primary/50 transition-colors">
+                                <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: 'auto 1fr' }}>
+                                    {/* Product Image — fixed width, never shrinks */}
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg sm:rounded-xl overflow-hidden bg-muted border border-border group-hover:border-primary/50 transition-colors self-center">
                                         <img
                                             src={getImageUrl(item.product.image)}
                                             alt={item.product.name}
@@ -122,12 +122,14 @@ const CartPage = () => {
                                         />
                                     </div>
 
-                                    {/* Product Info */}
-                                    <div className="flex-1 flex flex-col justify-between min-w-0 py-0.5 sm:py-1">
-                                        <div className="flex justify-between items-start gap-2 sm:gap-4">
-                                            <div className="min-w-0">
-                                                <h3 className="font-display text-sm sm:text-lg md:text-xl font-black text-foreground italic uppercase tracking-tighter leading-tight truncate">{item.product.name}</h3>
-                                                <p className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mt-1">
+                                    {/* Product Info — takes remaining width, cannot overflow */}
+                                    <div className="flex flex-col justify-between gap-2 min-w-0">
+
+                                        {/* Row 1: Title + Delete */}
+                                        <div className="flex items-start gap-2 min-w-0">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="truncate text-sm sm:text-base font-black text-foreground italic uppercase tracking-tighter leading-tight font-display">{item.product.name}</p>
+                                                <p className="truncate text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mt-0.5">
                                                     {item.product.category?.name || item.product.categoryId?.replace("-", " ") || "MATÉRIEL"}
                                                 </p>
                                             </div>
@@ -135,23 +137,23 @@ const CartPage = () => {
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => removeItem(item.product.id)}
-                                                className="text-zinc-500 hover:text-primary hover:bg-primary/10 border-border rounded-lg h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 transition-colors"
+                                                className="text-zinc-500 hover:text-primary hover:bg-primary/10 border-border rounded-lg h-7 w-7 sm:h-8 sm:w-8 shrink-0 transition-colors"
                                             >
-                                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
 
-                                        <div className="flex flex-row items-center justify-between mt-2 sm:mt-4 md:mt-6 gap-2 sm:gap-4">
-                                            {/* Quantity Controls */}
-                                            <div className="flex items-center gap-0 sm:gap-2 bg-background rounded-lg sm:rounded-xl p-0.5 sm:p-1 border border-border">
+                                        {/* Row 2: Quantity + Price */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-0 sm:gap-1 bg-background rounded-lg p-0.5 border border-border shrink-0">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-6 w-6 sm:h-8 sm:w-8 text-foreground hover:bg-accent active:scale-95"
+                                                    className="h-6 w-6 sm:h-7 sm:w-7 text-foreground hover:bg-accent active:scale-95"
                                                     onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
                                                     disabled={item.quantity <= 1}
                                                 >
-                                                    <Minus className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                                                    <Minus className="w-2.5 h-2.5" />
                                                 </Button>
                                                 <QuantityInput
                                                     value={item.quantity}
@@ -160,19 +162,16 @@ const CartPage = () => {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-6 w-6 sm:h-8 sm:w-8 text-foreground hover:bg-accent active:scale-95"
+                                                    className="h-6 w-6 sm:h-7 sm:w-7 text-foreground hover:bg-accent active:scale-95"
                                                     onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                                                 >
-                                                    <Plus className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                                                    <Plus className="w-2.5 h-2.5" />
                                                 </Button>
                                             </div>
 
-                                            {/* Price */}
-                                            <div className="text-right">
-                                                <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-black text-primary italic tracking-tight">
-                                                    {(item.product.price * item.quantity).toLocaleString()} <span className="text-[9px] sm:text-xs not-italic text-muted-foreground ml-0.5">{currency}</span>
-                                                </p>
-                                            </div>
+                                            <p className="text-base sm:text-lg font-black text-primary italic tracking-tight shrink-0">
+                                                {(item.product.price * item.quantity).toLocaleString()} <span className="text-[9px] sm:text-xs not-italic text-muted-foreground">{currency}</span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

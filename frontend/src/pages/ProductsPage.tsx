@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link, useNavigationType } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Filter,
@@ -13,7 +13,8 @@ import {
   Search,
   Package,
   LayoutGrid,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -48,7 +49,7 @@ const ProductsPage = () => {
 
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(18); // Default to desktop
 
   // Responsive items per page
@@ -105,9 +106,10 @@ const ProductsPage = () => {
     if (filters.maxPrice < 100000) params.maxPrice = filters.maxPrice.toString();
     if (filters.inStockOnly) params.inStock = "true";
     if (searchParam) params.search = searchParam;
+    if (currentPage > 1) params.page = currentPage.toString();
 
     setSearchParams(params, { replace: true });
-  }, [filters, searchParam]);
+  }, [filters, searchParam, currentPage]);
 
   // Fetch all products
   const { data: allProducts = [], isLoading: productsLoading } = useQuery({
@@ -209,15 +211,17 @@ const ProductsPage = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters change (except when initializing from URL)
   useEffect(() => {
-    setCurrentPage(1);
+    const urlPage = Number(searchParams.get("page")) || 1;
+    if (currentPage !== urlPage && !searchParams.get("page")) {
+      setCurrentPage(1);
+    }
   }, [filters, sortBy, searchParam]);
 
-  // Scroll to top when page changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPage]);
+  const navigationType = useNavigationType();
+
+  // Scroll restoration and top-management is handled by ScrollToTop component in App.tsx
 
   const removeFilter = (type: string, value?: string) => {
     if (type === 'search') {
@@ -281,6 +285,14 @@ const ProductsPage = () => {
           <div className="container-custom relative z-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
+                <Link
+                  to="/"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-[10px] font-black uppercase tracking-[0.2em] mb-8 group"
+                >
+                  <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
+                  Accueil
+                </Link>
+
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1.5 h-6 bg-primary skew-x-[-15deg]" />
                   <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em]">ARSYENAL MKARIM</span>

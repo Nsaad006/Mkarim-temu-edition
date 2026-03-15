@@ -1,27 +1,29 @@
 import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
-import { authenticate, authorize } from './auth';
+import { authenticate, authorize, optionalAuthenticate } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
-// GET /api/categories - List all categories
-router.get('/', async (req, res) => {
+// GET /api/categories - List all categories (public, with optional auth for inactive)
+router.get('/', optionalAuthenticate, async (req, res) => {
     try {
         const { includeInactive } = req.query;
+        const user = (req as any).user;
 
-        // If trying to see inactive categories, require VIEW permission
-        if (includeInactive === 'true') {
-            await new Promise((resolve, reject) => {
-                authenticate(req, res, (err) => {
-                    if (err) return reject(err);
-                    authorize(['super_admin', 'editor', 'viewer'], [PERMISSIONS.CATEGORIES_VIEW, PERMISSIONS.PRODUCTS_VIEW])(req, res, resolve as any);
-                });
-            });
-        }
+        // Only allow fetching inactive categories if the user is a properly authorized admin
+        const isAuthorizedAdmin = user && (
+            ['super_admin', 'editor', 'viewer'].includes(user.role) ||
+            (user.permissions && (
+                user.permissions.includes(PERMISSIONS.CATEGORIES_VIEW) ||
+                user.permissions.includes(PERMISSIONS.PRODUCTS_VIEW)
+            ))
+        );
 
-        const whereClause = includeInactive === 'true' ? {} : { active: true };
+        // If includeInactive requested but user is not authorized, silently fall back to active-only
+        const showInactive = includeInactive === 'true' && isAuthorizedAdmin;
+        const whereClause = showInactive ? {} : { active: true };
 
         const categories = await prisma.category.findMany({
             where: whereClause,

@@ -140,25 +140,31 @@ export function ProductImageGallery({ images, productName, badge }: ProductImage
                 </div>
             </div>
 
-            {/* Thumbnail Strip */}
+            {/* Thumbnail Carousel */}
             {imageList.length > 1 && (
-                <div className="grid grid-cols-5 gap-2">
-                    {imageList.map((image, index) => (
-                        <button
-                            key={index}
-                            onClick={() => setSelectedIndex(index)}
-                            className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${index === selectedIndex
-                                ? 'border-primary ring-2 ring-primary/20'
-                                : 'border-border hover:border-primary/50'
-                                }`}
-                        >
-                            <img
-                                src={getImageUrl(image)}
-                                alt={`${productName} thumbnail ${index + 1}`}
-                                className="w-full h-full object-cover"
-                            />
-                        </button>
-                    ))}
+                <div className="relative group/thumbnails">
+                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x scroll-smooth">
+                        {imageList.map((image, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setSelectedIndex(index)}
+                                className={`flex-shrink-0 w-20 aspect-square rounded-xl overflow-hidden border-2 transition-all snap-start ${index === selectedIndex
+                                    ? 'border-primary ring-4 ring-primary/10 scale-95'
+                                    : 'border-border hover:border-primary/50 opacity-70 hover:opacity-100'
+                                    }`}
+                            >
+                                <img
+                                    src={getImageUrl(image)}
+                                    alt={`${productName} thumbnail ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                />
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Visual indicators for scroll availability */}
+                    <div className="absolute left-0 top-0 bottom-4 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none opacity-0 group-hover/thumbnails:opacity-100 transition-opacity" />
+                    <div className="absolute right-0 top-0 bottom-4 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none opacity-0 group-hover/thumbnails:opacity-100 transition-opacity" />
                 </div>
             )}
 

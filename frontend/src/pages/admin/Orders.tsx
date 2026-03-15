@@ -339,7 +339,7 @@ const Orders = () => {
             return ['CONFIRMED', 'CANCELLED'].includes(status);
         }
         if (userRole === 'magasinier') {
-            return ['SHIPPED', 'DELIVERED', 'RETOUR'].includes(status);
+            return ['SHIPPED', 'DELIVERED', 'RETOUR', 'CANCELLED'].includes(status);
         }
 
         // Catch-all: check specific permission again just in case (already checked above safely)
@@ -384,8 +384,8 @@ const Orders = () => {
     // Helper function to check if order is visible to user
     const isOrderVisible = (order: Order): boolean => {
         if (userRole === 'magasinier') {
-            // Magasinier can only see CONFIRMED, SHIPPED, DELIVERED and RETOUR orders
-            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR'].includes(order.status.toUpperCase());
+            // Magasinier can only see CONFIRMED, SHIPPED, DELIVERED, RETOUR and CANCELLED orders
+            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR', 'CANCELLED'].includes(order.status.toUpperCase());
         }
         return true; // All other roles can see all orders
     };
@@ -1105,10 +1105,8 @@ const Orders = () => {
                         <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
                             <h4 className="font-semibold text-sm">Quels articles voulez-vous retourner ?</h4>
                             {returnItems.map((item, index) => (
-                                <div key={item.productId} className="flex items-center justify-between gap-4 p-2 bg-muted/30 rounded-md border">
-                                    <div className="truncate text-sm font-medium flex-1">
-                                        {item.name}
-                                    </div>
+                                <div key={item.productId} className="grid items-center gap-3 p-2 bg-muted/30 rounded-md border" style={{ gridTemplateColumns: '1fr auto' }}>
+                                    <p className="text-sm font-medium truncate min-w-0">{item.name}</p>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Button
                                             variant="outline"

@@ -1,67 +1,105 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useLocation, useNavigationType } from "react-router-dom";
 
-// Store scroll positions for each route
-const scrollPositions: { [key: string]: number } = {};
+const SCROLL_STORAGE_KEY = 'mkarim_scroll_pos_v3';
+
+const loadSavedPositions = (): Record<string, number> => {
+    try {
+        const saved = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+        return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+        return {};
+    }
+};
 
 const ScrollToTop = () => {
     const location = useLocation();
     const navigationType = useNavigationType();
-    const prevLocationRef = useRef<string>("");
-    const prevNavigationTypeRef = useRef<string>("");
-    const isFirstRender = useRef(true);
+    const scrollPositions = useRef<Record<string, number>>(loadSavedPositions());
+    const isRestoring = useRef(false);
 
-    // Save scroll position immediately before any DOM updates
-    useLayoutEffect(() => {
-        const currentPath = location.pathname + location.search;
-
-        // Save the previous page's scroll position before navigating
-        if (!isFirstRender.current && prevLocationRef.current && prevLocationRef.current !== currentPath) {
-            scrollPositions[prevLocationRef.current] = window.scrollY;
-            console.log(`💾 Saved scroll position for ${prevLocationRef.current}: ${window.scrollY}`);
+    // Set manual restoration once
+    useEffect(() => {
+        if ('scrollRestoration' in window.history) {
+            window.history.scrollRestoration = 'manual';
         }
+    }, []);
 
-        isFirstRender.current = false;
+    // Save scroll position
+    useEffect(() => {
+        let timeout: number;
+        const handleScroll = () => {
+            if (isRestoring.current) return;
+
+            // Skip saving the very top if we just navigated (prevents overriding restoration with 0)
+            if (window.scrollY === 0) return;
+
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(() => {
+                const key = location.pathname + location.search;
+                scrollPositions.current[key] = window.scrollY;
+                try {
+                    sessionStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify(scrollPositions.current));
+                } catch (e) { }
+            }, 100);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.clearTimeout(timeout);
+        };
     }, [location.pathname, location.search]);
 
-    // Handle scroll restoration or scroll to top
-    useEffect(() => {
-        const currentPath = location.pathname + location.search;
+    // Perform Restoration
+    useLayoutEffect(() => {
+        const key = location.pathname + location.search;
+        const isProductDetail = location.pathname.startsWith('/product/');
 
-        // If this is a REPLACE navigation to the same path, ignore it
-        // This happens when React Query or other libraries update the location state
-        if (navigationType === 'REPLACE' && prevLocationRef.current === currentPath) {
-            console.log(`🔄 Ignoring REPLACE navigation to same path: ${currentPath}`);
+        // Always scroll to top for product details (even on back)
+        if (isProductDetail) {
+            isRestoring.current = true;
+            window.scrollTo(0, 0);
+            setTimeout(() => { isRestoring.current = false; }, 150);
             return;
         }
 
-        // If this is a POP navigation (back/forward button)
         if (navigationType === 'POP') {
-            const savedPosition = scrollPositions[currentPath];
-            console.log(`🔙 POP navigation to ${currentPath}, saved position: ${savedPosition}`);
+            const saved = scrollPositions.current[key];
+            if (saved && saved > 0) {
+                isRestoring.current = true;
 
-            if (savedPosition !== undefined) {
-                // Restore saved scroll position
-                // Use requestAnimationFrame to ensure DOM is fully rendered
-                requestAnimationFrame(() => {
-                    window.scrollTo(0, savedPosition);
-                    console.log(`📍 Restored scroll to: ${savedPosition}`);
-                });
+                let attempts = 0;
+                const maxAttempts = 40;
+
+                const restore = () => {
+                    attempts++;
+                    const docHeight = document.documentElement.scrollHeight;
+
+                    // If page is tall enough or we've tried for 4 seconds
+                    if (docHeight >= saved || attempts >= maxAttempts) {
+                        window.scrollTo(0, Math.min(saved, Math.max(0, docHeight - window.innerHeight)));
+                        setTimeout(() => { isRestoring.current = false; }, 200);
+                        return;
+                    }
+
+                    if (attempts < maxAttempts) {
+                        setTimeout(restore, 100);
+                    } else {
+                        isRestoring.current = false;
+                    }
+                };
+
+                restore();
             } else {
-                // No saved position, scroll to top
+                // Default to top if no saved position
                 window.scrollTo(0, 0);
-                console.log(`⬆️ No saved position, scrolled to top`);
             }
         } else if (navigationType === 'PUSH') {
-            // For PUSH navigation, scroll to top
+            isRestoring.current = true;
             window.scrollTo(0, 0);
-            console.log(`⬆️ PUSH navigation to ${currentPath}, scrolled to top`);
+            setTimeout(() => { isRestoring.current = false; }, 150);
         }
-        // Ignore REPLACE navigations to different paths (let them keep current scroll)
-
-        // Update the previous location and navigation type reference
-        prevLocationRef.current = currentPath;
-        prevNavigationTypeRef.current = navigationType;
     }, [location.pathname, location.search, navigationType]);
 
     return null;

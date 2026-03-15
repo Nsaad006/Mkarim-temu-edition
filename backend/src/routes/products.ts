@@ -61,8 +61,11 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
             ];
         }
 
-        // Apply admin category permission restriction if necessary
-        if (user && user.role !== 'super_admin') {
+        // Apply admin category permission restriction ONLY for admin-context requests.
+        // Only `trashed` is a true admin-only flag — `published` is also used by the public storefront.
+        // Public storefront requests must NEVER be filtered by admin category permissions.
+        const isAdminRequest = trashed !== undefined;
+        if (isAdminRequest && user && user.role !== 'super_admin') {
             const adminData: any = await prisma.admin.findUnique({
                 where: { id: user.id },
                 select: { allowedCategories: true } as any

@@ -47,6 +47,13 @@ const Procurements = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
 
+    // Get current user permissions
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : { role: "viewer", permissions: [] };
+    const userRole = user.role;
+    const userPermissions = user.permissions || [];
+    const canViewLogistics = userRole === 'super_admin' || userRole === 'editor' || userPermissions.includes('logistics:view');
+
     const [formData, setFormData] = useState({
         productId: "",
         supplierId: "",
@@ -67,10 +74,11 @@ const Procurements = () => {
         queryFn: () => productsApi.getAll(),
     });
 
-    // Fetch suppliers for selection
+    // Fetch suppliers for selection — only if user has logistics permission
     const { data: suppliers = [] } = useQuery({
         queryKey: ['suppliers'],
         queryFn: suppliersApi.getAll,
+        enabled: canViewLogistics,
     });
 
     // Create mutation

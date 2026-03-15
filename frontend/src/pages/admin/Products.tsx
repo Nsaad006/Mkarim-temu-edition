@@ -112,10 +112,12 @@ const AdminProducts = () => {
         queryFn: () => categoriesApi.getAll(true),
     });
 
-    // Fetch suppliers for the creation form
+    // Fetch suppliers for the creation form — only if user has logistics permission
+    const canViewLogistics = user.role === 'super_admin' || user.role === 'editor' || userPermissions.includes(PERMISSIONS.LOGISTICS_VIEW);
     const { data: suppliers = [] } = useQuery({
         queryKey: ['suppliers'],
         queryFn: suppliersApi.getAll,
+        enabled: canViewLogistics,
     });
 
     // Fetch products

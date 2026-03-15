@@ -147,13 +147,13 @@ const ProductDetailPage = () => {
       <main className="pt-24 lg:pt-32">
         <div className="container-custom py-8 lg:py-16">
           {/* Breadcrumb */}
-          <Link
-            to="/products"
+          <button
+            onClick={() => navigate(-1)}
             className="inline-flex items-center gap-3 text-muted-foreground hover:text-foreground mb-10 transition-colors font-black uppercase tracking-[0.2em] text-[10px]"
           >
             <ArrowLeft className="w-4 h-4 text-primary" />
             Retour au Catalogue
-          </Link>
+          </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
             {/* Product Image Gallery */}
@@ -168,6 +168,18 @@ const ProductDetailPage = () => {
                 productName={product.name}
                 badge={product.badge}
               />
+
+              {/* Desktop Description (Moved) */}
+              <div className="hidden lg:block mt-12 pt-8 border-t border-border space-y-4">
+                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-2">DESCRIPTION</h3>
+                <div className="text-muted-foreground text-lg font-medium leading-relaxed space-y-2">
+                  {product.description?.split(/;|\n/).map((line, index) => {
+                    const trimmedLine = line.trim();
+                    return trimmedLine ? <p key={index}>{trimmedLine}</p> : null;
+                  })}
+                </div>
+              </div>
+
               {/* Decorative glow */}
               <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
             </motion.div>
@@ -186,12 +198,6 @@ const ProductDetailPage = () => {
                 <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black text-foreground italic tracking-tighter leading-[0.9] mb-6 uppercase">
                   {product.name}
                 </h1>
-                <div className="text-muted-foreground text-lg font-medium leading-relaxed max-w-xl space-y-1">
-                  {product.description?.split(/;|\n/).map((line, index) => {
-                    const trimmedLine = line.trim();
-                    return trimmedLine ? <p key={index}>{trimmedLine}</p> : null;
-                  })}
-                </div>
               </div>
 
               {/* Price & Stock */}
@@ -268,6 +274,17 @@ const ProductDetailPage = () => {
                 )}
               </div>
 
+              {/* Mobile Description (Moved) */}
+              <div className="lg:hidden space-y-4 pt-4">
+                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-2">DESCRIPTION</h3>
+                <div className="text-muted-foreground text-base font-medium leading-relaxed bg-muted/20 p-6 rounded-2xl border border-border">
+                  {product.description?.split(/;|\n/).map((line, index) => {
+                    const trimmedLine = line.trim();
+                    return trimmedLine ? <p key={index}>{trimmedLine}</p> : null;
+                  })}
+                </div>
+              </div>
+
               {/* Specs */}
               {product.specs && product.specs.length > 0 && (
                 <div className="space-y-4 pt-4">
@@ -332,7 +349,7 @@ const ProductDetailPage = () => {
               )}
 
               {/* Trust Badges */}
-              <div className="grid grid-cols-3 gap-6 pt-10 border-t border-border">
+              <div className="grid grid-cols-3 gap-6 pt-10 border-t border-border mt-20">
                 {[
                   { icon: Truck, label: "EXPRESS LOGISTICS", sub: "24-72H MAROC" },
                   { icon: ShieldCheck, label: "CERTIFIED GEAR", sub: "FULL WARRANTY" },
