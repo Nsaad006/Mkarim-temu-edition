@@ -118,9 +118,8 @@ const CheckoutPage = () => {
       newErrors.city = "Merci de choisir une ville dans la liste";
     }
 
-    if (!formData.email) {
-      newErrors.email = "Champ obligatoire";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    // Email is optional — only validate format if provided
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Email invalide";
     }
 
@@ -361,7 +360,7 @@ const CheckoutPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-[11px] lg:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 px-1">
                     <Mail className="w-3.5 h-3.5 text-primary" />
-                    Adresse Email
+                    Adresse Email (Facultatif)
                   </Label>
                   <Input
                     id="email"

@@ -205,7 +205,25 @@ router.get('/', authenticate, authorize(
             }
         });
 
-        res.json(orders);
+        // Apply allowedCategories filtering for restricted users
+        // Only show orders that contain at least one product from the user's allowed categories
+        let filteredOrders = orders;
+        if (user.role !== 'super_admin') {
+            const adminData: any = await prisma.admin.findUnique({
+                where: { id: user.id },
+                select: { allowedCategories: true } as any
+            });
+
+            if (adminData && adminData.allowedCategories && adminData.allowedCategories.length > 0) {
+                filteredOrders = orders.filter((order: any) =>
+                    order.items.some((item: any) =>
+                        item.product && adminData.allowedCategories.includes(item.product.categoryId)
+                    )
+                );
+            }
+        }
+
+        res.json(filteredOrders);
     } catch (error) {
         console.error('Error fetching orders:', error);
         res.status(500).json({ error: 'Failed to fetch orders' });

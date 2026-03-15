@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "npx prisma migrate resolve --applied 20260315071544_fix_missing_columns || true && npx prisma migrate deploy && node dist/server.js",
+    "start": "npx prisma migrate deploy && node dist/server.js",
     "start:prod": " migrate deploy && node dist/server.js",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
