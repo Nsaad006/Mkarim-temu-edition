@@ -45,10 +45,19 @@ import SEO from "@/components/SEO";
 
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showFilters, setShowFilters] = useState(false);
+  const sortBy = searchParams.get("sort") || "featured";
   const searchParam = searchParams.get("search") || "";
 
-  const [sortBy, setSortBy] = useState("featured");
-  const [showFilters, setShowFilters] = useState(false);
+  const setSortBy = (val: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (val && val !== "featured") next.set("sort", val);
+      else next.delete("sort");
+      return next;
+    }, { replace: true });
+  };
+
   // Current page derived from URL
   const currentPage = Number(searchParams.get("page")) || 1;
   const [itemsPerPage, setItemsPerPage] = useState(18); // Default to desktop
@@ -70,8 +79,8 @@ const ProductsPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Advanced Filtering State
-  const [filters, setFilters] = useState({
+  // Advanced Filtering State - DERIVED FROM URL
+  const filters = useMemo(() => ({
     category: searchParams.get("category") || "all",
     cpus: searchParams.get("cpus")?.split(",") || [],
     gpus: searchParams.get("gpus")?.split(",") || [],
@@ -85,47 +94,52 @@ const ProductsPage = () => {
     minPrice: Number(searchParams.get("minPrice")) || 0,
     maxPrice: Number(searchParams.get("maxPrice")) || 100000,
     inStockOnly: searchParams.get("inStock") === "true",
-  });
+  }), [searchParams]);
 
-  // Helper to update URL with consistent logic
-  const updateURL = (newParams: any, usePush = false) => {
+  const updateFilters = (newFilters: any) => {
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      // Clear existing page-related params before applying new ones if needed
-      // or just merge if we want to keep them.
-      Object.entries(newParams).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") {
-          next.delete(key);
+      const params = new URLSearchParams(prev);
+
+      // Update with new filters
+      Object.entries(newFilters).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          if (value.length > 0) params.set(key, value.join(","));
+          else params.delete(key);
+        } else if (typeof value === "boolean") {
+          if (value) params.set(key, "true");
+          else params.delete(key);
+        } else if (typeof value === "number") {
+          if (key === "minPrice" && value > 0) params.set(key, value.toString());
+          else if (key === "maxPrice" && value < 100000) params.set(key, value.toString());
+          else if (key !== "minPrice" && key !== "maxPrice") params.set(key, value.toString());
+          else params.delete(key);
+        } else if (value && value !== "all") {
+          params.set(key, String(value));
         } else {
-          next.set(key, String(value));
+          params.delete(key);
         }
       });
-      return next;
-    }, { replace: !usePush });
+
+      // Filter changes always reset page to 1
+      params.delete("page");
+
+      return params;
+    }, { replace: true });
   };
-
-  // Sync state with URL - ONLY for filters/search, not page
-  useEffect(() => {
-    const params: any = {};
-    if (filters.category !== "all") params.category = filters.category;
-    if (filters.cpus.length > 0) params.cpus = filters.cpus.join(",");
-    // ... other filters ...
-    if (filters.minPrice > 0) params.minPrice = filters.minPrice.toString();
-    if (filters.maxPrice < 100000) params.maxPrice = filters.maxPrice.toString();
-    if (filters.inStockOnly) params.inStock = "true";
-    if (searchParam) params.search = searchParam;
-
-    // Filter changes should ALWAYS reset to page 1 and use REPLACE
-    params.page = ""; // Go to page 1
-    updateURL(params, false);
-  }, [filters, searchParam]);
 
   const handlePageChange = (page: number) => {
-    updateURL({ page: page > 1 ? page : "" }, true); // Pagination uses PUSH
-    window.scrollTo(0, 0); // Force scroll
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (page > 1) params.set("page", page.toString());
+      else params.delete("page");
+      return params;
+    }, { replace: false }); // PUSH for pagination
+    window.scrollTo(0, 0);
   };
 
+
   // Fetch all products
+
   const { data: allProducts = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
     queryFn: () => productsApi.getAll({ published: true }),
@@ -229,29 +243,27 @@ const ProductsPage = () => {
 
   const removeFilter = (type: string, value?: string) => {
     if (type === 'search') {
-      searchParams.delete("search");
-      setSearchParams(searchParams);
+      updateFilters({ search: "" });
       return;
     }
 
     if (type === 'minPrice' || type === 'maxPrice' || type === 'price') {
-      setFilters({ ...filters, minPrice: 0, maxPrice: 100000 });
+      updateFilters({ minPrice: 0, maxPrice: 100000 });
       return;
     }
 
     if (type === 'inStockOnly') {
-      setFilters({ ...filters, inStockOnly: false });
+      updateFilters({ inStock: "" });
       return;
     }
 
     if (type === 'category') {
-      setFilters({ ...filters, category: 'all' });
+      updateFilters({ category: 'all' });
       return;
     }
 
     const current = (filters as any)[type] || [];
-    setFilters({
-      ...filters,
+    updateFilters({
       [type]: current.filter((v: string) => v !== value)
     });
   };
@@ -370,7 +382,7 @@ const ProductsPage = () => {
                   products={allProducts}
                   categories={categories}
                   activeFilters={filters}
-                  updateFilters={setFilters}
+                  updateFilters={updateFilters}
                   expand={true}
                   currentSort={sortBy}
                   onSortChange={setSortBy}
@@ -396,7 +408,7 @@ const ProductsPage = () => {
                     products={allProducts}
                     categories={categories}
                     activeFilters={filters}
-                    updateFilters={setFilters}
+                    updateFilters={updateFilters}
                     onClose={() => setShowFilters(false)}
                     currentSort={sortBy}
                     onSortChange={setSortBy}
@@ -436,7 +448,7 @@ const ProductsPage = () => {
                       </motion.div>
                     ))}
                     <button
-                      onClick={() => setFilters({
+                      onClick={() => updateFilters({
                         category: 'all',
                         cpus: [],
                         gpus: [],
@@ -449,7 +461,8 @@ const ProductsPage = () => {
                         games: [],
                         minPrice: 0,
                         maxPrice: 100000,
-                        inStockOnly: false
+                        inStockOnly: false,
+                        search: ""
                       })}
                       className="text-[10px] font-black text-muted-foreground hover:text-foreground uppercase tracking-widest ml-2 transition-colors underline underline-offset-4"
                     >
@@ -567,7 +580,7 @@ const ProductsPage = () => {
                   </p>
                   <Button
                     variant="outline"
-                    onClick={() => setFilters({
+                    onClick={() => updateFilters({
                       category: 'all',
                       cpus: [],
                       gpus: [],
@@ -580,7 +593,8 @@ const ProductsPage = () => {
                       games: [],
                       minPrice: 0,
                       maxPrice: 100000,
-                      inStockOnly: false
+                      inStockOnly: false,
+                      search: ""
                     })}
                     className="border-border text-foreground hover:bg-accent font-black uppercase tracking-widest h-12 rounded-xl"
                   >
@@ -593,7 +607,7 @@ const ProductsPage = () => {
         </div>
       </main>
       <Footer />
-    </div >
+    </div>
   );
 };
 
