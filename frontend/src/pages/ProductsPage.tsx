@@ -221,7 +221,10 @@ const ProductsPage = () => {
 
   const navigationType = useNavigationType();
 
-  // Scroll restoration and top-management is handled by ScrollToTop component in App.tsx
+  // Scroll to top when page changes via pagination
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const removeFilter = (type: string, value?: string) => {
     if (type === 'search') {

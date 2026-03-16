@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import {
     ChevronDown,
     Check,
-    RotateCcw,
     Zap,
     Filter
 } from "lucide-react";
@@ -204,19 +203,11 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
     return (
         <div className={`flex flex-col ${expand ? '' : 'h-full border-r'} bg-background border-border w-full lg:w-72`}>
             {/* Header */}
-            <div className={`p-6 border-b border-border flex items-center justify-between bg-background/80 z-20 ${expand ? '' : 'sticky top-0'}`}>
+            <div className={`p-6 border-b border-border flex items-center bg-background/80 z-20 ${expand ? '' : 'sticky top-0'}`}>
                 <div className="flex items-center gap-3">
                     <div className="w-1.5 h-6 bg-primary skew-x-[-15deg]" />
                     <h2 className="font-display font-black text-foreground text-lg uppercase italic tracking-tighter">Filtres</h2>
                 </div>
-                <Button
-                    variant="ghost"
-                    onClick={resetAll}
-                    className="h-10 text-[10px] font-black text-muted-foreground hover:text-primary uppercase tracking-widest gap-2"
-                >
-                    <RotateCcw className="w-4 h-4" />
-                    Reset
-                </Button>
             </div>
 
             <Container className="flex-1 px-4 py-6">
