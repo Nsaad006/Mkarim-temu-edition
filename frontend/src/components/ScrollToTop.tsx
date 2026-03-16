@@ -95,7 +95,7 @@ const ScrollToTop = () => {
                 // Default to top if no saved position
                 window.scrollTo(0, 0);
             }
-        } else if (navigationType === 'PUSH') {
+        } else if (navigationType === 'PUSH' || navigationType === 'REPLACE') {
             isRestoring.current = true;
             window.scrollTo(0, 0);
             setTimeout(() => { isRestoring.current = false; }, 150);

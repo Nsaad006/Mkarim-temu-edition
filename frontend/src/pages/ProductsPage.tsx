@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, Link, useNavigationType } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -89,6 +89,8 @@ const ProductsPage = () => {
     inStockOnly: searchParams.get("inStock") === "true",
   });
 
+  const prevPageRef = useRef(currentPage);
+
   // Sync state with URL
   useEffect(() => {
     const params: any = {};
@@ -108,7 +110,10 @@ const ProductsPage = () => {
     if (searchParam) params.search = searchParam;
     if (currentPage > 1) params.page = currentPage.toString();
 
-    setSearchParams(params, { replace: true });
+    // Treat pagination as a new page (PUSH), but filters as the same view (REPLACE)
+    const isPageChange = currentPage !== prevPageRef.current;
+    setSearchParams(params, { replace: !isPageChange });
+    prevPageRef.current = currentPage;
   }, [filters, searchParam, currentPage]);
 
   // Fetch all products
@@ -220,11 +225,6 @@ const ProductsPage = () => {
   }, [filters, sortBy, searchParam]);
 
   const navigationType = useNavigationType();
-
-  // Scroll to top when page changes via pagination
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPage]);
 
   const removeFilter = (type: string, value?: string) => {
     if (type === 'search') {
