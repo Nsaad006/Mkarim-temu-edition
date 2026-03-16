@@ -97,8 +97,12 @@ const ScrollToTop = () => {
             }
         } else if (navigationType === 'PUSH' || navigationType === 'REPLACE') {
             isRestoring.current = true;
-            window.scrollTo(0, 0);
-            setTimeout(() => { isRestoring.current = false; }, 150);
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            // Small delay to ensure any late-running scripts don't pull the scroll back down
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                isRestoring.current = false;
+            }, 50);
         }
     }, [location.pathname, location.search, navigationType]);
 

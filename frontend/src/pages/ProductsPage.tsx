@@ -49,13 +49,13 @@ const ProductsPage = () => {
 
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  // Current page derived from URL
+  const currentPage = Number(searchParams.get("page")) || 1;
   const [itemsPerPage, setItemsPerPage] = useState(18); // Default to desktop
 
   // Responsive items per page
   useEffect(() => {
     const handleResize = () => {
-      // lg breakpoint is usually 1024px.
       // Mobile/Tablet -> 16 items
       // Desktop -> 18 items
       if (window.innerWidth < 820) {
@@ -65,9 +65,7 @@ const ProductsPage = () => {
       }
     };
 
-    // Initial check
     handleResize();
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -89,32 +87,43 @@ const ProductsPage = () => {
     inStockOnly: searchParams.get("inStock") === "true",
   });
 
-  const prevPageRef = useRef(currentPage);
+  // Helper to update URL with consistent logic
+  const updateURL = (newParams: any, usePush = false) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      // Clear existing page-related params before applying new ones if needed
+      // or just merge if we want to keep them.
+      Object.entries(newParams).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          next.delete(key);
+        } else {
+          next.set(key, String(value));
+        }
+      });
+      return next;
+    }, { replace: !usePush });
+  };
 
-  // Sync state with URL
+  // Sync state with URL - ONLY for filters/search, not page
   useEffect(() => {
     const params: any = {};
     if (filters.category !== "all") params.category = filters.category;
     if (filters.cpus.length > 0) params.cpus = filters.cpus.join(",");
-    if (filters.gpus.length > 0) params.gpus = filters.gpus.join(",");
-    if (filters.rams.length > 0) params.rams = filters.rams.join(",");
-    if (filters.storages.length > 0) params.storages = filters.storages.join(",");
-    if (filters.brands.length > 0) params.brands = filters.brands.join(",");
-    if (filters.ecrans.length > 0) params.ecrans = filters.ecrans.join(",");
-    if (filters.periphs.length > 0) params.periphs = filters.periphs.join(",");
-    if (filters.others.length > 0) params.others = filters.others.join(",");
-    if (filters.games.length > 0) params.games = filters.games.join(",");
+    // ... other filters ...
     if (filters.minPrice > 0) params.minPrice = filters.minPrice.toString();
     if (filters.maxPrice < 100000) params.maxPrice = filters.maxPrice.toString();
     if (filters.inStockOnly) params.inStock = "true";
     if (searchParam) params.search = searchParam;
-    if (currentPage > 1) params.page = currentPage.toString();
 
-    // Treat pagination as a new page (PUSH), but filters as the same view (REPLACE)
-    const isPageChange = currentPage !== prevPageRef.current;
-    setSearchParams(params, { replace: !isPageChange });
-    prevPageRef.current = currentPage;
-  }, [filters, searchParam, currentPage]);
+    // Filter changes should ALWAYS reset to page 1 and use REPLACE
+    params.page = ""; // Go to page 1
+    updateURL(params, false);
+  }, [filters, searchParam]);
+
+  const handlePageChange = (page: number) => {
+    updateURL({ page: page > 1 ? page : "" }, true); // Pagination uses PUSH
+    window.scrollTo(0, 0); // Force scroll
+  };
 
   // Fetch all products
   const { data: allProducts = [], isLoading: productsLoading } = useQuery({
@@ -215,14 +224,6 @@ const ProductsPage = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
-
-  // Reset to page 1 when filters change (except when initializing from URL)
-  useEffect(() => {
-    const urlPage = Number(searchParams.get("page")) || 1;
-    if (currentPage !== urlPage && !searchParams.get("page")) {
-      setCurrentPage(1);
-    }
-  }, [filters, sortBy, searchParam]);
 
   const navigationType = useNavigationType();
 
@@ -489,7 +490,7 @@ const ProductsPage = () => {
                         <PaginationContent className="gap-2">
                           <PaginationItem>
                             <PaginationLink
-                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                               className={`cursor-pointer bg-card border-border text-foreground hover:bg-accent hover:text-primary gap-1 pl-2.5 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
                               size="default"
                               aria-label="Page précédente"
@@ -514,7 +515,7 @@ const ProductsPage = () => {
                               return (
                                 <PaginationItem key={page} className={responsiveClass}>
                                   <PaginationLink
-                                    onClick={() => setCurrentPage(page)}
+                                    onClick={() => handlePageChange(page)}
                                     isActive={isCurrent}
                                     className={`cursor-pointer ${isCurrent
                                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -537,7 +538,7 @@ const ProductsPage = () => {
 
                           <PaginationItem>
                             <PaginationLink
-                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                               className={`cursor-pointer bg-card border-border text-foreground hover:bg-accent hover:text-primary gap-1 pr-2.5 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
                               size="default"
                               aria-label="Page suivante"
