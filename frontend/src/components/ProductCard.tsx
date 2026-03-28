@@ -52,6 +52,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
         <img
           src={getImageUrl(product.image)}
           alt={product.name}
+          width="400"
+          height="400"
+          loading="lazy"
           className="w-full h-full object-cover transition-transform duration-700 md:group-hover:scale-110 md:group-hover:rotate-1"
         />
 
@@ -74,7 +77,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
         {/* Quick View Icon - Desktop Only */}
         <div className="absolute top-4 right-4 opacity-0 md:group-hover:opacity-100 transition-all duration-300 transform translate-x-2 md:group-hover:translate-x-0 hidden md:block">
-          <div className="w-10 h-10 bg-background/50 backdrop-blur-md rounded-xl flex items-center justify-center border border-border hover:bg-primary transition-colors">
+          <div
+            role="button"
+            aria-label={`Aperçu rapide de ${product.name}`}
+            className="w-10 h-10 bg-background/50 backdrop-blur-md rounded-xl flex items-center justify-center border border-border hover:bg-primary transition-colors"
+          >
             <Eye className="w-5 h-5 text-foreground" />
           </div>
         </div>
@@ -119,6 +126,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <Button
             variant="outline"
             size="icon"
+            aria-label={`Ajouter ${product.name} au panier`}
             className="shrink-0 w-10 h-10"
             disabled={!product.inStock}
             onClick={(e) => {

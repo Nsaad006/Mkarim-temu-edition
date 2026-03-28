@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { upload } from '../middleware/upload';
+import { upload, processImage, processImages } from '../middleware/upload';
 import { authenticate, authorize } from './auth';
 
 const router = Router();
@@ -9,13 +9,14 @@ router.post('/product-image',
     authenticate,
     authorize(['super_admin', 'editor']),
     upload.single('image'),
+    processImage,
     (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Return the file path that can be used in the product
-        const imageUrl = `/uploads/products/${req.file.filename}`;
+        // Use the filename provided by the processing middleware (which will be a .webp file)
+        const imageUrl = `/uploads/products/${(req.file as any).filename}`;
         res.json({ imageUrl });
     }
 );
@@ -25,13 +26,15 @@ router.post('/product-images',
     authenticate,
     authorize(['super_admin', 'editor']),
     upload.array('images', 6),  // Max 6 images
+    processImages,
     (req, res) => {
-        if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        const files = (req as any).files;
+        if (!files || !Array.isArray(files) || files.length === 0) {
             return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        // Return array of file paths
-        const imageUrls = req.files.map(file => `/uploads/products/${file.filename}`);
+        // Return array of file paths from processed files
+        const imageUrls = files.map((file: any) => `/uploads/products/${file.filename}`);
         res.json({ imageUrls });
     }
 );

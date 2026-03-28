@@ -60,11 +60,19 @@ const FeaturedProducts = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-              <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
-            </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-8" aria-hidden="true">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-border overflow-hidden bg-card/40">
+                <div className="aspect-square bg-muted/50 animate-pulse" />
+                <div className="p-3 md:p-5 space-y-3">
+                  <div className="h-3 w-1/3 bg-muted/50 rounded animate-pulse" />
+                  <div className="h-5 w-full bg-muted/60 rounded animate-pulse" />
+                  <div className="h-5 w-2/3 bg-muted/60 rounded animate-pulse" />
+                  <div className="h-7 w-1/2 bg-muted/70 rounded animate-pulse" />
+                  <div className="h-9 w-full bg-muted/50 rounded-lg animate-pulse mt-2" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : featuredProducts.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-8">

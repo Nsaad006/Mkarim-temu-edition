@@ -111,6 +111,7 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Ouvrir la recherche"
                   className="relative z-20 text-muted-foreground hover:text-foreground w-9 h-9 md:w-12 md:h-12 shrink-0 rounded-xl"
                   onClick={handleButtonClick}
                 >
@@ -131,6 +132,7 @@ const Navbar = () => {
                         inputMode="search"
                         enterKeyHint="search"
                         autoFocus
+                        aria-label="Rechercher des produits"
                         placeholder="Chercher..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -172,11 +174,11 @@ const Navbar = () => {
                 )}
 
                 {logo ? (
-                  <motion.img
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                  <img
                     src={getImageUrl(logo)}
                     alt={storeName}
+                    width="120"
+                    height="48"
                     className="h-8 md:h-10 lg:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
@@ -201,6 +203,7 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Ouvrir la recherche"
                   className="relative z-20 text-muted-foreground hover:text-foreground w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-xl"
                   onClick={handleButtonClick}
                 >
@@ -219,6 +222,7 @@ const Navbar = () => {
                       <input
                         type="text"
                         autoFocus
+                        aria-label="Rechercher des produits"
                         placeholder="RECHERCHE..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -234,13 +238,14 @@ const Navbar = () => {
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Activer le mode clair" : "Activer le mode sombre"}
                 className="text-muted-foreground hover:text-foreground transition-all duration-300 rounded-xl hover:bg-foreground/5 w-10 h-10 md:w-11 md:h-11 shrink-0"
               >
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </Button>
 
               {/* Inline Cart for Desktop/Tablet */}
-              <Link to="/cart" className="hidden md:block relative group p-2 shrink-0">
+              <Link to="/cart" aria-label="Voir le panier" className="hidden md:block relative group p-2 shrink-0">
                 <motion.div
                   animate={isPulsing ? {
                     scale: [1, 1.3, 1],
@@ -265,6 +270,8 @@ const Navbar = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-expanded={isOpen}
                 className="lg:hidden text-foreground ml-1 w-10 h-10 md:w-12 md:h-12 shrink-0"
                 onClick={() => setIsOpen(!isOpen)}
               >
@@ -296,6 +303,7 @@ const Navbar = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Fermer le menu"
                 className="w-12 h-12 rounded-2xl bg-foreground/5 text-foreground hover:bg-foreground/10 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
@@ -348,7 +356,7 @@ const Navbar = () => {
       {/* Mobile Floating Cart Bubble */}
       {!isCartOrCheckout && (
         <div className="md:hidden fixed bottom-6 right-6 z-[60]">
-          <Link to="/cart">
+          <Link to="/cart" aria-label="Voir le panier">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

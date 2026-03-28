@@ -9,9 +9,26 @@ import { settingsApi } from '@/api/settings';
 import { useQuery } from '@tanstack/react-query';
 import { getImageUrl } from '@/lib/image-utils';
 
+// Helper to build a responsive srcset from an image URL (works for Unsplash & local uploads)
+const buildSrcSet = (src: string): string | undefined => {
+    if (!src || src.startsWith('https://api.mkarim.ma') || src.startsWith('/uploads')) {
+        // Local uploads: no srcset, serve as-is
+        return undefined;
+    }
+    if (src.includes('unsplash.com')) {
+        const base = src.split('?')[0];
+        return [
+            `${base}?q=75&w=800&auto=format&fit=crop 800w`,
+            `${base}?q=75&w=1200&auto=format&fit=crop 1200w`,
+            `${base}?q=75&w=1920&auto=format&fit=crop 1920w`,
+        ].join(', ');
+    }
+    return undefined;
+};
+
 const DEFAULT_SLIDES = [
     {
-        image: 'https://images.unsplash.com/photo-1587202376732-834907a75932?q=80&w=2070&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1587202376732-834907a75932?q=75&w=1200&auto=format&fit=crop',
         title: 'Dominez le Champ de Bataille',
         subtitle: 'PROMOTIONS EXCLUSIVES',
         description: 'PCs Gaming haute performance configurés pour la victoire. Jusqu\'à -20% sur la série RTX Elite.',
@@ -21,7 +38,7 @@ const DEFAULT_SLIDES = [
         color: 'from-blue-600/20'
     },
     {
-        image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=75&w=1200&auto=format&fit=crop',
         title: 'Précision Ultime',
         subtitle: 'NOUVEAUX PACKS',
         description: 'Découvrez nos packs périphériques : Clavier Mécanique + Souris RGB + Tapis XL à prix réduit.',
@@ -31,7 +48,7 @@ const DEFAULT_SLIDES = [
         color: 'from-purple-600/20'
     },
     {
-        image: 'https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?q=80&w=2071&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?q=75&w=1200&auto=format&fit=crop',
         title: 'Immersion Totale',
         subtitle: 'EXPERIENCE GAMING',
         description: 'Écrans incurvés 240Hz et casques audio 7.1 pour une immersion sans précédent.',
@@ -124,9 +141,14 @@ export const HeroCarousel = () => {
                                 <div className="absolute inset-0 z-0">
                                     <img
                                         src={slide.image}
+                                        srcSet={buildSrcSet(slide.image)}
+                                        sizes="100vw"
                                         alt={slide.title}
                                         className="w-[101%] h-full max-w-none object-cover object-center transition-transform duration-[10s] scale-105 hover:scale-100"
                                         style={{ filter: `blur(${settings?.homeHeroBlur ?? 0}px)` }}
+                                        fetchPriority={index === 0 ? 'high' : 'low'}
+                                        loading={index === 0 ? 'eager' : 'lazy'}
+                                        decoding={index === 0 ? 'sync' : 'async'}
                                     />
                                     <div
                                         className={`absolute inset-0 bg-gradient-to-r ${slide.color || 'from-[#070708]/80'} via-[#070708]/80 to-[#070708]/40 z-10`}

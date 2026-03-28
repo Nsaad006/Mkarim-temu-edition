@@ -35,7 +35,25 @@ const CategoriesSection = () => {
   const sectionTitle = settings?.categoriesTitle || "Nos Catégories";
   const sectionSubtitle = settings?.categoriesSubtitle || "Découvrez notre large sélection de produits IT et gaming de qualité supérieure";
 
-  if (isLoading) return null;
+  if (isLoading) return (
+    <section className="section-padding relative overflow-hidden bg-background" aria-hidden="true">
+      <div className="container-custom">
+        <div className="text-center mb-16">
+          <div className="h-12 w-64 bg-muted/60 rounded-lg mx-auto mb-4 animate-pulse" />
+          <div className="w-24 h-1.5 bg-muted/60 mx-auto mb-6 rounded-full" />
+          <div className="h-5 w-96 bg-muted/50 rounded mx-auto animate-pulse" />
+        </div>
+        <div className="flex gap-4 justify-center overflow-hidden px-6 md:px-16">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-3 shrink-0">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full bg-muted/50 animate-pulse" />
+              <div className="h-3 w-20 bg-muted/50 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 
   return (
     <section className="section-padding relative overflow-hidden bg-background">
@@ -144,6 +162,9 @@ const CategoriesSection = () => {
                             <img
                               src={getImageUrl(category.image)}
                               alt={category.name}
+                              width="150"
+                              height="150"
+                              loading="lazy"
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                             />
                           ) : (

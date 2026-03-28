@@ -40,6 +40,8 @@ const Footer = () => {
       <div className="border-b border-border lg:border-none">
         <button
           onClick={() => toggleSection(id)}
+          aria-label={isOpen ? `Fermer la section ${title}` : `Ouvrir la section ${title}`}
+          aria-expanded={isOpen}
           className="w-full py-6 flex justify-between items-center lg:hidden"
         >
           <h3 className="font-display font-bold text-foreground text-base uppercase tracking-widest">{title}</h3>
@@ -77,17 +79,17 @@ const Footer = () => {
             </p>
             <div className="flex gap-4 flex-wrap">
               {[
-                { Icon: Facebook, link: settings?.facebookLink },
-                { Icon: Instagram, link: settings?.instagramLink },
-                { Icon: Twitter, link: settings?.twitterLink },
-                { Icon: Youtube, link: settings?.youtubeLink },
-              ].map(({ Icon, link }, i) => link ? (
-                <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 group">
+                { Icon: Facebook, link: settings?.facebookLink, name: "Facebook" },
+                { Icon: Instagram, link: settings?.instagramLink, name: "Instagram" },
+                { Icon: Twitter, link: settings?.twitterLink, name: "Twitter" },
+                { Icon: Youtube, link: settings?.youtubeLink, name: "YouTube" },
+              ].map(({ Icon, link, name }, i) => link ? (
+                <a key={i} href={link} target="_blank" rel="noopener noreferrer" aria-label={`Suivez-nous sur ${name}`} className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 group">
                   <Icon className="w-6 h-6 text-muted-foreground group-hover:text-primary-foreground" />
                 </a>
               ) : null)}
               {settings?.tiktokLink && (
-                <a href={settings.tiktokLink} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 group">
+                <a href={settings.tiktokLink} target="_blank" rel="noopener noreferrer" aria-label="Suivez-nous sur TikTok" className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 group">
                   <svg className="w-6 h-6 text-muted-foreground group-hover:text-primary-foreground fill-current" viewBox="0 0 24 24">
                     <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.59-1.01-.01 2.62.02 5.24-.02 7.86-.08 1.41-.47 2.81-1.25 4-1.35 2.06-3.8 3.12-6.23 2.77-2.34-.33-4.42-2.14-5.02-4.47-.63-2.45.19-5.14 2.09-6.84 1.25-1.12 2.92-1.72 4.6-1.68.03 1.48.01 2.96.02 4.44-.79-.07-1.61.12-2.3.52-.94.54-1.48 1.6-1.41 2.67.06 1.05.74 2.03 1.75 2.37 1.05.35 2.29.08 3-.77.58-.65.85-1.53.8-2.39.02-4.99.01-9.98.01-14.97z" />
                   </svg>
