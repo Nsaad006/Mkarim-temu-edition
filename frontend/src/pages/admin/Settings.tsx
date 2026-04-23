@@ -93,6 +93,7 @@ const Settings = () => {
                         <TabsTrigger value="checkout" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Checkout</TabsTrigger>
                         <TabsTrigger value="email" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Email</TabsTrigger>
                         <TabsTrigger value="invoice" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Facture</TabsTrigger>
+                        <TabsTrigger value="uitexts" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border">Textes UI</TabsTrigger>
                     </TabsList>
 
                     <div className="mt-6">
@@ -746,6 +747,97 @@ const Settings = () => {
                                                 </Button>
                                             )}
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* UI Texts Tab */}
+                        <TabsContent value="uitexts" className="space-y-6 m-0">
+                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+                                <h2 className="text-xl font-semibold border-b pb-2">Page À Propos (Textes)</h2>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Titre "Notre Mission"</Label>
+                                        <Input
+                                            value={formData.aboutMissionTitle || "Notre Mission"}
+                                            onChange={(e) => setFormData({ ...formData, aboutMissionTitle: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Label Stats (ex: Clients Satisfaits)</Label>
+                                        <Input
+                                            value={formData.aboutStatsLabel || "Clients Satisfaits"}
+                                            onChange={(e) => setFormData({ ...formData, aboutStatsLabel: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Titre "Nos Valeurs"</Label>
+                                        <Input
+                                            value={formData.aboutValuesTitle || "Nos Valeurs"}
+                                            onChange={(e) => setFormData({ ...formData, aboutValuesTitle: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+                                <h2 className="text-xl font-semibold border-b pb-2">Catalogue & Sidebar</h2>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Titre Principal (Catalogue Tech)</Label>
+                                        <Input
+                                            value={formData.productsPageTitle || "Catalogue Tech"}
+                                            onChange={(e) => setFormData({ ...formData, productsPageTitle: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Sous-titre (ARSYENAL MKARIM)</Label>
+                                        <Input
+                                            value={formData.productsPageSubtitle || "ARSYENAL MKARIM"}
+                                            onChange={(e) => setFormData({ ...formData, productsPageSubtitle: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Titre Filtre Budget</Label>
+                                        <Input
+                                            value={formData.filterBudgetTitle || "Budget de Déploiement"}
+                                            onChange={(e) => setFormData({ ...formData, filterBudgetTitle: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Titre Filtre Tri</Label>
+                                        <Input
+                                            value={formData.filterSortTitle || "Ordre de Tri"}
+                                            onChange={(e) => setFormData({ ...formData, filterSortTitle: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Titre Filtre Catégorie</Label>
+                                        <Input
+                                            value={formData.filterCategoryTitle || "Secteur d'Arsenal"}
+                                            onChange={(e) => setFormData({ ...formData, filterCategoryTitle: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+                                <h2 className="text-xl font-semibold border-b pb-2">Page Panier</h2>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Titre Résumé (Résumé Tactique)</Label>
+                                        <Input
+                                            value={formData.cartSummaryTitle || "Résumé Tactique"}
+                                            onChange={(e) => setFormData({ ...formData, cartSummaryTitle: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Texte Sous-total</Label>
+                                        <Input
+                                            value={formData.cartSubtotalText || "Sous-total matériel"}
+                                            onChange={(e) => setFormData({ ...formData, cartSubtotalText: e.target.value })}
+                                        />
                                     </div>
                                 </div>
                             </div>

@@ -72,6 +72,16 @@ export interface GlobalSettings {
     homeHeroAutoPlayInterval?: number;
     categoriesAutoPlayInterval?: number;
     aboutValues?: any;
+    aboutMissionTitle?: string;
+    aboutStatsLabel?: string;
+    aboutValuesTitle?: string;
+    productsPageTitle?: string;
+    productsPageSubtitle?: string;
+    filterBudgetTitle?: string;
+    filterSortTitle?: string;
+    filterCategoryTitle?: string;
+    cartSummaryTitle?: string;
+    cartSubtotalText?: string;
 
     updatedAt: string;
     createdAt?: string;

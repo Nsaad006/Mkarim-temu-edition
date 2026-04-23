@@ -36,9 +36,10 @@ interface FilterSidebarProps {
     expand?: boolean; // New prop to control expansion
     currentSort?: string;
     onSortChange?: (sort: string) => void;
+    settings?: any;
 }
 
-export const FilterSidebar = ({ products, categories, activeFilters, updateFilters, onClose, expand = false, currentSort, onSortChange }: FilterSidebarProps) => {
+export const FilterSidebar = ({ products, categories, activeFilters, updateFilters, onClose, expand = false, currentSort, onSortChange, settings }: FilterSidebarProps) => {
 
     // Safety resolver for category icons
     const getCategoryIcon = (cat: any) => {
@@ -215,7 +216,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
 
                     {/* Price Range (Permanent Global Filter) - Moved to Top */}
                     <div className="pb-8 border-b border-border">
-                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">Budget de Déploiement</h3>
+                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">{settings?.filterBudgetTitle || "Budget de Déploiement"}</h3>
                         <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-xl">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -260,7 +261,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                     {/* Sorting (Optional: When passed down) */}
                     {onSortChange && currentSort && (
                         <div className="pb-8 border-b border-border">
-                            <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">Ordre de Tri</h3>
+                            <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">{settings?.filterSortTitle || "Ordre de Tri"}</h3>
                             <Select value={currentSort} onValueChange={onSortChange}>
                                 <SelectTrigger className="w-full bg-card border-border text-foreground font-black uppercase tracking-wider h-11">
                                     <SelectValue placeholder="Trier par" />
@@ -303,7 +304,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
 
                     {/* Main Filter: Categories */}
                     <div>
-                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">Secteur d'Arsenal</h3>
+                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">{settings?.filterCategoryTitle || "Secteur d'Arsenal"}</h3>
                         <div className="space-y-1">
                             {[{ id: 'all', name: 'Tous les Produits', slug: 'all', icon: 'LayoutGrid' }, ...categories].map((cat) => {
                                 const categorySlug = (cat as any).slug || cat.id;

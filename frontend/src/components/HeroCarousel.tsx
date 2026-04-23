@@ -143,6 +143,8 @@ export const HeroCarousel = () => {
                                         src={slide.image}
                                         srcSet={buildSrcSet(slide.image)}
                                         sizes="100vw"
+                                        width="1920"
+                                        height="1080"
                                         alt={slide.title}
                                         className="w-[101%] h-full max-w-none object-cover object-center transition-transform duration-[10s] scale-105 hover:scale-100"
                                         style={{ filter: `blur(${settings?.homeHeroBlur ?? 0}px)` }}

@@ -21,6 +21,7 @@ import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import { productsApi } from "@/api/products";
 import { categoriesApi } from "@/api/categories";
+import { settingsApi } from "@/api/settings";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,6 +150,12 @@ const ProductsPage = () => {
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesApi.getAll(),
+  });
+
+  // Fetch settings
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => settingsApi.get(),
   });
 
   const isLoading = productsLoading || categoriesLoading;
@@ -311,10 +318,16 @@ const ProductsPage = () => {
 
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1.5 h-6 bg-primary skew-x-[-15deg]" />
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em]">ARSYENAL MKARIM</span>
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em]">{settings?.productsPageSubtitle || "ARSYENAL MKARIM"}</span>
                 </div>
                 <h1 className="font-display text-5xl md:text-6xl font-black text-foreground italic uppercase tracking-tighter">
-                  Catalogue <span className="text-primary tracking-tight">Tech</span>
+                  {settings?.productsPageTitle ? (
+                    <>
+                      {settings.productsPageTitle.split(' ').slice(0, -1).join(' ')} <span className="text-primary tracking-tight">{settings.productsPageTitle.split(' ').slice(-1)}</span>
+                    </>
+                  ) : (
+                    <>Catalogue <span className="text-primary tracking-tight">Tech</span></>
+                  )}
                 </h1>
               </div>
 
@@ -386,6 +399,7 @@ const ProductsPage = () => {
                   expand={true}
                   currentSort={sortBy}
                   onSortChange={setSortBy}
+                  settings={settings}
                 />
               </div>
             </aside>
@@ -412,6 +426,7 @@ const ProductsPage = () => {
                     onClose={() => setShowFilters(false)}
                     currentSort={sortBy}
                     onSortChange={setSortBy}
+                    settings={settings}
                   />
                 </SheetContent>
               </Sheet>

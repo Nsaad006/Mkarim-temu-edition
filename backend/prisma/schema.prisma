@@ -276,6 +276,17 @@ model Settings {
   homeHeroBlur            Int    @default(0)   // 0-20
   homeHeroAutoPlayInterval Int   @default(5000)
   
+  aboutMissionTitle     String   @default("Notre Mission")
+  aboutStatsLabel       String   @default("Clients Satisfaits")
+  aboutValuesTitle      String   @default("Nos Valeurs")
+  productsPageTitle     String   @default("Catalogue Tech")
+  productsPageSubtitle  String   @default("ARSYENAL MKARIM")
+  filterBudgetTitle     String   @default("Budget de Déploiement")
+  filterSortTitle       String   @default("Ordre de Tri")
+  filterCategoryTitle   String   @default("Secteur d'Arsenal")
+  cartSummaryTitle      String   @default("Résumé Tactique")
+  cartSubtotalText      String   @default("Sous-total matériel")
+  
   // Low Stock Settings
   lowStockThreshold Int      @default(5)
 

@@ -150,7 +150,19 @@ router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: 
                 ...(req.body.invoiceFooterText !== undefined && { invoiceFooterText: req.body.invoiceFooterText }),
                 ...(req.body.invoiceShowTax !== undefined && { invoiceShowTax: Boolean(req.body.invoiceShowTax) }),
                 ...(req.body.invoiceTaxRate !== undefined && { invoiceTaxRate: Number(req.body.invoiceTaxRate) }),
-                ...(req.body.invoiceNotes !== undefined && { invoiceNotes: req.body.invoiceNotes })
+                ...(req.body.invoiceNotes !== undefined && { invoiceNotes: req.body.invoiceNotes }),
+
+                // UI Texts Configuration
+                ...(req.body.aboutMissionTitle !== undefined && { aboutMissionTitle: req.body.aboutMissionTitle }),
+                ...(req.body.aboutStatsLabel !== undefined && { aboutStatsLabel: req.body.aboutStatsLabel }),
+                ...(req.body.aboutValuesTitle !== undefined && { aboutValuesTitle: req.body.aboutValuesTitle }),
+                ...(req.body.productsPageTitle !== undefined && { productsPageTitle: req.body.productsPageTitle }),
+                ...(req.body.productsPageSubtitle !== undefined && { productsPageSubtitle: req.body.productsPageSubtitle }),
+                ...(req.body.filterBudgetTitle !== undefined && { filterBudgetTitle: req.body.filterBudgetTitle }),
+                ...(req.body.filterSortTitle !== undefined && { filterSortTitle: req.body.filterSortTitle }),
+                ...(req.body.filterCategoryTitle !== undefined && { filterCategoryTitle: req.body.filterCategoryTitle }),
+                ...(req.body.cartSummaryTitle !== undefined && { cartSummaryTitle: req.body.cartSummaryTitle }),
+                ...(req.body.cartSubtotalText !== undefined && { cartSubtotalText: req.body.cartSubtotalText })
             }
         });
 

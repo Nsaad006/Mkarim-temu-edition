@@ -128,7 +128,7 @@ const AboutPage = () => {
                   <div className="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
                     <Target className="w-6 h-6 text-primary" />
                   </div>
-                  <h2 className="font-display text-4xl font-black text-foreground uppercase italic tracking-tighter">Notre Mission</h2>
+                  <h2 className="font-display text-4xl font-black text-foreground uppercase italic tracking-tighter">{settings?.aboutMissionTitle || "Notre Mission"}</h2>
                 </div>
                 <div className="space-y-6">
                   <p className="text-foreground/80 text-xl font-medium leading-relaxed italic border-l-4 border-primary pl-6">
@@ -161,7 +161,7 @@ const AboutPage = () => {
                       </div>
                       <div>
                         <p className="font-display font-black text-3xl text-foreground tracking-tighter italic">+{kpis.totalCustomers}</p>
-                        <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">Clients Satisfaits</p>
+                        <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">{settings?.aboutStatsLabel || "Clients Satisfaits"}</p>
                       </div>
                     </div>
                   </div>
@@ -179,7 +179,13 @@ const AboutPage = () => {
           <div className="container-custom relative z-10">
             <div className="text-center mb-16">
               <h2 className="font-display text-4xl md:text-6xl font-black text-foreground uppercase italic tracking-tighter mb-6">
-                Nos <span className="text-primary">Valeurs</span>
+                {settings?.aboutValuesTitle ? (
+                  <>
+                    {settings.aboutValuesTitle.split(' ').slice(0, -1).join(' ')} <span className="text-primary">{settings.aboutValuesTitle.split(' ').slice(-1)}</span>
+                  </>
+                ) : (
+                  <>Nos <span className="text-primary">Valeurs</span></>
+                )}
               </h2>
               <div className="w-24 h-1 bg-primary mx-auto" />
             </div>

@@ -347,7 +347,7 @@ const Navbar = () => {
                   </Button>
                 </a>
               </div>
-              <p className="text-[10px] font-black text-muted-foreground text-center uppercase tracking-[0.3em]">MKARIM SOLUTION GEAR © 2026</p>
+              <p className="text-[10px] font-black text-muted-foreground text-center uppercase tracking-[0.3em]">{settings?.footerCopyright || "MKARIM SOLUTION GEAR © 2026"}</p>
             </motion.div>
           </motion.div>
         )}

@@ -184,11 +184,11 @@ const CartPage = () => {
                         <div className="bg-card border border-border rounded-xl p-4 sm:p-6 xl:sticky xl:top-24 shadow-2xl relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl" />
 
-                            <h2 className="font-display text-xl lg:text-2xl font-black text-foreground italic uppercase tracking-tighter mb-4 border-b border-border pb-3">Résumé Tactique</h2>
+                            <h2 className="font-display text-xl lg:text-2xl font-black text-foreground italic uppercase tracking-tighter mb-4 border-b border-border pb-3">{settings?.cartSummaryTitle || "Résumé Tactique"}</h2>
 
                             <div className="space-y-3 mb-6">
                                 <div className="flex justify-between items-center text-xs sm:text-sm font-bold">
-                                    <span className="text-muted-foreground uppercase tracking-[0.2em]">Sous-total matériel</span>
+                                    <span className="text-muted-foreground uppercase tracking-[0.2em]">{settings?.cartSubtotalText || "Sous-total matériel"}</span>
                                     <span className="text-foreground">{getTotal().toLocaleString()} {currency}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-xs sm:text-sm font-bold">
