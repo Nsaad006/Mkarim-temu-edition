@@ -207,6 +207,171 @@ async function main() {
             quantity: 35,
             badge: 'Promo',
             specs: ['{switch}: Mécaniques', '{feature}: RGB Chroma', '{feature}: Repose-poignet', '{connexion}: USB-C', '{marque}: Razer']
+        },
+        {
+            name: 'ASUS ROG Strix G15',
+            description: 'Puissance gaming portable à l\'état pur',
+            price: 16499,
+            originalPrice: 18499,
+            image: 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=600',
+            categoryId: createdCategories['laptops'].id,
+            quantity: 25,
+            badge: 'Gamer',
+            specs: ['{cpu}: Ryzen 9 5900HX', '{gpu}: RTX 3070', '{ram}: 16GB', '{ecran}: 300Hz', '{marque}: ASUS']
+        },
+        {
+            name: 'HyperX Cloud II Wireless',
+            description: 'Confort légendaire et son surround 7.1',
+            price: 1699,
+            originalPrice: 1999,
+            image: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=600',
+            categoryId: createdCategories['gaming-headsets'].id,
+            quantity: 40,
+            badge: 'Populaire',
+            specs: ['{type}: Casque sans fil', '{audio}: Surround 7.1', '{autonomie}: 30h', '{micro}: Détachable', '{marque}: HyperX']
+        },
+        {
+            name: 'MSI Optix MAG274QRF-QD',
+            description: 'Écran Gaming eSports 165Hz Quantum Dot',
+            price: 4999,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=600',
+            categoryId: createdCategories['gaming-monitors'].id,
+            quantity: 20,
+            badge: 'Premium',
+            specs: ['{taille}: 27 pouces', '{resolution}: 1440p', '{taux}: 165Hz', '{dalle}: Rapid IPS', '{marque}: MSI']
+        },
+        {
+            name: 'NVIDIA GeForce RTX 4090',
+            description: 'La carte graphique la plus puissante du marché',
+            price: 23999,
+            originalPrice: 25999,
+            image: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?w=600',
+            categoryId: createdCategories['components'].id,
+            quantity: 5,
+            badge: 'Ultra',
+            specs: ['{vram}: 24GB GDDR6X', '{coeurs}: 16384 CUDA', '{feature}: DLSS 3.0', '{conso}: 450W', '{marque}: NVIDIA']
+        },
+        {
+            name: 'Apple AirPods Pro 2',
+            description: 'Réduction de bruit active et Audio Spatial',
+            price: 2999,
+            originalPrice: 3299,
+            image: 'https://images.unsplash.com/photo-1608156639585-b3a032ef9689?w=600',
+            categoryId: createdCategories['earphones'].id,
+            quantity: 80,
+            badge: 'Promo',
+            specs: ['{type}: Intra-auriculaire', '{anc}: Oui', '{puce}: H2', '{autonomie}: 6h (30h boitier)', '{marque}: Apple']
+        },
+        {
+            name: 'SteelSeries Apex Pro TKL',
+            description: 'Clavier mécanique avec switches OmniPoint ajustables',
+            price: 2299,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1621600411688-4be93cd68504?w=600',
+            categoryId: createdCategories['gaming-keyboards'].id,
+            quantity: 15,
+            badge: 'Pro',
+            specs: ['{format}: TKL', '{switch}: OmniPoint ajustables', '{ecran}: OLED', '{chassis}: Aluminium', '{marque}: SteelSeries']
+        },
+        {
+            name: 'Corsair Vengeance RGB 32GB',
+            description: 'Mémoire RAM DDR5 ultra rapide',
+            price: 1899,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1563143306-0cd4371465e9?w=600',
+            categoryId: createdCategories['components'].id,
+            quantity: 45,
+            badge: 'Nouveau',
+            specs: ['{type}: DDR5', '{capacite}: 32GB (2x16)', '{frequence}: 6000MHz', '{cas}: CL36', '{marque}: Corsair']
+        },
+        {
+            name: 'Samsung 990 PRO 2TB',
+            description: 'SSD NVMe PCIe 4.0 pour des temps de chargement instantanés',
+            price: 2199,
+            originalPrice: 2499,
+            image: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600',
+            categoryId: createdCategories['components'].id,
+            quantity: 35,
+            badge: 'Vitesse',
+            specs: ['{format}: M.2 NVMe', '{capacite}: 2TB', '{lecture}: 7450 MB/s', '{ecriture}: 6900 MB/s', '{marque}: Samsung']
+        },
+        {
+            name: 'Razer DeathAdder V3 Pro',
+            description: 'Souris ergonomique sans fil ultra-légère pour l\'eSport',
+            price: 1799,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1615663245857-ac93bb5c8143?w=600',
+            categoryId: createdCategories['gaming-mice'].id,
+            quantity: 25,
+            badge: 'Bestseller',
+            specs: ['{poids}: 63g', '{capteur}: Focus Pro 30K', '{polling}: 4000Hz (avec dongle)', '{boutons}: 5', '{marque}: Razer']
+        },
+        {
+            name: 'Elgato Stream Deck MK.2',
+            description: 'Contrôleur de création avec 15 touches LCD',
+            price: 1699,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1626242397127-142270921008?w=600',
+            categoryId: createdCategories['it-accessories'].id,
+            quantity: 20,
+            badge: 'Streamer',
+            specs: ['{touches}: 15 LCD', '{connexion}: USB-C', '{support}: Amovible', '{plugins}: Illimités', '{marque}: Elgato']
+        },
+        {
+            name: 'ASUS ROG Zephyrus G14',
+            description: 'PC Portable Gamer ultra-fin et puissant',
+            price: 19999,
+            originalPrice: 22499,
+            image: 'https://images.unsplash.com/photo-1593642702821-c823b2816291?w=600',
+            categoryId: createdCategories['laptops'].id,
+            quantity: 12,
+            badge: 'Design',
+            specs: ['{cpu}: Ryzen 9', '{gpu}: RTX 4060', '{ram}: 16GB', '{ecran}: 14" QHD', '{marque}: ASUS']
+        },
+        {
+            name: 'Sony INZONE H9',
+            description: 'Casque gamer avec réduction de bruit active',
+            price: 2999,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1612444530582-fc66183b16f7?w=600',
+            categoryId: createdCategories['gaming-headsets'].id,
+            quantity: 18,
+            badge: 'PS5 & PC',
+            specs: ['{anc}: Oui', '{audio}: 360 Spatial Sound', '{autonomie}: 32h', '{connexion}: Bluetooth & 2.4GHz', '{marque}: Sony']
+        },
+        {
+            name: 'LG UltraGear 27GN950-B',
+            description: 'Écran Gamer 4K Nano IPS 144Hz',
+            price: 8499,
+            originalPrice: 9999,
+            image: 'https://images.unsplash.com/photo-1542393545-10f5cde2c810?w=600',
+            categoryId: createdCategories['gaming-monitors'].id,
+            quantity: 8,
+            badge: '4K',
+            specs: ['{resolution}: 4K UHD', '{dalle}: Nano IPS', '{taux}: 144Hz', '{hdr}: VESA DisplayHDR 600', '{marque}: LG']
+        },
+        {
+            name: 'NZXT Kraken Elite 360',
+            description: 'Watercooling AIO avec écran LCD personnalisable',
+            price: 3299,
+            originalPrice: null,
+            image: 'https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=600',
+            categoryId: createdCategories['components'].id,
+            quantity: 10,
+            badge: 'Modding',
+            specs: ['{taille}: 360mm', '{ventilateurs}: 3x F120P', '{ecran}: LCD 2.36"', '{pompe}: Asetek 7th Gen', '{marque}: NZXT']
+        },
+        {
+            name: 'Secretlab TITAN Evo',
+            description: 'Chaise Gamer ergonomique de qualité supérieure',
+            price: 5499,
+            originalPrice: 5999,
+            image: 'https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?w=600',
+            categoryId: createdCategories['it-accessories'].id,
+            quantity: 14,
+            badge: 'Confort',
+            specs: ['{revetement}: Tissu SoftWeave', '{support}: Lombaire réglable', '{accoudoirs}: 4D magnétiques', '{taille}: Regular', '{marque}: Secretlab']
         }
     ];
 
