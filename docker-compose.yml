@@ -16,7 +16,7 @@ services:
       - FRONTEND_URL=${FRONTEND_URL}
       - JWT_SECRET=${JWT_SECRET}
     volumes:
-      - /var/www/mkarim-temu-edition/uploads:/app/uploads
+      - temu_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -55,3 +55,4 @@ services:
 
 volumes:
   postgres_data_v2:
+  temu_uploads:
