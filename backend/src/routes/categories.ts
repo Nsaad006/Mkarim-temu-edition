@@ -42,6 +42,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
             icon: cat.icon,
             image: cat.image,
             active: cat.active,
+            parentId: cat.parentId,
             createdAt: cat.createdAt,
             updatedAt: cat.updatedAt,
             productsCount: cat._count.products
@@ -57,7 +58,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 // POST /api/categories - Create category (super_admin/editor/manage)
 router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.CATEGORIES_CREATE, PERMISSIONS.CATEGORIES_MANAGE]), async (req: Request, res: Response) => {
     try {
-        const { name, slug, active } = req.body;
+        const { name, slug, active, parentId } = req.body;
 
         const newCategory = await prisma.category.create({
             data: {
@@ -65,6 +66,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS
                 slug,
                 icon: req.body.icon,
                 image: req.body.image,
+                parentId: parentId || null,
                 active: active ?? true
             }
         });
@@ -80,7 +82,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS
 router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.CATEGORIES_EDIT, PERMISSIONS.CATEGORIES_MANAGE]), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
-        const { name, slug, active } = req.body;
+        const { name, slug, active, parentId } = req.body;
 
         const updatedCategory = await prisma.category.update({
             where: { id },
@@ -89,6 +91,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
                 ...(slug && { slug }),
                 ...(req.body.icon !== undefined && { icon: req.body.icon }),
                 ...(req.body.image !== undefined && { image: req.body.image }),
+                ...(parentId !== undefined && { parentId: parentId || null }),
                 ...(active !== undefined && { active })
             }
         });

@@ -350,7 +350,7 @@ const Orders = () => {
 
     // Helper function to check if a specific action can be performed on an order
     const canPerformAction = (order: Order, targetStatus: string): boolean => {
-        const currentStatus = order.status.toUpperCase();
+        const currentStatus = order.status.to();
 
         // Must have the general permission first
         if (!canUpdateStatus(targetStatus)) return false;
@@ -385,7 +385,7 @@ const Orders = () => {
     const isOrderVisible = (order: Order): boolean => {
         if (userRole === 'magasinier') {
             // Magasinier can only see CONFIRMED, SHIPPED, DELIVERED, RETOUR and CANCELLED orders
-            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR', 'CANCELLED'].includes(order.status.toUpperCase());
+            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR', 'CANCELLED'].includes(order.status.to());
         }
         return true; // All other roles can see all orders
     };
@@ -661,7 +661,7 @@ const Orders = () => {
                                             <div className="flex flex-col gap-1">
                                                 <StatusBadge status={order.status} />
                                                 {order.returnReason && (
-                                                    <span className="text-[10px] text-orange-600 font-medium italic truncate max-w-[100px]" title={order.returnReason}>
+                                                    <span className="text-[10px] text-orange-600 font-medium  truncate max-w-[100px]" title={order.returnReason}>
                                                         {order.returnReason}
                                                     </span>
                                                 )}
@@ -862,12 +862,12 @@ const Orders = () => {
                                 </div>
 
                                 {/* Return Reason Section */}
-                                {(selectedOrder.status.toUpperCase() === 'RETOUR' || selectedOrder.returnReason) && (
+                                {(selectedOrder.status.to() === 'RETOUR' || selectedOrder.returnReason) && (
                                     <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
                                         <p className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
                                             <RotateCcw className="w-4 h-4" /> Raison du retour
                                         </p>
-                                        <p className="text-sm text-orange-700 italic">
+                                        <p className="text-sm text-orange-700 ">
                                             "{selectedOrder.returnReason || "Raison non spécifiée"}"
                                         </p>
                                     </div>
@@ -1164,3 +1164,4 @@ const Orders = () => {
 };
 
 export default Orders;
+

@@ -74,7 +74,7 @@ const WhyChooseUs = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="font-display text-3xl md:text-5xl font-black mb-4 tracking-tight uppercase px-4">
+            <h2 className="font-display text-3xl md:text-5xl font-bold mb-4 tracking-tight  px-4">
               {sectionTitle}
             </h2>
             <p className="text-foreground/80 max-w-2xl mx-auto text-base md:text-lg px-6 font-medium">
@@ -120,3 +120,4 @@ const WhyChooseUs = () => {
 };
 
 export default WhyChooseUs;
+

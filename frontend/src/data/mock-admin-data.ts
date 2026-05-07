@@ -173,6 +173,7 @@ export interface Category {
   active: boolean;
   icon?: string;
   image?: string;
+  parentId?: string | null;
 }
 
 export const mockCategories: Category[] = [

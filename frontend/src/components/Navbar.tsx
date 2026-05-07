@@ -1,31 +1,26 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
-import { Menu, X, ShoppingCart, Phone, Search, Sun, Moon } from "lucide-react";
+import { ShoppingCart, Search, Home, LayoutGrid, Sun, Moon, ChevronRight, Truck, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useQuery } from "@tanstack/react-query";
 import { settingsApi } from "@/api/settings";
-
+import { categoriesApi } from "@/api/categories";
 import { getImageUrl } from "@/lib/image-utils";
 
-const navLinks = [
-  { name: "Nos Produits", path: "/products" },
-  { name: "À Propos", path: "/about" },
-  { name: "Contact", path: "/contact" },
-];
-
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [hoveredCat, setHoveredCat] = useState<string | null>(null);
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const mobileSearchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { getItemCount, lastAddedTime } = useCart();
   const cartCount = getItemCount();
   const [isPulsing, setIsPulsing] = useState(false);
+  const { toggleTheme, theme } = useTheme();
 
   useEffect(() => {
     if (lastAddedTime > 0) {
@@ -40,352 +35,345 @@ const Navbar = () => {
     queryFn: settingsApi.get,
   });
 
-  const storeName = settings?.storeName || "MKARIM SOLUTION";
-  const whatsappNumber = settings?.whatsappNumber || "+212 6 00 00 00 00";
-  const logo = settings?.logo;
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoriesApi.getAll(),
+  });
 
-  const executeSearch = () => {
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-      setIsSearchOpen(false);
-      setSearchQuery("");
-    }
-  };
+  const topCategories = categories.filter((c: any) => !c.parentId);
+
+  const storeName = settings?.storeName || "MKARIM";
+  const logo = settings?.logo;
+  const isCartOrCheckout = location.pathname === "/cart" || location.pathname === "/checkout";
+  const currentCategory = new URLSearchParams(location.search).get("category") || "";
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    executeSearch();
-  };
-
-  const handleButtonClick = () => {
-    if (!isSearchOpen) {
-      setIsSearchOpen(true);
-    } else {
-      executeSearch();
+    if (searchQuery.trim()) {
+      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchFocused(false);
     }
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      const isOutsideDesktop = searchRef.current && !searchRef.current.contains(event.target as Node);
-      const isOutsideMobile = mobileSearchRef.current && !mobileSearchRef.current.contains(event.target as Node);
+  const trendingSuggestions = ["PC Gamer", "Souris Gaming", "Clavier Mécanique", "Casque Audio", "Écran 144Hz"];
 
-      if (isOutsideDesktop && isOutsideMobile) {
-        setIsSearchOpen(false);
-      }
-    };
+  const handleCatMouseEnter = (slug: string) => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setHoveredCat(slug);
+  };
 
-    if (isSearchOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    }
+  const handleCatMouseLeave = () => {
+    hoverTimeout.current = setTimeout(() => setHoveredCat(null), 150);
+  };
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [isSearchOpen]);
-
-  const { toggleTheme, theme } = useTheme();
-  const location = useLocation();
-  const isCartOrCheckout = location.pathname === "/cart" || location.pathname === "/checkout";
+  const hoveredCatObj = topCategories.find((c: any) => c.slug === hoveredCat);
+  const hoveredChildren = hoveredCat
+    ? categories.filter((c: any) => c.parentId === hoveredCatObj?.id)
+    : [];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
-      {/* Glow Effect under the navbar */}
-      <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_20px_rgba(235,68,50,0.3)]" />
-
-      <div className="bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="container-custom">
-          {/* Main Layout Container: 3 Zones */}
-          {/* Main Layout Container: 3 Zones */}
-          <div className="flex items-center justify-between h-14 md:h-16 relative gap-2">
-
-            {/* 1. LEFT ZONE: Search & Desktop Nav */}
-            <div className="flex-1 flex items-center justify-start gap-4 min-w-0">
-              {/* Mobile Search - Visible only on mobile/tablet */}
-              <div ref={mobileSearchRef} className="lg:hidden relative flex items-center z-50 h-9 md:h-12">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Ouvrir la recherche"
-                  className="relative z-20 text-muted-foreground hover:text-foreground w-9 h-9 md:w-12 md:h-12 shrink-0 rounded-xl"
-                  onClick={handleButtonClick}
-                >
-                  <Search className="w-4 h-4 md:w-5 md:h-5" />
-                </Button>
-
-                <AnimatePresence>
-                  {isSearchOpen && (
-                    <motion.form
-                      initial={{ opacity: 0, scale: 0.95, x: 0 }}
-                      animate={{ opacity: 1, scale: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      onSubmit={handleSearch}
-                      className="absolute left-0 top-0 h-full z-10 w-[120px] sm:w-[200px] md:w-[300px] origin-left"
-                    >
-                      <input
-                        type="text"
-                        inputMode="search"
-                        enterKeyHint="search"
-                        autoFocus
-                        aria-label="Rechercher des produits"
-                        placeholder="Chercher..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-full bg-background/95 backdrop-blur-xl border border-primary/20 rounded-xl pl-10 pr-3 focus:outline-none focus:border-primary focus:shadow-[0_0_15px_rgba(235,68,50,0.15)] text-xs font-bold italic text-foreground placeholder:text-muted-foreground/50 tracking-wide uppercase shadow-md transition-all duration-300"
-                      />
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Desktop Nav Links */}
-              <div className="hidden lg:flex items-center gap-6 xl:gap-8 ml-2">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    className="group relative px-2 py-1 overflow-visible whitespace-nowrap"
-                  >
-                    <span className="text-[10px] xl:text-xs font-black uppercase tracking-[0.2em] text-muted-foreground group-hover:text-foreground transition-colors">
-                      {link.name}
-                    </span>
-                    <motion.div
-                      className="absolute bottom-0 left-0 w-full h-[1px] bg-primary origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
-                    />
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. CENTER ZONE: Logo - Centered but with guaranteed space */}
-            <div className="flex-shrink-0 px-2 flex justify-center z-20">
-              <Link to="/" className="relative flex items-center justify-center group">
-                {/* Background effects only if no logo image */}
-                {!logo && (
-                  <>
-                    <div className="absolute -inset-4 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all duration-500 scale-75 group-hover:scale-100" />
-                    <div className="absolute -inset-1 border border-primary/20 rounded-lg skew-x-[-15deg] group-hover:border-primary/50 transition-all duration-500" />
-                  </>
-                )}
-
-                {logo ? (
-                  <img
-                    src={getImageUrl(logo)}
-                    alt={storeName}
-                    width="120"
-                    height="48"
-                    className="h-8 md:h-10 lg:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <span className="font-display text-sm sm:text-base md:text-xl lg:text-2xl font-black italic uppercase tracking-tighter relative whitespace-nowrap">
-                    {storeName.split(" ").length > 1 ? (
-                      <>
-                        <span className="text-primary drop-shadow-[0_0_10px_rgba(235,68,50,0.5)]">{storeName.split(" ")[0]}</span>
-                        <span className="text-foreground ml-1 sm:ml-2 opacity-90">{storeName.split(" ").slice(1).join(" ")}</span>
-                      </>
-                    ) : (
-                      <span className="text-primary drop-shadow-[0_0_10px_rgba(235,68,50,0.5)]">{storeName}</span>
-                    )}
-                  </span>
-                )}
-              </Link>
-            </div>
-
-            {/* 3. RIGHT ZONE: Actions */}
-            <div className="flex-1 flex items-center justify-end gap-1 md:gap-3 lg:gap-4 min-w-0">
-              {/* Search Block - Desktop Only */}
-              <div ref={searchRef} className="hidden lg:flex relative items-center z-50 h-10 md:h-12">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Ouvrir la recherche"
-                  className="relative z-20 text-muted-foreground hover:text-foreground w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-xl"
-                  onClick={handleButtonClick}
-                >
-                  <Search className="w-5 h-5 md:w-6 md:h-6" />
-                </Button>
-
-                <AnimatePresence>
-                  {isSearchOpen && (
-                    <motion.form
-                      initial={{ opacity: 0, scale: 0.95, x: 0 }}
-                      animate={{ opacity: 1, scale: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      onSubmit={handleSearch}
-                      className="absolute right-0 top-0 h-full z-10 w-[200px] sm:w-[250px] md:w-[300px] origin-right"
-                    >
-                      <input
-                        type="text"
-                        autoFocus
-                        aria-label="Rechercher des produits"
-                        placeholder="RECHERCHE..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-full bg-card/95 backdrop-blur-md border border-primary/30 rounded-xl pl-4 pr-12 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 text-[10px] font-bold text-foreground tracking-widest uppercase shadow-2xl"
-                      />
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Theme Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleTheme}
-                aria-label={theme === "dark" ? "Activer le mode clair" : "Activer le mode sombre"}
-                className="text-muted-foreground hover:text-foreground transition-all duration-300 rounded-xl hover:bg-foreground/5 w-10 h-10 md:w-11 md:h-11 shrink-0"
-              >
-                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </Button>
-
-              {/* Inline Cart for Desktop/Tablet */}
-              <Link to="/cart" aria-label="Voir le panier" className="hidden md:block relative group p-2 shrink-0">
-                <motion.div
-                  animate={isPulsing ? {
-                    scale: [1, 1.3, 1],
-                    rotate: [0, 10, -10, 0],
-                  } : {}}
-                  transition={{ duration: 0.5 }}
-                >
-                  <div className="relative">
-                    <ShoppingCart className={`w-5 h-5 lg:w-6 lg:h-6 transition-colors ${isPulsing ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                    {cartCount > 0 && (
-                      <span className="absolute -top-3 -right-3 bg-primary text-primary-foreground text-[8px] lg:text-[9px] font-black rounded-lg w-4 h-4 lg:w-5 lg:h-5 flex items-center justify-center border border-background skew-x-[-10deg]">
-                        <span className="skew-x-[10deg]">{cartCount}</span>
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              </Link>
-
-
-
-              {/* Mobile/Tablet Menu Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
-                aria-expanded={isOpen}
-                className="lg:hidden text-foreground ml-1 w-10 h-10 md:w-12 md:h-12 shrink-0"
-                onClick={() => setIsOpen(!isOpen)}
-              >
-                {isOpen ? <X className="w-6 h-6 md:w-7 md:h-7" /> : <Menu className="w-6 h-6 md:w-7 md:h-7" />}
-              </Button>
-            </div>
-          </div>
-        </div>
+    <>
+      {/* ── TOP ANNOUNCEMENT BAR ── */}
+      <div className="bg-foreground text-background text-[11px] font-medium hidden md:flex items-center justify-center gap-8 px-4 py-2">
+        <span className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> Livraison gratuite — Partout au Maroc</span>
+        <span className="text-foreground/40">|</span>
+        <span className="flex items-center gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Satisfaction garantie · Remboursement en cas de problèmes</span>
+        <span className="text-foreground/40">|</span>
+        <button className="flex items-center gap-1 font-bold hover:text-primary transition-colors">
+          Télécharger l'App <ChevronRight className="w-3 h-3" />
+        </button>
       </div>
 
-      {/* Mobile Menu - Tech Overlay */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-40 lg:hidden bg-background/95 backdrop-blur-2xl flex flex-col pt-24 px-6 gap-8 border-l border-border shadow-[-20px_0_40px_rgba(0,0,0,0.5)]"
-          >
-            {/* Background pattern for futuristic look */}
-            <div className="absolute inset-0 opacity-5 pointer-events-none overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--primary)_1px,_transparent_1px)] bg-[size:30px_30px]" />
-            </div>
+      {/* ── MAIN HEADER ── */}
+      <header className="sticky top-0 z-50 bg-background shadow-sm border-b border-border">
+        {/* === DESKTOP HEADER === */}
+        <div className="hidden md:flex items-center gap-2 px-6 h-14">
 
-            {/* Header in mobile menu for closing */}
-            <div className="flex items-center justify-between mb-2 relative z-10">
-              <span className="text-[10px] font-black text-primary tracking-[0.3em] uppercase">Navigation</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Fermer le menu"
-                className="w-12 h-12 rounded-2xl bg-foreground/5 text-foreground hover:bg-foreground/10 transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
-
-            <div className="space-y-6 relative z-10">
-              {navLinks.map((link, idx) => (
-                <motion.div
-                  key={link.path}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                >
-                  <Link
-                    to={link.path}
-                    className="flex items-center justify-between py-4 border-b border-border"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <span className="text-3xl font-black text-foreground italic uppercase tracking-tighter shadow-sm">{link.name}</span>
-                    <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_var(--primary)]" />
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="mt-auto pb-12 space-y-4"
-            >
-              <div className="flex gap-4">
-                <Button className="flex-1" onClick={toggleTheme} size="xl">
-                  {theme === "dark" ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-                </Button>
-                <a href={`tel:${whatsappNumber.replace(/\s+/g, "")}`} className="flex-[3]">
-                  <Button className="w-full bg-foreground text-background font-black uppercase tracking-widest h-16 rounded-2xl italic px-4" size="xl">
-                    APPELER LE SUPPORT
-                  </Button>
-                </a>
+          {/* LOGO */}
+          <Link to="/" className="shrink-0 flex items-center gap-2 mr-3">
+            {logo ? (
+              <img src={getImageUrl(logo)} alt={storeName} className="h-8 w-auto object-contain" />
+            ) : (
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-lg leading-none">M</span>
               </div>
-              <p className="text-[10px] font-black text-muted-foreground text-center uppercase tracking-[0.3em]">{settings?.footerCopyright || "MKARIM SOLUTION GEAR © 2026"}</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+            <span className="font-bold text-base tracking-tight">{storeName}</span>
+          </Link>
 
-      {/* Mobile Floating Cart Bubble */}
-      {!isCartOrCheckout && (
-        <div className="md:hidden fixed bottom-6 right-6 z-[60]">
-          <Link to="/cart" aria-label="Voir le panier">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              whileTap={{ scale: 0.9 }}
-              className="relative w-16 h-16 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center shadow-[0_10px_30px_rgba(235,68,50,0.4)] border border-white/20 skew-x-[-4deg]"
-            >
-              <motion.div
-                animate={isPulsing ? {
-                  scale: [1, 1.3, 1],
-                  rotate: [0, 15, -15, 0],
-                } : {}}
-              >
-                <ShoppingCart className="w-7 h-7" />
+          {/* QUICK LINKS */}
+          <div className="flex items-center gap-6 mr-4 shrink-0">
+             <Link to="/?sort=bestseller" className="flex items-center gap-1.5 text-sm font-bold text-foreground hover:text-primary transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                Meilleures ventes
+             </Link>
+             <Link to="/?sort=new" className="text-sm font-bold text-foreground hover:text-primary transition-colors">
+                Nouveautés
+             </Link>
+          </div>
+
+          {/* SEARCH BAR */}
+          <div ref={searchRef} className="flex-1 relative">
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                inputMode="search"
+                enterKeyHint="search"
+                placeholder="Rechercher sur la boutique..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                className="w-full h-10 bg-muted border border-border rounded-full pl-4 pr-12 text-sm focus:outline-none focus:border-primary focus:bg-background transition-colors placeholder:text-muted-foreground"
+              />
+              <button type="submit" className="absolute right-1 top-1 h-8 w-8 bg-primary rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors">
+                <Search className="w-4 h-4 text-white" />
+              </button>
+            </form>
+
+            {/* Autocomplete Dropdown */}
+            <AnimatePresence>
+              {isSearchFocused && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-xl z-50 p-3"
+                >
+                  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-2">Tendances</p>
+                  <div className="flex flex-wrap gap-2">
+                    {trendingSuggestions.map((s) => (
+                      <button
+                        key={s}
+                        onMouseDown={() => { setSearchQuery(s); navigate(`/?search=${encodeURIComponent(s)}`); setIsSearchFocused(false); }}
+                        className="text-xs bg-muted hover:bg-primary hover:text-white px-3 py-1 rounded-full transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* RIGHT ACTIONS */}
+          <div className="flex items-center gap-2 ml-1 shrink-0">
+            {/* Cart */}
+            <Link to="/cart" aria-label="Voir le panier" className="relative flex items-center gap-2 px-3 h-10 rounded-full hover:bg-muted transition-colors">
+              <motion.div animate={isPulsing ? { scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] } : {}} transition={{ duration: 0.5 }}>
+                <ShoppingCart className={`w-5 h-5 transition-colors ${isPulsing ? 'text-primary' : 'text-foreground'}`} />
               </motion.div>
-
               {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-white text-primary text-[11px] font-black rounded-lg w-7 h-7 flex items-center justify-center shadow-lg border-2 border-primary skew-x-[4deg]">
+                <span className="absolute -top-0.5 left-5 bg-primary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
-
-              {/* Pulsing Ring Effect */}
-              <div className="absolute inset-0 rounded-2xl border-2 border-primary animate-ping opacity-20" />
-            </motion.div>
-          </Link>
+              <span className="text-xs font-bold">Panier</span>
+            </Link>
+          </div>
         </div>
+
+        {/* === MOBILE HEADER (Temu Native Style) === */}
+        <div className="md:hidden flex flex-col bg-white">
+          {/* Top Logo */}
+          <div className="flex items-center justify-center h-10 mt-1">
+            {logo ? (
+              <img src={getImageUrl(logo)} alt={storeName} className="h-6 w-auto object-contain" />
+            ) : (
+              <span className="font-black text-xl text-primary tracking-tight">{storeName.toUpperCase()}</span>
+            )}
+          </div>
+
+          {/* Search Bar */}
+          <div className="px-3 pb-3 relative">
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                inputMode="search"
+                enterKeyHint="search"
+                placeholder="Rechercher..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-11 border-[2.5px] border-black rounded-full pl-4 pr-12 text-[15px] focus:outline-none focus:ring-0 placeholder:text-gray-500 font-medium"
+              />
+              <button type="submit" className="absolute right-1.5 top-1.5 h-8 w-8 bg-black rounded-full flex items-center justify-center active:scale-95 transition-transform">
+                <Search className="w-4 h-4 text-white" />
+              </button>
+            </form>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex items-center overflow-x-auto scrollbar-hide px-4 gap-6 border-b border-border">
+            <Link
+              to="/"
+              className={`pb-2.5 text-[15px] whitespace-nowrap border-b-[3px] transition-colors relative ${
+                location.pathname === "/" && !currentCategory
+                  ? "font-black border-black text-black"
+                  : "font-semibold border-transparent text-gray-500 hover:text-black"
+              }`}
+            >
+              Tout
+              {location.pathname === "/" && !currentCategory && (
+                <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-6 h-[3px] bg-black rounded-t-sm"></span>
+              )}
+            </Link>
+
+            {topCategories.map((cat: any) => (
+              <Link
+                key={cat.slug}
+                to={`/?category=${cat.slug}`}
+                className={`pb-2.5 text-[15px] whitespace-nowrap border-b-[3px] transition-colors relative ${
+                  currentCategory === cat.slug
+                    ? "font-black border-black text-black"
+                    : "font-semibold border-transparent text-gray-500 hover:text-black"
+                }`}
+              >
+                {cat.name}
+                {currentCategory === cat.slug && (
+                  <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-6 h-[3px] bg-black rounded-t-sm"></span>
+                )}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── CATEGORY PILL BAR with Hover Mega-Dropdown (Desktop Only) ── */}
+        <div className="hidden md:block border-t border-border bg-background relative">
+          <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide px-3 md:px-6 h-10">
+            {/* "Tout" pill */}
+            <Link
+              to="/"
+              className={`shrink-0 flex items-center px-4 h-full text-sm font-semibold border-b-2 transition-colors whitespace-nowrap mr-1 ${
+                location.pathname === "/" && !currentCategory
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Tout
+            </Link>
+
+            {topCategories.map((cat: any) => {
+              const children = categories.filter((c: any) => c.parentId === cat.id);
+              return (
+                <div
+                  key={cat.slug}
+                  className="relative h-full flex items-stretch"
+                  onMouseEnter={() => children.length > 0 && handleCatMouseEnter(cat.slug)}
+                  onMouseLeave={handleCatMouseLeave}
+                >
+                  <Link
+                    to={`/?category=${cat.slug}`}
+                    className={`shrink-0 flex items-center gap-1 px-4 h-full text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                      currentCategory === cat.slug
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {cat.name}
+                    {children.length > 0 && (
+                      <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${hoveredCat === cat.slug ? "rotate-90" : ""}`} />
+                    )}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── MEGA DROPDOWN ── */}
+          <AnimatePresence>
+            {hoveredCat && hoveredChildren.length > 0 && (
+              <motion.div
+                key={hoveredCat}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full left-0 right-0 z-50 bg-background border-b border-border shadow-xl"
+                onMouseEnter={() => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); }}
+                onMouseLeave={handleCatMouseLeave}
+              >
+                <div className="flex px-6 py-5 gap-6 max-w-7xl mx-auto">
+                  {/* LEFT: parent category header + link */}
+                  <div className="w-48 shrink-0 border-r border-border pr-6 flex flex-col gap-2">
+                    <Link
+                      to={`/?category=${hoveredCat}`}
+                      onClick={() => setHoveredCat(null)}
+                      className="flex items-center justify-between text-sm font-bold text-foreground hover:text-primary transition-colors group"
+                    >
+                      <span>Tout {hoveredCatObj?.name}</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                    <p className="text-xs text-muted-foreground">{hoveredCatObj?.productsCount || 0} produits</p>
+                  </div>
+
+                  {/* RIGHT: subcategory circle bubbles */}
+                  <div className="flex-1 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
+                    {hoveredChildren.map((child: any) => (
+                      <Link
+                        key={child.id}
+                        to={`/?category=${hoveredCat}&sub=${child.slug}`}
+                        onClick={() => setHoveredCat(null)}
+                        className="flex flex-col items-center gap-2 group"
+                      >
+                        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-border group-hover:border-primary transition-all bg-muted">
+                          {child.image ? (
+                            <img
+                              src={getImageUrl(child.image)}
+                              alt={child.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-muted-foreground text-center px-1 leading-tight">{child.name.charAt(0)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-medium text-center leading-tight text-muted-foreground group-hover:text-primary transition-colors max-w-[72px] line-clamp-2">
+                          {child.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </header>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      {!isCartOrCheckout && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex items-stretch h-14 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+          <Link to="/" className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${location.pathname === "/" && !new URLSearchParams(location.search).get("category") ? "text-[#f55900]" : "text-gray-600"}`}>
+            <Home className={`w-6 h-6 ${location.pathname === "/" && !new URLSearchParams(location.search).get("category") ? "fill-[#f55900] text-[#f55900]" : "stroke-[2]"}`} />
+            <span className="text-[10px] font-bold">Accueil</span>
+          </Link>
+
+          <Link to="/?category=all" className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${location.search.includes("category") ? "text-[#f55900]" : "text-gray-600"}`}>
+            <Search className={`w-6 h-6 ${location.search.includes("category") ? "stroke-[#f55900] stroke-[2.5]" : "stroke-[2]"}`} />
+            <span className="text-[10px] font-bold">Catégories</span>
+          </Link>
+
+          <Link to="/cart" className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors ${location.pathname === "/cart" ? "text-[#f55900]" : "text-gray-600"}`}>
+            <div className="relative">
+              <motion.div animate={isPulsing ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.5 }}>
+                <ShoppingCart className={`w-6 h-6 ${location.pathname === "/cart" ? "fill-[#f55900] text-[#f55900]" : "stroke-[2]"}`} />
+              </motion.div>
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-[#f55900] text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border-2 border-white shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold">Panier</span>
+          </Link>
+        </nav>
       )}
-    </nav>
+    </>
   );
 };
 
 export default Navbar;
+

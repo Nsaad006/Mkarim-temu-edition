@@ -255,11 +255,11 @@ const Analytics = () => {
             <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20">
                     <h3 className="font-bold tracking-tight">Top Performance Produits</h3>
-                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-4 py-1 bg-muted rounded-full">Derniers {days} jours</span>
+                    <span className="text-xs font-bold  tracking-widest text-muted-foreground px-4 py-1 bg-muted rounded-full">Derniers {days} jours</span>
                 </div>
                 <div className="relative overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-[10px] text-muted-foreground uppercase bg-muted/30 font-bold tracking-widest whitespace-nowrap">
+                        <thead className="text-[10px] text-muted-foreground  bg-muted/30 font-bold tracking-widest whitespace-nowrap">
                             <tr>
                                 <th className="px-6 py-4">Produit Principal</th>
                                 <th className="px-6 py-4">Catégorie</th>
@@ -278,7 +278,7 @@ const Analytics = () => {
                                         <span className="line-clamp-1">{produit.name}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="px-2.5 py-0.5 bg-secondary/50 rounded-full text-[10px] font-bold uppercase tracking-tight">{produit.category}</span>
+                                        <span className="px-2.5 py-0.5 bg-secondary/50 rounded-full text-[10px] font-bold  tracking-tight">{produit.category}</span>
                                     </td>
                                     <td className="px-6 py-4 text-center font-bold text-lg text-muted-foreground">{produit.sales}</td>
                                     <td className="px-6 py-4 text-right font-bold">{produit.revenue.toLocaleString()} {currency}</td>
@@ -300,3 +300,4 @@ const Analytics = () => {
 };
 
 export default Analytics;
+

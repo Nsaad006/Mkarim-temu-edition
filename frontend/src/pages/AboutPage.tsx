@@ -91,16 +91,16 @@ const AboutPage = () => {
               transition={{ duration: 0.6 }}
               className="max-w-4xl mx-auto text-center mt-4 md:mt-0"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-muted/20 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-6 skew-x-[-12deg] backdrop-blur-md shadow-lg shadow-primary/10">
-                <span className="skew-x-[12deg]">NOTRE HISTOIRE</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-primary/20 text-primary text-[10px] font-bold  tracking-wider mb-6 backdrop-blur-md shadow-lg shadow-primary/10">
+                <span>NOTRE HISTOIRE</span>
               </div>
               <h1
-                className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-4 md:mb-6 tracking-tighter text-white uppercase italic leading-[1.1]"
+                className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-4 md:mb-6 tracking-tight text-white   leading-[1.1]"
                 style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}
               >
                 {settings?.aboutTitle || (
                   <>
-                    L'EXCELLENCE <span className="text-primary italic">GAMING</span>
+                    L'EXCELLENCE <span className="text-primary ">GAMING</span>
                   </>
                 )}
               </h1>
@@ -128,10 +128,10 @@ const AboutPage = () => {
                   <div className="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
                     <Target className="w-6 h-6 text-primary" />
                   </div>
-                  <h2 className="font-display text-4xl font-black text-foreground uppercase italic tracking-tighter">{settings?.aboutMissionTitle || "Notre Mission"}</h2>
+                  <h2 className="font-display text-4xl font-bold text-foreground   tracking-tight">{settings?.aboutMissionTitle || "Notre Mission"}</h2>
                 </div>
                 <div className="space-y-6">
-                  <p className="text-foreground/80 text-xl font-medium leading-relaxed italic border-l-4 border-primary pl-6">
+                  <p className="text-foreground/80 text-xl font-medium leading-relaxed  border-l-4 border-primary pl-6">
                     {settings?.aboutMission || "Rendre accessible à tous les Marocains des solutions informatiques et gaming de haute qualité. Nous croyons que chaque client mérite le meilleur."}
                   </p>
                   <p className="text-muted-foreground text-lg leading-relaxed">
@@ -160,8 +160,8 @@ const AboutPage = () => {
                         <Heart className="w-8 h-8 text-white" />
                       </div>
                       <div>
-                        <p className="font-display font-black text-3xl text-foreground tracking-tighter italic">+{kpis.totalCustomers}</p>
-                        <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">{settings?.aboutStatsLabel || "Clients Satisfaits"}</p>
+                        <p className="font-display font-bold text-3xl text-foreground tracking-tight ">+{kpis.totalCustomers}</p>
+                        <p className="text-xs font-bold text-muted-foreground  ">{settings?.aboutStatsLabel || "Clients Satisfaits"}</p>
                       </div>
                     </div>
                   </div>
@@ -178,7 +178,7 @@ const AboutPage = () => {
           <div className="absolute inset-0 bg-muted/30" />
           <div className="container-custom relative z-10">
             <div className="text-center mb-16">
-              <h2 className="font-display text-4xl md:text-6xl font-black text-foreground uppercase italic tracking-tighter mb-6">
+              <h2 className="font-display text-4xl md:text-6xl font-bold text-foreground   tracking-tight mb-6">
                 {settings?.aboutValuesTitle ? (
                   <>
                     {settings.aboutValuesTitle.split(' ').slice(0, -1).join(' ')} <span className="text-primary">{settings.aboutValuesTitle.split(' ').slice(-1)}</span>
@@ -204,7 +204,7 @@ const AboutPage = () => {
                   <div className="w-16 h-16 rounded-2xl bg-muted border border-border flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                     <value.icon className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="font-display font-black text-foreground text-xl uppercase italic tracking-tighter mb-4">{value.title}</h3>
+                  <h3 className="font-display font-bold text-foreground text-xl   tracking-tight mb-4">{value.title}</h3>
                   <p className="text-muted-foreground leading-relaxed font-medium">{value.description}</p>
                 </motion.div>
               ))}
@@ -230,10 +230,10 @@ const AboutPage = () => {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className="bg-card backdrop-blur-sm border border-border p-8 rounded-3xl text-center group hover:bg-muted/50 transition-colors duration-500"
                 >
-                  <p className="font-display text-4xl md:text-5xl font-black text-foreground italic tracking-tighter mb-2 group-hover:text-primary transition-colors">
+                  <p className="font-display text-4xl md:text-5xl font-bold text-foreground  tracking-tight mb-2 group-hover:text-primary transition-colors">
                     {stat.value}
                   </p>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">{stat.label}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground  ">{stat.label}</p>
                 </motion.div>
               ))}
             </div>
@@ -248,3 +248,4 @@ const AboutPage = () => {
 };
 
 export default AboutPage;
+

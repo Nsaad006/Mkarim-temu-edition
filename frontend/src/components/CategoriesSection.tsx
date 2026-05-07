@@ -71,7 +71,7 @@ const CategoriesSection = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <h2 className="font-display text-4xl md:text-5xl font-black mb-4 tracking-tight">
+            <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 tracking-tight">
               {sectionTitle.includes("<") ? (
                 <span dangerouslySetInnerHTML={{ __html: sectionTitle }} />
               ) : (
@@ -175,7 +175,7 @@ const CategoriesSection = () => {
                         </div>
 
                         {/* Category Name */}
-                        <h3 className="font-bold text-[11px] sm:text-xs md:text-sm text-center group-hover:text-primary transition-colors duration-300 line-clamp-2 uppercase tracking-tight leading-tight mb-0.5 px-1">
+                        <h3 className="font-bold text-[11px] sm:text-xs md:text-sm text-center group-hover:text-primary transition-colors duration-300 line-clamp-2  tracking-tight leading-tight mb-0.5 px-1">
                           {category.name}
                         </h3>
 
@@ -199,3 +199,4 @@ const CategoriesSection = () => {
 };
 
 export default CategoriesSection;
+

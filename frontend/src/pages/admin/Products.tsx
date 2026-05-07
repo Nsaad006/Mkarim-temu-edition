@@ -28,6 +28,8 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    SelectGroup,
+    SelectLabel
 } from "@/components/ui/select";
 import {
     Dialog,
@@ -516,7 +518,15 @@ const AdminProducts = () => {
             product.name.toLowerCase().includes(combinedSearch) ||
             product.category?.name.toLowerCase().includes(combinedSearch)
         );
-        const matchesCategory = categoryFilter === "all" || product.categoryId === categoryFilter;
+        // Get all category IDs that match the filter (parent + its children)
+        let categoryIds: string[] = [];
+        if (categoryFilter !== "all") {
+            categoryIds = [categoryFilter];
+            // Also include children of this category
+            const children = categories.filter((c: any) => c.parentId === categoryFilter).map((c: any) => c.id);
+            categoryIds = [...categoryIds, ...children];
+        }
+        const matchesCategory = categoryFilter === "all" || categoryIds.includes(product.categoryId);
         return matchesSearch && matchesCategory;
     });
 
@@ -688,9 +698,24 @@ const AdminProducts = () => {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
-                                                    {product.category?.name || 'Sans catégorie'}
-                                                </span>
+                                                {(() => {
+                                                    const cat = product.category as any;
+                                                    if (!cat) return <span className="text-xs text-muted-foreground">Sans catégorie</span>;
+                                                    // If this category has a parent, find and show the parent name
+                                                    if (cat.parentId) {
+                                                        const parent = categories.find((c: any) => c.id === cat.parentId);
+                                                        return (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
+                                                                {parent?.name || cat.name}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
+                                                            {cat.name}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </TableCell>
                                             <TableCell className="font-bold text-primary">
                                                 {product.price.toLocaleString()} {currency}
@@ -716,7 +741,7 @@ const AdminProducts = () => {
                                                         className="scale-75 data-[state=checked]:bg-green-500"
                                                     />
                                                     <div className="flex flex-col">
-                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${product.quantity > 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                                        <span className={`text-[10px] font-bold  tracking-wider ${product.quantity > 0 ? 'text-green-500' : 'text-destructive'}`}>
                                                             {product.quantity > 0 ? 'EN STOCK' : 'ÉPUISÉ'}
                                                         </span>
                                                         <span className="text-[11px] font-medium text-muted-foreground">
@@ -948,22 +973,74 @@ const AdminProducts = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Catégorie</Label>
+                                <Label>Catégorie *</Label>
+                                {/* Step 1 — Parent category */}
                                 <Select
-                                    value={formData.categoryId}
-                                    onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                                    value={(() => {
+                                        // Resolve which parent corresponds to the selected categoryId
+                                        const selected = categories.find(c => c.id === formData.categoryId);
+                                        if (!selected) return "";
+                                        // If selected has no parentId it IS the parent
+                                        if (!selected.parentId) return selected.id;
+                                        // Otherwise return its parentId
+                                        return selected.parentId;
+                                    })()}
+                                    onValueChange={(parentId) => {
+                                        // When parent changes, set categoryId to the parent itself
+                                        // (the user can refine to a child below)
+                                        setFormData({ ...formData, categoryId: parentId });
+                                    }}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionner une catégorie" />
+                                        <SelectValue placeholder="1. Sélectionner une catégorie" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {categories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id}>
-                                                {category.name}
+                                        {categories.filter(c => !c.parentId).map(parent => (
+                                            <SelectItem key={parent.id} value={parent.id}>
+                                                {parent.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+
+                                {/* Step 2 — Subcategory (only shown if selected parent has children) */}
+                                {(() => {
+                                    const selected = categories.find(c => c.id === formData.categoryId);
+                                    const parentId = selected?.parentId ? selected.parentId : selected?.id;
+                                    const children = categories.filter(c => c.parentId === parentId);
+                                    if (!parentId || children.length === 0) return null;
+
+                                    return (
+                                        <div className="mt-2">
+                                            <Label className="text-xs text-muted-foreground mb-1 block">Sous-catégorie (optionnel)</Label>
+                                            <Select
+                                                value={selected?.parentId ? selected.id : "__parent__"}
+                                                onValueChange={(val) => {
+                                                    if (val === "__parent__") {
+                                                        // Revert to parent category
+                                                        setFormData({ ...formData, categoryId: parentId });
+                                                    } else {
+                                                        setFormData({ ...formData, categoryId: val });
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="border-dashed">
+                                                    <SelectValue placeholder="2. Affiner par sous-catégorie" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__parent__">
+                                                        — Toute la catégorie (sans sous-catégorie)
+                                                    </SelectItem>
+                                                    {children.map(child => (
+                                                        <SelectItem key={child.id} value={child.id}>
+                                                            {child.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             <div className="space-y-2">
@@ -1002,7 +1079,7 @@ const AdminProducts = () => {
                                             )}
                                         </div>
                                         {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
-                                            <p className="text-[10px] text-orange-600 font-medium italic">
+                                            <p className="text-[10px] text-orange-600 font-medium ">
                                                 Note: Une modification du coût nécessite votre mot de passe admin.
                                             </p>
                                         )}
@@ -1031,7 +1108,7 @@ const AdminProducts = () => {
 
                                     {/* Info note for NEW product only */}
                                     {!editingProduct && (
-                                        <div className="col-span-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs italic text-primary font-medium">
+                                        <div className="col-span-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs  text-primary font-medium">
                                             Note: L'ajout d'un nouveau produit générera automatiquement un <strong>Ordre d'Approvisionnement</strong> de <strong>{parseInt(formData.quantity) * (parseInt(formData.unitCostPrice) || 0)} {currency}</strong>.
                                         </div>
                                     )}
@@ -1083,7 +1160,7 @@ const AdminProducts = () => {
 
                                 <div className="space-y-2 border rounded-lg p-3 bg-muted/20">
                                     {formData.specs.length === 0 ? (
-                                        <p className="text-center text-[11px] text-muted-foreground py-2 italic">
+                                        <p className="text-center text-[11px] text-muted-foreground py-2 ">
                                             Aucune spécification ajoutée. Cliquez sur le bouton pour en ajouter.
                                         </p>
                                     ) : (
@@ -1293,7 +1370,7 @@ const AdminProducts = () => {
                                         </div>
                                     )}
                                 </div>
-                                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 px-1 font-medium italic">
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 px-1 font-medium ">
                                     <Sparkles className="w-3 h-3 text-primary" />
                                     <span>Les clés techniques (CPU, GPU, RAM...) sont utilisées pour les filtres avancés du catalogue.</span>
                                 </div>
@@ -1471,3 +1548,4 @@ const AdminProducts = () => {
 };
 
 export default AdminProducts;
+

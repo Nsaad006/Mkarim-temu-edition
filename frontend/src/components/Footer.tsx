@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const quickLinks = [
   { name: "Accueil", path: "/" },
-  { name: "Nos Produits", path: "/products" },
+  { name: "Nos Produits", path: "/?all=1" },
   { name: "À Propos", path: "/about" },
   { name: "Contact", path: "/contact" },
 ];
@@ -44,10 +44,10 @@ const Footer = () => {
           aria-expanded={isOpen}
           className="w-full py-6 flex justify-between items-center lg:hidden"
         >
-          <h3 className="font-display font-bold text-foreground text-base uppercase tracking-widest">{title}</h3>
+          <h3 className="font-display font-bold text-foreground text-base  tracking-widest">{title}</h3>
           {isOpen ? <ChevronUp className="w-4 h-4 text-primary" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
-        <h3 className="hidden lg:block font-display font-bold text-foreground text-lg mb-8 uppercase tracking-widest">{title}</h3>
+        <h3 className="hidden lg:block font-display font-bold text-foreground text-lg mb-8  tracking-widest">{title}</h3>
 
         <div className={`lg:block ${isOpen ? 'block pb-6' : 'hidden'}`}>
           {children}
@@ -63,7 +63,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="space-y-8 mb-12 lg:mb-0">
             <Link to="/" className="inline-block">
-              <span className="font-display text-3xl font-black tracking-tighter">
+              <span className="font-display text-3xl font-bold tracking-tight">
                 {storeName.split(" ").length > 1 ? (
                   <>
                     <span className="text-primary">{storeName.split(" ")[0]}</span>
@@ -75,7 +75,7 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-muted-foreground text-base leading-relaxed max-w-sm">
-              {settings?.footerDescription || "Votre destination ultime pour le gaming au Maroc. Performance, passion et innovation au service des gamers."}
+              {settings?.footerDescription || "Votre destination pour les meilleurs produits. Qualité, service et livraison rapide partout au Maroc."}
             </p>
             <div className="flex gap-4 flex-wrap">
               {[
@@ -98,13 +98,12 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Categories */}
-          <AccordionSection title="Univers" id="univers">
+          <AccordionSection title="Catégories" id="univers">
             <ul className="space-y-4">
-              {categories.slice(0, 6).map((category) => (
+              {categories.filter((c: any) => !c.parentId).slice(0, 6).map((category) => (
                 <li key={category.id}>
                   <Link
-                    to={`/products?category=${category.slug}`}
+                    to={`/?category=${category.slug}`}
                     className="text-muted-foreground hover:text-primary transition-colors text-base font-medium"
                   >
                     {category.name}
@@ -162,17 +161,17 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-12 border-t border-border flex flex-col lg:flex-row justify-between items-center gap-8">
           <p className="text-muted-foreground text-sm text-center lg:text-left">
-            {settings?.footerCopyright || `© 2025 ${storeName} – Engineered for Gamers`}
+            {settings?.footerCopyright || `© ${new Date().getFullYear()} ${storeName} – Tous droits réservés`}
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-6 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="flex flex-wrap justify-center items-center gap-6 text-[10px] md:text-xs font-bold   text-muted-foreground">
             {codEnabled && (
               <span className="flex items-center gap-3 bg-muted py-2 px-4 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                <span className="w-2 h-2 rounded-full bg-green-500" />
                 Paiement à la livraison
               </span>
             )}
             <span className="flex items-center gap-3 bg-muted py-2 px-4 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(235,68,50,0.5)]" />
+              <span className="w-2 h-2 rounded-full bg-primary" />
               Livraison nationale
             </span>
           </div>
@@ -183,3 +182,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

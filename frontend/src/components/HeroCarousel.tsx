@@ -169,13 +169,13 @@ export const HeroCarousel = () => {
                                             {slide.badge && (
                                                 <div className="relative group">
                                                     <div className="absolute inset-0 bg-primary blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
-                                                    <span className="relative px-3 py-1 md:px-5 md:py-2 bg-primary text-white text-[10px] md:text-sm font-black uppercase tracking-[0.2em] md:tracking-[0.25em] rounded-md transform -skew-x-12 inline-block border-l-[3px] md:border-l-4 border-white shadow-2xl">
-                                                        <span className="transform skew-x-12 inline-block">{slide.badge}</span>
+                                                    <span className="relative px-3 py-1 md:px-5 md:py-2 bg-primary text-white text-[10px] md:text-sm font-bold  tracking-wider rounded-full shadow-lg">
+                                                        <span>{slide.badge}</span>
                                                     </span>
                                                 </div>
                                             )}
                                             {slide.subtitle && (
-                                                <span className="text-white tracking-[0.2em] md:tracking-[0.25em] text-[10px] md:text-sm font-bold uppercase bg-zinc-900/90 backdrop-blur-sm px-3 py-1 md:px-5 md:py-2 rounded-md border border-zinc-700 shadow-lg">
+                                                <span className="text-white  md: text-[10px] md:text-sm font-bold  bg-zinc-900/90 backdrop-blur-sm px-3 py-1 md:px-5 md:py-2 rounded-md border border-zinc-700 shadow-lg">
                                                     {slide.subtitle}
                                                 </span>
                                             )}
@@ -194,7 +194,7 @@ export const HeroCarousel = () => {
                                                     className="max-h-full overflow-hidden flex flex-col justify-center"
                                                 >
                                                     <h1
-                                                        className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black mb-3 md:mb-6 leading-[1.05] tracking-tight text-white drop-shadow-2xl"
+                                                        className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-bold mb-3 md:mb-6 leading-[1.05] tracking-tight text-white drop-shadow-2xl"
                                                         style={{ textShadow: '0 4px 15px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8)' }}
                                                     >
                                                         {(() => {
@@ -332,3 +332,4 @@ export const HeroCarousel = () => {
         </div>
     );
 };
+

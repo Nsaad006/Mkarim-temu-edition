@@ -42,11 +42,11 @@ const CTASection = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <span className="inline-block px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] md:text-sm font-black uppercase tracking-[0.2em] mb-6 md:mb-8">
+            <span className="inline-block px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] md:text-sm font-bold   mb-6 md:mb-8">
               Édition Limitée
             </span>
 
-            <h2 className="font-display text-2xl sm:text-3xl md:text-6xl font-black text-foreground mb-6 md:mb-8 tracking-tighter leading-tight md:leading-none">
+            <h2 className="font-display text-2xl sm:text-3xl md:text-6xl font-bold text-foreground mb-6 md:mb-8 tracking-tight leading-tight md:leading-none">
               {ctaTitle.split(' ').map((word, i) => (
                 <span key={i} className={word.toLowerCase() === 'setup' || word.toLowerCase() === 'révolutionner' ? "text-primary" : ""}>
                   {word}{' '}
@@ -79,3 +79,4 @@ const CTASection = () => {
 };
 
 export default CTASection;
+

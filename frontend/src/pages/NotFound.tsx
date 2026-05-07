@@ -32,30 +32,30 @@ const NotFound = () => {
               <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
 
-            <h1 className="font-display text-8xl md:text-[12rem] font-black text-foreground italic uppercase tracking-tighter leading-none mb-4 opacity-10 select-none">
+            <h1 className="font-display text-8xl md:text-[12rem] font-bold text-foreground   tracking-tight leading-none mb-4 opacity-10 select-none">
               404
             </h1>
 
             <div className="relative -mt-16 md:-mt-32 mb-12">
-              <h2 className="font-display text-4xl md:text-6xl font-black text-foreground italic uppercase tracking-tighter mb-6">
+              <h2 className="font-display text-4xl md:text-6xl font-bold text-foreground   tracking-tight mb-6">
                 UNITÉ <span className="text-primary">INTROUVABLE</span>
               </h2>
               <p className="text-xl text-muted-foreground font-medium max-w-lg mx-auto leading-relaxed">
-                La destination demandée est hors de notre périmètre de déploiement tactique.
+                La page que vous recherchez n'existe pas ou a été déplacée.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/">
-                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest px-8 h-16 rounded-2xl shadow-[0_0_30px_rgba(235,68,50,0.3)] italic w-full sm:w-auto">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold  tracking-widest px-8 h-16 rounded-2xl shadow-[0_0_30px_rgba(235,68,50,0.3)]  w-full sm:w-auto">
                   <Home className="w-5 h-5 mr-3" />
                   Bases de Commande
                 </Button>
               </Link>
               <Link to="/products">
-                <Button variant="outline" size="lg" className="border-border text-foreground hover:bg-accent font-black uppercase tracking-widest px-8 h-16 rounded-2xl italic w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="border-border text-foreground hover:bg-accent font-bold  tracking-widest px-8 h-16 rounded-2xl  w-full sm:w-auto">
                   <Search className="w-5 h-5 mr-3 text-primary" />
-                  Explorer l'Arsenal
+                  Explorer le Catalogue
                 </Button>
               </Link>
             </div>
@@ -68,3 +68,4 @@ const NotFound = () => {
 };
 
 export default NotFound;
+

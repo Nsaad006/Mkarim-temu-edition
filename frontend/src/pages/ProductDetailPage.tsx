@@ -1,9 +1,9 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
-  ShoppingCart, Truck, ShieldCheck, CreditCard, ArrowLeft, Check, Loader2,
+  ShoppingCart, Truck, ShieldCheck, CreditCard, ArrowLeft, Loader2,
+  Star, ChevronRight, Check, Package, RefreshCw,
   Cpu, Zap, HardDrive, Tag, CircuitBoard, AppWindow, Monitor, LayoutGrid,
-  Power, Box, Wind, Snowflake, Maximize, RefreshCw, Activity, Wifi, Battery,
+  Power, Box, Snowflake, Maximize, Activity, Wifi, Battery,
   Scale, Keyboard, MousePointer2, Target, Palette, Terminal, Layers
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -27,7 +27,6 @@ const ProductDetailPage = () => {
   const { currency } = useSettings();
   const [quantity, setQuantity] = useState(1);
 
-  // Fetch current product
   const { data: product, isLoading: isProductLoading } = useQuery({
     queryKey: ['product', id],
     queryFn: () => productsApi.getById(id as string),
@@ -43,61 +42,81 @@ const ProductDetailPage = () => {
 
   const storeAvailability = settings?.storeAvailability ?? true;
 
-  // Fetch all products for matching related ones (simple approach)
   const { data: allProducts = [] } = useQuery({
     queryKey: ['products'],
-    queryFn: () => productsApi.getAll(),
+    queryFn: () => productsApi.getAll({ published: true }),
     enabled: !!product,
   });
 
+  const [relatedVisible, setRelatedVisible] = useState(10);
+
+  // Full interleaved pool (no cap — Voir plus handles pagination)
   const relatedProducts = useMemo(() => {
-    if (!product) return [];
-    return allProducts
-      .filter((p) => p.id !== id && p.categoryId === product.categoryId)
-      .slice(0, 4);
+    if (!product || allProducts.length === 0) return [];
+    const others = allProducts.filter((p) => p.id !== id);
+    const seed = product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1);
+    const seeded = [...others].sort((a, b) => {
+      const ha = (a.id.charCodeAt(0) * seed + a.id.charCodeAt(a.id.length - 1)) % 997;
+      const hb = (b.id.charCodeAt(0) * seed + b.id.charCodeAt(b.id.length - 1)) % 997;
+      return ha - hb;
+    });
+    // Interleave same-category + other categories for variety
+    const samecat = seeded.filter((p) => p.categoryId === product.categoryId);
+    const othercats = seeded.filter((p) => p.categoryId !== product.categoryId);
+    const mixed: typeof others = [];
+    for (let i = 0; i < Math.max(samecat.length, othercats.length); i++) {
+      if (samecat[i]) mixed.push(samecat[i]);
+      if (othercats[i]) mixed.push(othercats[i]);
+    }
+    return mixed; // full pool
   }, [allProducts, product, id]);
 
-  // Helper to get icon for spec key
+  const discount = product?.originalPrice
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
+
+  // Fake social proof (deterministic from product id)
+  const pseudoRandom = (str: string, offset = 0) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    return Math.abs((hash + offset) % 150) + 12;
+  };
+
   const getSpecIcon = (key?: string) => {
     if (!key) return LayoutGrid;
-    const normalized = key.toLowerCase().trim();
-
-    if (normalized.includes('cpu') || normalized.includes('processeur')) return Cpu;
-    if (normalized.includes('gpu') || normalized.includes('graphique')) return Zap;
-    if (normalized.includes('ram') || normalized.includes('memoire')) return CircuitBoard;
-    if (normalized.includes('stockage') || normalized.includes('disque') || normalized.includes('ssd') || normalized.includes('hdd')) return HardDrive;
-    if (normalized.includes('marque')) return Tag;
-    if (normalized.includes('carte_mere') || normalized.includes('motherboard')) return CircuitBoard;
-    if (normalized.includes('alimentation') || normalized.includes('psu')) return Power;
-    if (normalized.includes('boitier') || normalized.includes('case')) return Box;
-    if (normalized.includes('refroidissement') || normalized.includes('cooling')) return Snowflake;
-    if (normalized.includes('resolution') || normalized.includes('affichage')) return Maximize;
-    if (normalized.includes('frequence') || normalized.includes('rafraichissement') || normalized.includes('hz')) return RefreshCw;
-    if (normalized.includes('connectivite') || normalized.includes('wifi') || normalized.includes('bluetooth')) return Wifi;
-    if (normalized.includes('batterie') || normalized.includes('autonomie')) return Battery;
-    if (normalized.includes('poids') || normalized.includes('weight')) return Scale;
-    if (normalized.includes('chipset')) return Cpu;
-    if (normalized.includes('format')) return Layers;
-    if (normalized.includes('switch') || normalized.includes('clavier')) return Keyboard;
-    if (normalized.includes('dpi') || normalized.includes('sensibilite')) return MousePointer2;
-    if (normalized.includes('capteur') || normalized.includes('sensor')) return Target;
-    if (normalized.includes('rgb') || normalized.includes('eclairage') || normalized.includes('couleur')) return Palette;
-    if (normalized.includes('polling') || normalized.includes('rapport')) return Activity;
-    if (normalized.includes('garantie') || normalized.includes('warranty')) return ShieldCheck;
-    if (normalized.includes('systeme') || normalized.includes('os') || normalized.includes('windows')) return Terminal;
-    if (normalized.includes('ecran') || normalized.includes('display')) return Monitor;
-
+    const k = key.toLowerCase();
+    if (k.includes('cpu') || k.includes('processeur')) return Cpu;
+    if (k.includes('gpu') || k.includes('graphique')) return Zap;
+    if (k.includes('ram')) return CircuitBoard;
+    if (k.includes('stockage') || k.includes('ssd') || k.includes('hdd')) return HardDrive;
+    if (k.includes('marque')) return Tag;
+    if (k.includes('carte_mere')) return CircuitBoard;
+    if (k.includes('alimentation')) return Power;
+    if (k.includes('boitier')) return Box;
+    if (k.includes('refroidissement')) return Snowflake;
+    if (k.includes('resolution')) return Maximize;
+    if (k.includes('frequence') || k.includes('hz')) return RefreshCw;
+    if (k.includes('connectivite') || k.includes('wifi')) return Wifi;
+    if (k.includes('batterie')) return Battery;
+    if (k.includes('poids')) return Scale;
+    if (k.includes('clavier') || k.includes('switch')) return Keyboard;
+    if (k.includes('dpi')) return MousePointer2;
+    if (k.includes('capteur')) return Target;
+    if (k.includes('rgb') || k.includes('eclairage')) return Palette;
+    if (k.includes('polling')) return Activity;
+    if (k.includes('garantie')) return ShieldCheck;
+    if (k.includes('os') || k.includes('windows')) return Terminal;
+    if (k.includes('ecran') || k.includes('display')) return Monitor;
     return LayoutGrid;
   };
 
   if (isProductLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background pb-16 md:pb-0">
         <Navbar />
-        <main className="pt-32 flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          <p className="text-muted-foreground font-black uppercase tracking-[0.3em] text-xs">Initialisation du matériel...</p>
-        </main>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
         <Footer />
       </div>
     );
@@ -105,291 +124,286 @@ const ProductDetailPage = () => {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background pb-16 md:pb-0">
         <Navbar />
-        <main className="pt-32 flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <h1 className="font-display text-4xl font-black text-foreground uppercase italic mb-6 tracking-tighter">Matériel <span className="text-primary">Introuvable</span></h1>
-            <Link to="/products">
-              <Button className="bg-primary text-primary-foreground font-black uppercase tracking-widest px-8 h-14 rounded-xl">Retour au Catalogue</Button>
-            </Link>
-          </div>
-        </main>
+        <div className="flex items-center justify-center min-h-[60vh] flex-col gap-4">
+          <h1 className="text-xl font-bold">Produit introuvable</h1>
+          <Link to="/"><Button>Retour à l'accueil</Button></Link>
+        </div>
         <Footer />
       </div>
     );
   }
 
   const handleAddToCart = () => {
-    if (!product) return;
     addItem(product, quantity);
-    toast({
-      title: "Ajouté au panier",
-      description: `${quantity}x ${product.name} ajouté à votre panier.`,
-    });
+    toast({ title: "Ajouté au panier", description: `${quantity}x ${product.name}` });
   };
 
   const handleOrderNow = () => {
-    if (!product) return;
     addItem(product, quantity);
-    navigate(`/cart`);
+    navigate("/cart");
+  };
+
+  const soldCount = pseudoRandom(product.id);
+  const reviewCount = pseudoRandom(product.id, 50) + 20;
+
+  const specLabels: Record<string, string> = {
+    'cpu': 'Processeur', 'gpu': 'Graphique', 'ram': 'Mémoire', 'stockage': 'Stockage',
+    'marque': 'Marque', 'marque_pc': 'Modèle', 'ecran': 'Écran', 'os': 'Système',
+    'carte_mere': 'Carte Mère', 'alimentation': 'Alimentation', 'boitier': 'Boîtier',
+    'refroidissement': 'Cooling', 'resolution': 'Résolution', 'frequence': 'Fréquence',
+    'connectivite': 'Connexion', 'batterie': 'Batterie', 'poids': 'Poids', 'chipset': 'Chipset',
+    'format': 'Format', 'switch': 'Switch', 'dpi': 'Sensibilité', 'capteur': 'Capteur',
+    'eclairage': 'RGB', 'polling_rate': 'Polling', 'garantie': 'Garantie'
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <SEO
         title={product.name}
-        description={`${product.name} - ${product.description.slice(0, 150)}... Achetez au meilleur prix au Maroc.`}
+        description={`${product.name} - ${product.description?.slice(0, 150)}...`}
         ogImage={getImageUrl(product.image)}
-        keywords={`${product.name}, ${product.category?.name}, gaming maroc, pc gamer`}
       />
       <Navbar />
-      <main className="pt-24 lg:pt-32">
-        <div className="container-custom py-8 lg:py-16">
-          {/* Breadcrumb */}
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-3 text-muted-foreground hover:text-foreground mb-10 transition-colors font-black uppercase tracking-[0.2em] text-[10px]"
-          >
-            <ArrowLeft className="w-4 h-4 text-primary" />
-            Retour au Catalogue
-          </button>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-            {/* Product Image Gallery */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="relative"
-            >
-              <ProductImageGallery
-                images={product.images && product.images.length > 0 ? product.images : [product.image]}
-                productName={product.name}
-                badge={product.badge}
-              />
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3">
 
-              {/* Desktop Description (Moved) */}
-              <div className="hidden lg:block mt-12 pt-8 border-t border-border space-y-4">
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-2">DESCRIPTION</h3>
-                <div className="text-muted-foreground text-lg font-medium leading-relaxed space-y-2">
-                  {product.description?.split(/;|\n/).map((line, index) => {
-                    const trimmedLine = line.trim();
-                    return trimmedLine ? <p key={index}>{trimmedLine}</p> : null;
-                  })}
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3 flex-wrap">
+          <Link to="/" className="hover:text-primary transition-colors">Accueil</Link>
+          <ChevronRight className="w-3 h-3" />
+          {product.category && (
+            <>
+              <Link to={`/?category=${product.categoryId}`} className="hover:text-primary transition-colors">
+                {product.category.name}
+              </Link>
+              <ChevronRight className="w-3 h-3" />
+            </>
+          )}
+          <span className="text-foreground line-clamp-1">{product.name}</span>
+        </nav>
+
+        {/* ── MAIN PRODUCT SECTION ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 lg:gap-6">
+
+          {/* LEFT: Images */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden p-2 md:p-4">
+            <ProductImageGallery
+              images={product.images && product.images.length > 0 ? product.images : [product.image]}
+              productName={product.name}
+              badge={product.badge}
+            />
+          </div>
+
+          {/* RIGHT: Info panel */}
+          <div className="flex flex-col gap-3">
+
+            {/* Title & badges */}
+            <div className="bg-card border border-border rounded-xl p-4">
+              {product.badge && (
+                <span className="inline-block bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded mb-2">
+                  {product.badge}
+                </span>
+              )}
+              <h1 className="text-base md:text-lg font-semibold text-foreground leading-snug mb-2">
+                {product.name}
+              </h1>
+
+              {/* Social proof */}
+              <div className="flex items-center gap-3 text-sm flex-wrap">
+                <div className="flex items-center gap-1 text-yellow-500">
+                  {[1,2,3,4].map(i => <Star key={i} className="w-3.5 h-3.5 fill-current" />)}
+                  <Star className="w-3.5 h-3.5 fill-yellow-500/50 text-yellow-500" />
+                  <span className="text-xs text-muted-foreground ml-1">{reviewCount} avis</span>
                 </div>
+                <span className="text-muted-foreground text-xs">{soldCount}K+ vendus</span>
               </div>
+            </div>
 
-              {/* Decorative glow */}
-              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-            </motion.div>
-
-            {/* Product Info */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              className="space-y-10"
-            >
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-muted border border-border text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-4 skew-x-[-12deg]">
-                  <span className="skew-x-[12deg]">{product.category?.name || product.categoryId.replace("-", " ")}</span>
-                </div>
-                <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black text-foreground italic tracking-tighter leading-[0.9] mb-6 uppercase">
-                  {product.name}
-                </h1>
-              </div>
-
-              {/* Price & Stock */}
-              <div className="flex flex-wrap items-center gap-8 bg-card backdrop-blur-md p-8 rounded-3xl border border-border relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-primary/10 transition-colors" />
-                <div className="relative z-10">
-                  <div className="flex flex-col gap-1 mb-2">
-                    <span className="text-5xl lg:text-6xl font-black text-foreground italic tracking-tighter">
-                      {product.price.toLocaleString()} <span className="text-primary text-2xl lg:text-3xl ml-1">{currency}</span>
-                    </span>
-                    {product.originalPrice && (
-                      <span className="text-xl lg:text-2xl text-muted-foreground/40 line-through font-bold tracking-tighter italic ml-1">
-                        {product.originalPrice.toLocaleString()} {currency}
-                      </span>
-                    )}
-                  </div>
-                  <div className={`mt-4 inline-flex items-center gap-2 font-black uppercase tracking-[0.2em] text-[10px] ${product.inStock ? "text-green-500" : "text-red-500"}`}>
-                    <div className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"} animate-pulse`} />
-                    {product.inStock ? "UNITÉ PRÊTE POUR EXPÉDITION" : "EN RUPTURE"}
-                  </div>
-                </div>
-              </div>
-
-              {/* CTA Buttons & Quantity */}
-              <div className="flex flex-col gap-4">
-                {!storeAvailability ? (
-                  <div className="p-6 bg-primary/5 text-primary border border-primary/20 rounded-2xl text-center flex-1 font-black uppercase tracking-widest text-sm italic">
-                    ACCÈS AUX LOGISTIQUES TEMPORAIREMENT SUSPENDU.
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-4 bg-muted/40 border border-border rounded-xl p-1.5 w-fit">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 hover:bg-background shrink-0 rounded-lg"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        disabled={!product.inStock || quantity <= 1}
-                      >
-                        -
-                      </Button>
-                      <span className="w-8 text-center font-bold text-lg select-none">{quantity}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 hover:bg-background shrink-0 rounded-lg"
-                        onClick={() => setQuantity(quantity + 1)}
-                        disabled={!product.inStock}
-                      >
-                        +
-                      </Button>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <Button
-                        size="xl"
-                        className="w-full sm:flex-[1.5] shrink-0 italic tracking-tighter sm:tracking-normal px-2 text-sm sm:text-lg shadow-[0_4px_20px_rgba(235,68,50,0.25)]"
-                        onClick={handleOrderNow}
-                        disabled={!product.inStock}
-                      >
-                        COMMANDER
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="xl"
-                        className="w-full sm:flex-1 shrink-0 px-2 text-sm sm:text-lg"
-                        onClick={handleAddToCart}
-                        disabled={!product.inStock}
-                      >
-                        <ShoppingCart className="w-5 h-5" />
-                        PANIER
-                      </Button>
-                    </div>
-                  </>
+            {/* Price */}
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-3xl font-bold text-primary">
+                  {product.price.toLocaleString()} <span className="text-base">{currency}</span>
+                </span>
+                {product.originalPrice && (
+                  <span className="text-base text-muted-foreground line-through font-medium">
+                    {product.originalPrice.toLocaleString()} {currency}
+                  </span>
+                )}
+                {discount > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">
+                    -{discount}%
+                  </span>
                 )}
               </div>
 
-              {/* Mobile Description (Moved) */}
-              <div className="lg:hidden space-y-4 pt-4">
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-2">DESCRIPTION</h3>
-                <div className="text-muted-foreground text-base font-medium leading-relaxed bg-muted/20 p-6 rounded-2xl border border-border">
-                  {product.description?.split(/;|\n/).map((line, index) => {
-                    const trimmedLine = line.trim();
-                    return trimmedLine ? <p key={index}>{trimmedLine}</p> : null;
-                  })}
-                </div>
-              </div>
-
-              {/* Specs */}
-              {product.specs && product.specs.length > 0 && (
-                <div className="space-y-4 pt-4">
-                  <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] ml-2">SPECIFICATIONS TECHNIQUES</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {product.specs.map((spec, index) => {
-                      // Parse the {key}: value format
-                      const match = spec.match(/^\{([^}]+)\}:\s*(.+)$/);
-                      const key = match ? match[1] : undefined;
-                      const displayValue = match ? match[2] : spec;
-                      const Icon = getSpecIcon(key);
-
-                      // Human readable labels mapping
-                      const labels: Record<string, string> = {
-                        'cpu': 'Processeur',
-                        'gpu': 'Graphique',
-                        'ram': 'Mémoire',
-                        'stockage': 'Stockage',
-                        'marque': 'Marque',
-                        'marque_pc': 'Modèle',
-                        'ecran': 'Écran',
-                        'os': 'Système',
-                        'carte_mere': 'Carte Mère',
-                        'alimentation': 'Alimentation',
-                        'boitier': 'Boîtier',
-                        'refroidissement': 'Cooling',
-                        'resolution': 'Résolution',
-                        'frequence': 'Fréquence',
-                        'connectivite': 'Connexion',
-                        'batterie': 'Batterie',
-                        'poids': 'Poids',
-                        'chipset': 'Chipset',
-                        'format': 'Format',
-                        'switch': 'Switch',
-                        'dpi': 'Sensibilité',
-                        'capteur': 'Capteur',
-                        'eclairage': 'RGB',
-                        'polling_rate': 'Polling',
-                        'garantie': 'Garantie'
-                      };
-
-                      const label = key ? (labels[key.toLowerCase()] || key) : 'Général';
-
-                      return (
-                        <div key={index} className="flex items-center gap-4 bg-muted/40 border border-border p-4 rounded-xl group hover:border-primary/30 transition-all duration-300">
-                          <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border border-border shrink-0 group-hover:bg-primary/5 transition-colors">
-                            <Icon className="w-5 h-5 text-primary" />
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest leading-none mb-1">
-                              {label}
-                            </span>
-                            <span className="text-sm font-bold text-foreground uppercase tracking-tight truncate">
-                              {displayValue}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+              {/* Urgency */}
+              {product.quantity > 0 && product.quantity < 10 && (
+                <div className="mt-2">
+                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-red-500 h-1.5 rounded-full transition-all" style={{ width: `${(product.quantity / 10) * 100}%` }} />
                   </div>
+                  <p className="text-xs text-red-500 font-bold mt-1">🔥 Plus que {product.quantity} en stock !</p>
                 </div>
               )}
 
-              {/* Trust Badges */}
-              <div className="grid grid-cols-3 gap-6 pt-10 border-t border-border mt-20">
-                {[
-                  { icon: Truck, label: "EXPRESS LOGISTICS", sub: "24-72H MAROC" },
-                  { icon: ShieldCheck, label: "CERTIFIED GEAR", sub: "FULL WARRANTY" },
-                  { icon: CreditCard, label: "SECURE COD", sub: "PAY ON RECEIPT" }
-                ].map((badge, i) => (
-                  <div key={i} className="flex flex-col items-center text-center gap-3">
-                    <badge.icon className="w-6 h-6 text-primary" />
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black text-foreground tracking-[0.1em]">{badge.label}</p>
-                      <p className="text-[8px] font-bold text-muted-foreground tracking-[0.05em]">{badge.sub}</p>
+              {/* Delivery promise */}
+              <div className="mt-3 flex items-center gap-2 text-xs text-green-600 font-semibold">
+                <Truck className="w-4 h-4" />
+                Livraison gratuite · Livraison rapide Maroc
+              </div>
+            </div>
+
+            {/* Quantity + CTA */}
+            <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3">
+              {!storeAvailability ? (
+                <div className="p-4 bg-muted rounded-lg text-center text-sm font-semibold text-muted-foreground">
+                  Boutique temporairement indisponible
+                </div>
+              ) : (
+                <>
+                  {/* Quantity */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">Quantité :</span>
+                    <div className="flex items-center border border-border rounded-lg overflow-hidden">
+                      <button
+                        className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors text-lg font-bold"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={!product.inStock || quantity <= 1}
+                      >-</button>
+                      <span className="w-10 h-8 flex items-center justify-center text-sm font-bold border-x border-border">
+                        {quantity}
+                      </span>
+                      <button
+                        className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors text-lg font-bold"
+                        onClick={() => setQuantity(quantity + 1)}
+                        disabled={!product.inStock}
+                      >+</button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </motion.div>
+
+                  {/* Buttons */}
+                  <button
+                    onClick={handleOrderNow}
+                    disabled={!product.inStock}
+                    className="w-full h-12 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold rounded-full text-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="w-4 h-4" /> Commander maintenant
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={!product.inStock}
+                    className="w-full h-12 bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground font-bold rounded-full text-sm border border-border transition-colors flex items-center justify-center gap-2"
+                  >
+                    Ajouter au panier
+                  </button>
+
+                  {/* Stock status */}
+                  <div className={`flex items-center gap-2 text-xs font-semibold ${product.inStock ? "text-green-600" : "text-red-500"}`}>
+                    {product.inStock
+                      ? <><Check className="w-4 h-4" /> En stock · Prêt à expédier</>
+                      : <><Package className="w-4 h-4" /> En rupture de stock</>
+                    }
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Trust badges */}
+            <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-3 gap-3 text-center">
+              {[
+                { icon: Truck, title: "Livraison rapide", sub: "24-72h Maroc" },
+                { icon: ShieldCheck, title: "Garanti", sub: "Produit certifié" },
+                { icon: CreditCard, title: "Paiement", sub: "À la livraison" },
+              ].map((b, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <b.icon className="w-5 h-5 text-primary" />
+                  <span className="text-[11px] font-bold leading-tight">{b.title}</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">{b.sub}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── DESCRIPTION + SPECS ── */}
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Description */}
+          <div className="bg-card border border-border rounded-xl p-5">
+            <h2 className="font-bold text-base mb-3 flex items-center gap-2">
+              <span className="w-1 h-5 bg-primary rounded-full inline-block"></span>
+              Description du produit
+            </h2>
+            <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
+              {product.description?.split(/;|\n/).map((line, i) => {
+                const t = line.trim();
+                return t ? <p key={i}>{t}</p> : null;
+              })}
+            </div>
           </div>
 
-          {/* Related Products */}
-          {relatedProducts.length > 0 && (
-            <section className="mt-32 pt-16 border-t border-border">
-              <div className="flex items-center justify-between mb-12">
-                <h2 className="font-display text-3xl md:text-5xl font-black text-foreground italic tracking-tighter uppercase">
-                  UNITÉS <span className="text-primary">SIMILAIRES</span>
-                </h2>
-                <Link to="/products" className="text-[10px] font-black text-muted-foreground hover:text-primary uppercase tracking-[0.2em] transition-colors border-b border-border hover:border-primary pb-1">
-                  VOIR CATALOGUE COMPLET
-                </Link>
+          {/* Specs */}
+          {product.specs && product.specs.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-5">
+              <h2 className="font-bold text-base mb-3 flex items-center gap-2">
+                <span className="w-1 h-5 bg-primary rounded-full inline-block"></span>
+                Spécifications techniques
+              </h2>
+              <div className="space-y-2">
+                {product.specs.map((spec, i) => {
+                  const match = spec.match(/^\{([^}]+)\}:\s*(.+)$/);
+                  const key = match ? match[1] : undefined;
+                  const value = match ? match[2] : spec;
+                  const Icon = getSpecIcon(key);
+                  const label = key ? (specLabels[key.toLowerCase()] || key) : 'Général';
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                      <Icon className="w-4 h-4 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground w-24 shrink-0">{label}</span>
+                      <span className="text-sm font-medium text-foreground flex-1">{value}</span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-                {relatedProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            </section>
+            </div>
           )}
         </div>
+
+        {/* ── RELATED PRODUCTS ── */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-border" />
+              <h2 className="font-bold text-base whitespace-nowrap text-muted-foreground tracking-wide text-sm">
+                Vous aimerez aussi
+              </h2>
+              <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-border" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+              {relatedProducts.slice(0, relatedVisible).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+            {relatedVisible < relatedProducts.length && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setRelatedVisible(v => v + 10)}
+                  className="px-8 py-2.5 rounded-full border border-border text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-all duration-200 hover:shadow-sm active:scale-95"
+                >
+                  Voir plus
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
       <Footer />
     </div>
   );
 };
 
 export default ProductDetailPage;
+

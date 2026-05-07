@@ -119,11 +119,11 @@ const ContactPage = () => {
               transition={{ duration: 0.5 }}
               className="max-w-4xl"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-primary text-primary-foreground text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-4 skew-x-[-12deg]">
-                <span className="skew-x-[12deg]">MKARIM SUPPORT</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[9px] sm:text-[10px] font-bold  tracking-wider mb-4">
+                <span>MKARIM SUPPORT</span>
               </div>
-              <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-black mb-6 tracking-tighter text-foreground uppercase italic leading-[1.1]">
-                Contactez-<span className="text-primary italic">Nous</span>
+              <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold mb-6 tracking-tight text-foreground   leading-[1.1]">
+                Contactez-<span className="text-primary ">Nous</span>
               </h1>
               <p className="text-lg sm:text-xl text-muted-foreground font-medium max-w-2xl leading-relaxed">
                 Notre équipe d'experts est disponible pour vous accompagner et répondre à toutes vos questions tech & gaming.
@@ -144,7 +144,7 @@ const ContactPage = () => {
                 className="xl:col-span-1 space-y-6 lg:space-y-8 order-2 xl:order-1"
               >
                 <div className="bg-card backdrop-blur-xl rounded-3xl border border-border p-5 sm:p-8 shadow-2xl">
-                  <h2 className="font-display text-lg md:text-xl lg:text-2xl font-black text-foreground uppercase tracking-tight mb-6 md:mb-8 italic">
+                  <h2 className="font-display text-lg md:text-xl lg:text-2xl font-bold text-foreground  tracking-tight mb-6 md:mb-8 ">
                     Informations Directes
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-6 sm:gap-x-10 sm:gap-y-10">
@@ -154,16 +154,16 @@ const ContactPage = () => {
                           <info.icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">{info.title}</p>
+                          <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground   mb-1">{info.title}</p>
                           {info.link ? (
                             <a
                               href={info.link}
-                              className="text-sm sm:text-base lg:text-lg font-black text-foreground hover:text-primary transition-colors tracking-tight italic block break-words"
+                              className="text-sm sm:text-base lg:text-lg font-bold text-foreground hover:text-primary transition-colors tracking-tight  block break-words"
                             >
                               {info.value}
                             </a>
                           ) : (
-                            <p className="text-sm sm:text-base lg:text-lg font-black text-foreground tracking-tight italic break-words">{info.value}</p>
+                            <p className="text-sm sm:text-base lg:text-lg font-bold text-foreground tracking-tight  break-words">{info.value}</p>
                           )}
                         </div>
                       </div>
@@ -179,13 +179,13 @@ const ContactPage = () => {
                       <MessageCircle className="w-5 h-5 md:w-8 md:h-8 text-white" />
                     </div>
                     <div>
-                      <p className="text-sm md:text-base font-black text-foreground uppercase tracking-tight italic leading-tight">Assistance Directe</p>
-                      <p className="text-[10px] md:text-xs font-bold text-green-500/80 uppercase tracking-widest leading-none mt-1">Réponse immédiate</p>
+                      <p className="text-sm md:text-base font-bold text-foreground  tracking-tight  leading-tight">Assistance Directe</p>
+                      <p className="text-[10px] md:text-xs font-bold text-green-500/80  tracking-widest leading-none mt-1">Réponse immédiate</p>
                     </div>
                   </div>
                   <Button
                     onClick={handleWhatsApp}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase tracking-wider h-auto min-h-[3.5rem] px-6 py-4 rounded-xl relative z-10 text-xs sm:text-sm lg:text-base shadow-xl active:scale-95 whitespace-normal leading-tight"
+                    className="w-full bg-green-500 hover:bg-green-600 text-white font-bold  tracking-wider h-auto min-h-[3.5rem] px-6 py-4 rounded-xl relative z-10 text-xs sm:text-sm lg:text-base shadow-xl active:scale-95 whitespace-normal leading-tight"
                   >
                     Lancer le Chat WhatsApp
                   </Button>
@@ -200,73 +200,73 @@ const ContactPage = () => {
                 className="xl:col-span-2 order-1 xl:order-2"
               >
                 <div className="bg-card backdrop-blur-xl rounded-3xl border border-border p-5 sm:p-10 xl:p-10 shadow-2xl">
-                  <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-black text-foreground uppercase tracking-tight mb-5 md:mb-8 italic">
+                  <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-foreground  tracking-tight mb-5 md:mb-8 ">
                     Transmettre un Message
                   </h2>
                   <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                       <div className="space-y-1.5 md:space-y-2">
-                        <Label htmlFor="name" className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Nom complet *</Label>
+                        <Label htmlFor="name" className="text-[9px] sm:text-[10px] font-bold   text-muted-foreground">Nom complet *</Label>
                         <Input
                           id="name"
                           placeholder="votre nom"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-black placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
+                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-bold placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
                         />
                       </div>
                       <div className="space-y-1.5 md:space-y-2">
-                        <Label htmlFor="email" className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Email *</Label>
+                        <Label htmlFor="email" className="text-[9px] sm:text-[10px] font-bold   text-muted-foreground">Email *</Label>
                         <Input
                           id="email"
                           type="email"
                           placeholder="votre@email.com"
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-black placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
+                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-bold placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                       <div className="space-y-1.5 md:space-y-2">
-                        <Label htmlFor="phone" className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Téléphone</Label>
+                        <Label htmlFor="phone" className="text-[9px] sm:text-[10px] font-bold   text-muted-foreground">Téléphone</Label>
                         <Input
                           id="phone"
                           type="tel"
                           placeholder="+212 6 XX XX XX XX"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-black placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
+                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-bold placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
                         />
                       </div>
                       <div className="space-y-1.5 md:space-y-2">
-                        <Label htmlFor="subject" className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Sujet</Label>
+                        <Label htmlFor="subject" className="text-[9px] sm:text-[10px] font-bold   text-muted-foreground">Sujet</Label>
                         <Input
                           id="subject"
                           placeholder="sujet de votre demande"
                           value={formData.subject}
                           onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-black placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
+                          className="bg-background border-border text-foreground h-12 sm:h-14 md:h-14 rounded-xl focus:border-primary/50 transition-all font-bold placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5 md:space-y-2">
-                      <Label htmlFor="message" className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Message *</Label>
+                      <Label htmlFor="message" className="text-[9px] sm:text-[10px] font-bold   text-muted-foreground">Message *</Label>
                       <Textarea
                         id="message"
                         placeholder="votre message détaillé..."
                         rows={4}
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        className="bg-background border-border text-foreground rounded-xl focus:border-primary/50 transition-all font-black resize-none p-4 sm:p-6 lg:p-6 placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
+                        className="bg-background border-border text-foreground rounded-xl focus:border-primary/50 transition-all font-bold resize-none p-4 sm:p-6 lg:p-6 placeholder:text-muted-foreground/30 text-xs sm:text-sm lg:text-base"
                       />
                     </div>
 
                     <Button
                       type="submit"
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] h-14 sm:h-16 md:h-16 rounded-xl shadow-[0_0_30px_rgba(235,68,50,0.3)] transition-all hover:shadow-[0_0_40px_rgba(235,68,50,0.5)] active:scale-95 flex items-center justify-center gap-3 px-10"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold   h-14 sm:h-16 md:h-16 rounded-xl shadow-[0_0_30px_rgba(235,68,50,0.3)] transition-all hover:shadow-[0_0_40px_rgba(235,68,50,0.5)] active:scale-95 flex items-center justify-center gap-3 px-10"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
@@ -291,3 +291,4 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
+

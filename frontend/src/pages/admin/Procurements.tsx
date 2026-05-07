@@ -219,7 +219,7 @@ const Procurements = () => {
                                         <TableCell className="text-right font-bold text-destructive">
                                             -{proc.totalCost.toLocaleString()} {currency}
                                         </TableCell>
-                                        <TableCell className="text-center text-[10px] italic text-muted-foreground">
+                                        <TableCell className="text-center text-[10px]  text-muted-foreground">
                                             {proc.admin?.name || '---'}
                                         </TableCell>
                                     </TableRow>
@@ -368,3 +368,4 @@ const Procurements = () => {
 };
 
 export default Procurements;
+

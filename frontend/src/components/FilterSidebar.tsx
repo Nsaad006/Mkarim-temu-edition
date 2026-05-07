@@ -206,8 +206,8 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
             {/* Header */}
             <div className={`p-6 border-b border-border flex items-center bg-background/80 z-20 ${expand ? '' : 'sticky top-0'}`}>
                 <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-primary skew-x-[-15deg]" />
-                    <h2 className="font-display font-black text-foreground text-lg uppercase italic tracking-tighter">Filtres</h2>
+                    <div className="w-1.5 h-6 bg-primary rounded-full" />
+                    <h2 className="font-display font-bold text-foreground text-lg   tracking-tight">Filtres</h2>
                 </div>
             </div>
 
@@ -216,11 +216,11 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
 
                     {/* Price Range (Permanent Global Filter) - Moved to Top */}
                     <div className="pb-8 border-b border-border">
-                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">{settings?.filterBudgetTitle || "Budget de Déploiement"}</h3>
+                        <h3 className="px-2 text-[10px] font-bold text-muted-foreground   mb-4">{settings?.filterBudgetTitle || "Filtre par Budget"}</h3>
                         <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-xl">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest px-1">MIN (MAD)</p>
+                                    <p className="text-[8px] font-bold text-muted-foreground  tracking-widest px-1">MIN (MAD)</p>
                                     <input
                                         type="number"
                                         value={priceRange[0]}
@@ -229,11 +229,11 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                             handlePriceChange([val, priceRange[1]]);
                                             updateFilters({ ...activeFilters, minPrice: val, maxPrice: priceRange[1] });
                                         }}
-                                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-black text-foreground italic outline-none focus:border-primary/50"
+                                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-bold text-foreground  outline-none focus:border-primary/50"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest px-1">MAX (MAD)</p>
+                                    <p className="text-[8px] font-bold text-muted-foreground  tracking-widest px-1">MAX (MAD)</p>
                                     <input
                                         type="number"
                                         value={priceRange[1]}
@@ -242,7 +242,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                             handlePriceChange([priceRange[0], val]);
                                             updateFilters({ ...activeFilters, minPrice: priceRange[0], maxPrice: val });
                                         }}
-                                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-black text-foreground italic outline-none focus:border-primary/50"
+                                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-bold text-foreground  outline-none focus:border-primary/50"
                                     />
                                 </div>
                             </div>
@@ -261,9 +261,9 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                     {/* Sorting (Optional: When passed down) */}
                     {onSortChange && currentSort && (
                         <div className="pb-8 border-b border-border">
-                            <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">{settings?.filterSortTitle || "Ordre de Tri"}</h3>
+                            <h3 className="px-2 text-[10px] font-bold text-muted-foreground   mb-4">{settings?.filterSortTitle || "Ordre de Tri"}</h3>
                             <Select value={currentSort} onValueChange={onSortChange}>
-                                <SelectTrigger className="w-full bg-card border-border text-foreground font-black uppercase tracking-wider h-11">
+                                <SelectTrigger className="w-full bg-card border-border text-foreground font-bold  tracking-wider h-11">
                                     <SelectValue placeholder="Trier par" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -290,7 +290,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <LucideIcons.PackageCheck className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <p className={`text-xs font-black uppercase tracking-wider ${activeFilters.inStockOnly ? 'text-green-500' : 'text-foreground'}`}>En Stock Uniquement</p>
+                                    <p className={`text-xs font-bold  tracking-wider ${activeFilters.inStockOnly ? 'text-green-500' : 'text-foreground'}`}>En Stock Uniquement</p>
                                     <p className="text-[10px] text-muted-foreground font-medium">Masquer les ruptures</p>
                                 </div>
                             </div>
@@ -304,7 +304,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
 
                     {/* Main Filter: Categories */}
                     <div>
-                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">{settings?.filterCategoryTitle || "Secteur d'Arsenal"}</h3>
+                        <h3 className="px-2 text-[10px] font-bold text-muted-foreground   mb-4">{settings?.filterCategoryTitle || "Catégories"}</h3>
                         <div className="space-y-1">
                             {[{ id: 'all', name: 'Tous les Produits', slug: 'all', icon: 'LayoutGrid' }, ...categories].map((cat) => {
                                 const categorySlug = (cat as any).slug || cat.id;
@@ -320,7 +320,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                             }`}
                                     >
                                         <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary'}`} />
-                                        <span className="text-xs font-black uppercase italic tracking-tight">{cat.name}</span>
+                                        <span className="text-xs font-bold   tracking-tight">{cat.name}</span>
                                     </button>
                                 );
                             })}
@@ -329,7 +329,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
 
                     {/* Dynamic Specs based on Category */}
                     <div className="space-y-6 pt-4 border-t border-border">
-                        <h3 className="px-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-2">Spécifications Tactiques</h3>
+                        <h3 className="px-2 text-[10px] font-bold text-muted-foreground   mb-2">Caractéristiques</h3>
 
                         <Accordion type="multiple" className="w-full space-y-2">
                             {/* Brand Group */}
@@ -338,7 +338,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.Tag className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Marque</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Marque</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -353,7 +353,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.brands?.includes(brand) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.brands?.includes(brand) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.brands?.includes(brand) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.brands?.includes(brand) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {brand}
                                                         </span>
                                                     </div>
@@ -370,7 +370,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.Cpu className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Processeurs</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Processeurs</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -385,7 +385,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.cpus?.includes(cpu) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.cpus?.includes(cpu) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.cpus?.includes(cpu) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.cpus?.includes(cpu) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {cpu}
                                                         </span>
                                                     </div>
@@ -402,7 +402,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <Zap className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Graphisme (GPU)</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Graphisme (GPU)</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -417,7 +417,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.gpus?.includes(gpu) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.gpus?.includes(gpu) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.gpus?.includes(gpu) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.gpus?.includes(gpu) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {gpu}
                                                         </span>
                                                     </div>
@@ -434,7 +434,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.Cpu className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Mémoire (RAM)</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Mémoire (RAM)</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -449,7 +449,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.rams?.includes(ram) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.rams?.includes(ram) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.rams?.includes(ram) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.rams?.includes(ram) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {ram}
                                                         </span>
                                                     </div>
@@ -466,7 +466,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.Tv className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Écran & Affichage</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Écran & Affichage</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -481,7 +481,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.ecrans?.includes(ecran) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.ecrans?.includes(ecran) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.ecrans?.includes(ecran) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.ecrans?.includes(ecran) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {ecran}
                                                         </span>
                                                     </div>
@@ -498,7 +498,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.HardDrive className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Stockage</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Stockage</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -513,7 +513,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.storages?.includes(storage) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.storages?.includes(storage) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.storages?.includes(storage) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.storages?.includes(storage) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {storage}
                                                         </span>
                                                     </div>
@@ -530,7 +530,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.MousePointer2 className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">Specs Périphériques</span>
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">Specs Périphériques</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1">
@@ -545,7 +545,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.periphs?.includes(val) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.periphs?.includes(val) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-xs font-bold uppercase tracking-tight transition-colors ${activeFilters.periphs?.includes(val) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-xs font-bold  tracking-tight transition-colors ${activeFilters.periphs?.includes(val) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {val}
                                                         </span>
                                                     </div>
@@ -562,7 +562,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                     <AccordionTrigger className="flex items-center gap-3 py-3 px-4 bg-muted border border-border rounded-xl hover:bg-accent transition-all hover:no-underline">
                                         <div className="flex items-center gap-3 flex-1 text-left">
                                             <LucideIcons.Boxes className="w-4 h-4 text-primary" />
-                                            <span className="text-xs font-black text-foreground uppercase tracking-wider">
+                                            <span className="text-xs font-bold text-foreground  tracking-wider">
                                                 {activeFilters.category === 'all' ? 'Hardware Global' : 'Filtres Avancés'}
                                             </span>
                                         </div>
@@ -579,7 +579,7 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${activeFilters.others?.includes(spec) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}>
                                                             {activeFilters.others?.includes(spec) && <Check className="w-3 h-3 text-primary-foreground" />}
                                                         </div>
-                                                        <span className={`text-[11px] font-bold uppercase tracking-tight transition-colors ${activeFilters.others?.includes(spec) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        <span className={`text-[11px] font-bold  tracking-tight transition-colors ${activeFilters.others?.includes(spec) ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                             {spec}
                                                         </span>
                                                     </div>
@@ -607,3 +607,4 @@ export const FilterSidebar = ({ products, categories, activeFilters, updateFilte
         </div>
     );
 };
+

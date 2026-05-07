@@ -321,21 +321,21 @@ const Suppliers = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-6">
                                 <div className="bg-muted/30 p-4 rounded-xl border border-border">
-                                    <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Investissement Total</p>
-                                    <p className="text-2xl font-black text-primary italic">
-                                        {supplierDetail.summary.totalSpent.toLocaleString()} <span className="text-xs not-italic">MAD</span>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1  tracking-wider">Investissement Total</p>
+                                    <p className="text-2xl font-bold text-primary ">
+                                        {supplierDetail.summary.totalSpent.toLocaleString()} <span className="text-xs not-">MAD</span>
                                     </p>
                                 </div>
                                 <div className="bg-muted/30 p-4 rounded-xl border border-border">
-                                    <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Quantité Achetée</p>
-                                    <p className="text-2xl font-black italic">
-                                        {supplierDetail.summary.totalItems.toLocaleString()} <span className="text-xs not-italic">Unités</span>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1  tracking-wider">Quantité Achetée</p>
+                                    <p className="text-2xl font-bold ">
+                                        {supplierDetail.summary.totalItems.toLocaleString()} <span className="text-xs not-">Unités</span>
                                     </p>
                                 </div>
                                 <div className="bg-muted/30 p-4 rounded-xl border border-border">
-                                    <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Produits Référencés</p>
-                                    <p className="text-2xl font-black italic">
-                                        {supplierDetail.summary.uniqueProducts} <span className="text-xs not-italic">Types</span>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1  tracking-wider">Produits Référencés</p>
+                                    <p className="text-2xl font-bold ">
+                                        {supplierDetail.summary.uniqueProducts} <span className="text-xs not-">Types</span>
                                     </p>
                                 </div>
                             </div>
@@ -365,12 +365,12 @@ const Suppliers = () => {
                                                 {supplierDetail.procurements.map((p: any) => (
                                                     <TableRow key={p.id}>
                                                         <TableCell className="font-bold text-xs">{p.product.name}</TableCell>
-                                                        <TableCell className="text-xs text-muted-foreground italic">
+                                                        <TableCell className="text-xs text-muted-foreground ">
                                                             {format(new Date(p.purchaseDate), 'dd MMM yyyy', { locale: fr })}
                                                         </TableCell>
                                                         <TableCell className="text-center font-mono">+{p.quantityPurchased}</TableCell>
                                                         <TableCell className="text-right font-mono text-xs">{p.unitCostPrice} MAD</TableCell>
-                                                        <TableCell className="text-right font-black text-xs text-primary">{p.totalCost} MAD</TableCell>
+                                                        <TableCell className="text-right font-bold text-xs text-primary">{p.totalCost} MAD</TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -383,12 +383,12 @@ const Suppliers = () => {
                                             <div key={idx} className="flex justify-between items-center p-4 bg-card border rounded-xl">
                                                 <div>
                                                     <p className="font-bold text-sm leading-tight">{p.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                                                    <p className="text-[10px] text-muted-foreground  tracking-widest mt-1">
                                                         Total: {p.quantity} unités
                                                     </p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-sm font-black text-primary italic">{p.total.toLocaleString()} MAD</p>
+                                                    <p className="text-sm font-bold text-primary ">{p.total.toLocaleString()} MAD</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -404,3 +404,4 @@ const Suppliers = () => {
 };
 
 export default Suppliers;
+

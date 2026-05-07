@@ -600,7 +600,7 @@ export default function Wholesalers() {
                                                 <div className="flex flex-col">
                                                     <span>{w.name}</span>
                                                     {w.type === 'ENTREPRISE' && w.responsibleName && (
-                                                        <span className="text-[10px] text-muted-foreground uppercase">Resp: {w.responsibleName}</span>
+                                                        <span className="text-[10px] text-muted-foreground ">Resp: {w.responsibleName}</span>
                                                     )}
                                                 </div>
                                             </TableCell>
@@ -610,7 +610,7 @@ export default function Wholesalers() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap">
-                                                {w.ice || <span className="text-muted-foreground text-xs italic">N/A</span>}
+                                                {w.ice || <span className="text-muted-foreground text-xs ">N/A</span>}
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap font-mono text-xs">
                                                 {w.phone}
@@ -1249,3 +1249,4 @@ export default function Wholesalers() {
         </div>
     );
 }
+

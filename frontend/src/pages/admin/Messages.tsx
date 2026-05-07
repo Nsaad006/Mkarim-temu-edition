@@ -147,7 +147,7 @@ const Messages = () => {
                                                 ) : (
                                                     <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
                                                 )}
-                                                <span className="text-xs uppercase text-muted-foreground">{msg.status}</span>
+                                                <span className="text-xs  text-muted-foreground">{msg.status}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -181,13 +181,13 @@ const Messages = () => {
                                                         <div className="space-y-6">
                                                             <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-lg border border-border">
                                                                 <div>
-                                                                    <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Email</p>
+                                                                    <p className="text-xs text-muted-foreground  font-bold mb-1">Email</p>
                                                                     <a href={`mailto:${msg.email}`} className="text-sm font-medium hover:text-primary flex items-center gap-2">
                                                                         <Mail className="w-3 h-3" /> {msg.email}
                                                                     </a>
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Téléphone</p>
+                                                                    <p className="text-xs text-muted-foreground  font-bold mb-1">Téléphone</p>
                                                                     {msg.phone ? (
                                                                         <a href={`tel:${msg.phone}`} className="text-sm font-medium hover:text-primary flex items-center gap-2">
                                                                             <Phone className="w-3 h-3" /> {msg.phone}
@@ -199,12 +199,12 @@ const Messages = () => {
                                                             </div>
 
                                                             <div>
-                                                                <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Sujet</p>
+                                                                <p className="text-xs text-muted-foreground  font-bold mb-1">Sujet</p>
                                                                 <p className="font-semibold text-lg">{msg.subject || "(Sans sujet)"}</p>
                                                             </div>
 
                                                             <div>
-                                                                <p className="text-xs text-muted-foreground uppercase font-bold mb-2">Message</p>
+                                                                <p className="text-xs text-muted-foreground  font-bold mb-2">Message</p>
                                                                 <div className="p-4 bg-card border rounded-lg text-sm leading-relaxed whitespace-pre-wrap">
                                                                     {msg.message}
                                                                 </div>
@@ -256,3 +256,4 @@ const Messages = () => {
 };
 
 export default Messages;
+

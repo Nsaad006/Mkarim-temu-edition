@@ -10,20 +10,17 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-    const [theme, setTheme] = useState<Theme>(() => {
-        const saved = localStorage.getItem("theme");
-        return (saved as Theme) || "light";
-    });
+    // Force light theme always for the marketplace
+    const theme: Theme = "light";
 
     useEffect(() => {
         const root = window.document.documentElement;
-        root.classList.remove("light", "dark");
-        root.classList.add(theme);
-        localStorage.setItem("theme", theme);
-    }, [theme]);
+        root.classList.remove("dark");
+        root.classList.add("light");
+    }, []);
 
     const toggleTheme = () => {
-        setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+        // Disabled
     };
 
     return (

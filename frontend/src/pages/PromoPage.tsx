@@ -10,421 +10,375 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
-import {
-    Loader2, CheckCircle2, User, Phone, MapPin, Truck, ShieldCheck, Zap,
-    Cpu, HardDrive, Tag, CircuitBoard, Monitor, LayoutGrid, Power, Box,
-    Snowflake, Maximize, RefreshCw, Activity, Wifi, Battery, Scale,
-    Keyboard, MousePointer2, Target, Palette, Terminal, Layers
-} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, CheckCircle2, User, Phone, MapPin, Truck, ShieldCheck, Zap, Star, Clock, Package, BadgePercent, ChevronDown } from "lucide-react";
 import { AxiosError } from "axios";
 import { getImageUrl } from "@/lib/image-utils";
+import { ProductImageGallery } from "@/components/ProductImageGallery";
 
+/* ─── Countdown Timer ─────────────────────────── */
+const useCountdown = (minutes = 15) => {
+  const [secs, setSecs] = useState(minutes * 60);
+  useEffect(() => {
+    const t = setInterval(() => setSecs(s => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const m = String(Math.floor(secs / 60)).padStart(2, "0");
+  const s = String(secs % 60).padStart(2, "0");
+  return { m, s, expired: secs === 0 };
+};
+
+/* ─── Main Component ──────────────────────────── */
 const PromoPage = () => {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const { currency } = useSettings();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { currency } = useSettings();
+  const { m, s } = useCountdown(18);
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({
-        fullName: "",
-        phone: "",
-        city: "",
-        address: "",
-    });
-    const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
+  const [formData, setFormData] = useState({ fullName: "", phone: "", city: "", address: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const getSpecIcon = (key?: string) => {
-        if (!key) return LayoutGrid;
-        const normalized = key.toLowerCase().trim();
+  const { data: product, isLoading } = useQuery({
+    queryKey: ["product", id],
+    queryFn: () => productsApi.getById(id!),
+    enabled: !!id,
+  });
+  const { data: cities = [] } = useQuery({ queryKey: ["cities"], queryFn: citiesApi.getAll });
+  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get });
 
-        if (normalized.includes('cpu') || normalized.includes('processeur')) return Cpu;
-        if (normalized.includes('gpu') || normalized.includes('graphique')) return Zap;
-        if (normalized.includes('ram') || normalized.includes('memoire')) return CircuitBoard;
-        if (normalized.includes('stockage') || normalized.includes('disque') || normalized.includes('ssd') || normalized.includes('hdd')) return HardDrive;
-        if (normalized.includes('marque')) return Tag;
-        if (normalized.includes('carte_mere') || normalized.includes('motherboard')) return CircuitBoard;
-        if (normalized.includes('alimentation') || normalized.includes('psu')) return Power;
-        if (normalized.includes('boitier') || normalized.includes('case')) return Box;
-        if (normalized.includes('refroidissement') || normalized.includes('cooling')) return Snowflake;
-        if (normalized.includes('resolution') || normalized.includes('affichage')) return Maximize;
-        if (normalized.includes('frequence') || normalized.includes('rafraichissement') || normalized.includes('hz')) return RefreshCw;
-        if (normalized.includes('connectivite') || normalized.includes('wifi') || normalized.includes('bluetooth')) return Wifi;
-        if (normalized.includes('batterie') || normalized.includes('autonomie')) return Battery;
-        if (normalized.includes('poids') || normalized.includes('weight')) return Scale;
-        if (normalized.includes('chipset')) return Cpu;
-        if (normalized.includes('format')) return Layers;
-        if (normalized.includes('switch') || normalized.includes('clavier')) return Keyboard;
-        if (normalized.includes('dpi') || normalized.includes('sensibilite')) return MousePointer2;
-        if (normalized.includes('capteur') || normalized.includes('sensor')) return Target;
-        if (normalized.includes('rgb') || normalized.includes('eclairage') || normalized.includes('couleur')) return Palette;
-        if (normalized.includes('polling') || normalized.includes('rapport')) return Activity;
-        if (normalized.includes('garantie') || normalized.includes('warranty')) return ShieldCheck;
-        if (normalized.includes('systeme') || normalized.includes('os') || normalized.includes('windows')) return Terminal;
-        if (normalized.includes('ecran') || normalized.includes('display')) return Monitor;
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+    </div>
+  );
+  if (!product) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4">
+      <h1 className="text-2xl font-bold mb-4">Produit Introuvable</h1>
+      <Button onClick={() => navigate("/")}>Retour à l'accueil</Button>
+    </div>
+  );
 
-        return LayoutGrid;
-    };
+  const discount = product.originalPrice
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
 
-    // Fetch product
-    const { data: product, isLoading: isLoadingProduct } = useQuery({
-        queryKey: ['product', id],
-        queryFn: () => productsApi.getById(id!),
-        enabled: !!id,
-    });
+  const selectedCity = cities.find(c => c.name.toLowerCase() === formData.city.toLowerCase());
+  let shippingFee = selectedCity?.shippingFee || 0;
+  if (settings?.freeShippingEnabled && settings.freeShippingThreshold && product.price >= settings.freeShippingThreshold) shippingFee = 0;
+  const total = product.price + (formData.city && settings ? shippingFee : 0);
 
-    // Fetch cities
-    const { data: cities = [] } = useQuery({
-        queryKey: ['cities'],
-        queryFn: () => citiesApi.getAll(),
-    });
+  const filteredCities = cities.filter(c => c.name.toLowerCase().includes(formData.city.toLowerCase()));
 
-    // Fetch settings
-    const { data: settings } = useQuery({
-        queryKey: ['settings'],
-        queryFn: () => settingsApi.get(),
-    });
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!formData.fullName.trim() || formData.fullName.trim().length < 2) e.fullName = "Nom obligatoire";
+    if (!formData.phone) { e.phone = "Téléphone obligatoire"; }
+    else if (!/^(\+212|0)[5-7]\d{8}$/.test(formData.phone.replace(/\s/g, ""))) e.phone = "Ex: 06XXXXXXXX";
+    if (!formData.city) e.city = "Ville obligatoire";
+    else if (!cities.some(c => c.name.toLowerCase() === formData.city.toLowerCase())) e.city = "Choisissez une ville dans la liste";
+    return e;
+  };
 
-    if (isLoadingProduct) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
+    setIsSubmitting(true);
+    try {
+      const order = await ordersApi.create({
+        items: [{ productId: product.id, quantity: 1 }],
+        customerName: formData.fullName,
+        phone: formData.phone.replace(/\s/g, ""),
+        city: formData.city,
+        address: formData.address || "-",
+      });
+      setSubmitted(true);
+      setTimeout(() => navigate(`/order-success?orderNumber=${order.orderNumber}`), 2000);
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      toast({ title: "Erreur", description: error.response?.data?.error || "Une erreur est survenue.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /* ── SUBMITTED STATE ── */
+  if (submitted) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4 gap-4">
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200 }}>
+        <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-foreground">Commande confirmée !</h1>
+        <p className="text-muted-foreground mt-2">Nous vous contacterons bientôt pour confirmer la livraison.</p>
+      </motion.div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#f7f7f7] font-sans">
+
+      {/* ── TOP URGENCY BAR ── */}
+      <div className="bg-red-600 text-white text-center py-2 px-4 text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2">
+        <Clock className="w-4 h-4 shrink-0" />
+        <span>Offre expire dans :</span>
+        <span className="bg-white text-red-600 font-black px-2 py-0.5 rounded text-sm tabular-nums">{m}:{s}</span>
+        <span>— Stock limité !</span>
+      </div>
+
+      {/* ── HEADER ── */}
+      <header className="bg-white border-b border-gray-100 shadow-sm py-3 px-6 flex justify-center">
+        {settings?.logo
+          ? <img src={getImageUrl(settings.logo)} alt="Logo" className="h-8 md:h-10 object-contain" />
+          : <span className="text-xl font-black text-primary tracking-tight">{settings?.storeName || "MKARIM"}</span>
+        }
+      </header>
+
+      <div className="max-w-5xl mx-auto px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 items-start">
+
+        {/* ── LEFT: PRODUCT ── */}
+        <div className="space-y-4">
+          {/* Image gallery */}
+          <div className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100">
+            <div className="relative">
+              {discount > 0 && (
+                <div className="absolute top-3 left-3 z-10 bg-red-600 text-white font-black px-3 py-1 rounded-lg text-sm shadow-lg">
+                  -{discount}%
+                </div>
+              )}
+              {product.badge && (
+                <div className="absolute top-3 right-3 z-10 bg-primary text-white font-bold px-3 py-1 rounded-lg text-xs shadow">
+                  {product.badge}
+                </div>
+              )}
             </div>
-        );
-    }
-
-    if (!product) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-center px-4">
-                <h1 className="text-3xl font-black mb-4">Produit Introuvable</h1>
-                <p className="text-muted-foreground mb-8">Ce produit n'est plus disponible ou le lien est invalide.</p>
-                <Button onClick={() => navigate("/")} variant="outline">Retourner à l'accueil</Button>
+            <div className="p-2">
+              <ProductImageGallery
+                images={product.images && product.images.length > 0 ? product.images : [product.image]}
+                productName={product.name}
+                badge={undefined}
+              />
             </div>
-        );
-    }
+          </div>
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const newErrors: Record<string, string> = {};
+          {/* Product info */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+            <h1 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">{product.name}</h1>
 
-        if (!formData.fullName || formData.fullName.trim().length < 2) {
-            newErrors.fullName = "Champ obligatoire";
-        }
+            {/* Stars */}
+            <div className="flex items-center gap-1">
+              {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}
+              <span className="text-xs text-gray-500 ml-2 font-semibold">4.9 · 238 avis</span>
+            </div>
 
-        if (!formData.phone) {
-            newErrors.phone = "Champ obligatoire";
-        } else {
-            const phoneRegex = /^(\+212|0)[5-7]\d{8}$/;
-            if (!phoneRegex.test(formData.phone.replace(/\s/g, ""))) {
-                newErrors.phone = "Numéro invalide (Ex: 06XXXXXXXX)";
-            }
-        }
+            {/* Price */}
+            <div className="flex items-baseline gap-3">
+              <span className={`text-4xl font-black ${discount >= 50 ? "text-red-600" : "text-gray-900"}`}>
+                {product.price.toLocaleString()} <span className="text-xl font-bold">{currency}</span>
+              </span>
+              {product.originalPrice && (
+                <span className="text-lg text-gray-400 line-through font-medium">
+                  {product.originalPrice.toLocaleString()} {currency}
+                </span>
+              )}
+            </div>
 
-        if (!formData.city) {
-            newErrors.city = "Champ obligatoire";
-        } else if (!cities.some(c => c.name.toLowerCase() === formData.city.toLowerCase())) {
-            newErrors.city = "Merci de choisir une ville dans la liste";
-        }
-
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
-
-        setErrors({});
-        setIsSubmitting(true);
-
-        try {
-            const order = await ordersApi.create({
-                items: [{
-                    productId: product.id,
-                    quantity: 1
-                }],
-                customerName: formData.fullName,
-                phone: formData.phone.replace(/\s/g, ""),
-                city: formData.city,
-                address: formData.address || "-",
-            });
-
-            toast({
-                title: "Commande confirmée !",
-                description: `Votre commande a été enregistrée avec succès.`,
-            });
-
-            navigate(`/order-success?orderNumber=${order.orderNumber}`);
-
-        } catch (err) {
-            const error = err as AxiosError<{ error: string }>;
-            toast({
-                title: "Erreur",
-                description: error.response?.data?.error || "Une erreur est survenue.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const selectedCity = cities.find(c => c.name.toLowerCase() === formData.city.toLowerCase());
-    let shippingFee = selectedCity?.shippingFee || 0;
-
-    // Check free shipping logic
-    const freeShippingEnabled = settings?.freeShippingEnabled ?? false;
-    const freeShippingThreshold = settings?.freeShippingThreshold ?? 0;
-
-    if (freeShippingEnabled && freeShippingThreshold > 0 && product.price >= freeShippingThreshold) {
-        shippingFee = 0;
-    }
-
-    const total = product.price + (formData.city && settings ? shippingFee : 0);
-
-    return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-20 font-sans selection:bg-primary selection:text-white">
-            {/* Header/Logo Line */}
-            <div className="w-full bg-white dark:bg-zinc-900 border-b border-border shadow-sm sticky top-0 z-50 py-4 px-6 flex justify-center items-center">
-                {settings?.logo ? (
-                    <img src={getImageUrl(settings.logo)} alt="Logo" className="h-8 md:h-10 object-contain" />
+            {/* Description */}
+            {product.description && product.description.trim() && (
+              <div className="pt-3 border-t border-gray-100">
+                {product.description.includes(';') || product.description.includes('\n') ? (
+                  // Bullet list when separators exist
+                  <div className="space-y-1.5">
+                    {product.description.split(/;|\n/).filter(l => l.trim()).map((line, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                        <span className="text-green-500 font-black mt-0.5 shrink-0">✓</span>
+                        <span>{line.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                    <h1 className="text-xl md:text-2xl font-black italic tracking-tighter uppercase text-primary">
-                        MKARIM <span className="text-foreground">SOLUTION</span>
-                    </h1>
+                  // Plain paragraph when no separators
+                  <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
                 )}
-            </div>
+              </div>
+            )}
+          </div>
 
-            <div className="max-w-4xl mx-auto mt-6 md:mt-10 px-4 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
-                {/* Product Visuals */}
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-border shadow-xl">
-                        <div className="aspect-square relative mb-6 rounded-2xl overflow-hidden bg-muted/30">
-                            <img
-                                src={getImageUrl(product.image)}
-                                alt={product.name}
-                                className="w-full h-full object-contain p-4"
-                            />
-                            {product.originalPrice && product.originalPrice > product.price && (
-                                <div className="absolute top-4 right-4 bg-red-500 text-white font-black px-3 py-1 rounded-full text-sm transform rotate-3 shadow-lg">
-                                    PROMO
-                                </div>
-                            )}
-                        </div>
+          {/* Trust badges */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: Truck, label: "Livraison", sub: "24–72h Maroc" },
+              { icon: ShieldCheck, label: "Garanti", sub: "100% Neuf" },
+              { icon: Package, label: "Paiement", sub: "À la livraison" },
+            ].map((b, i) => (
+              <div key={i} className="bg-white rounded-xl p-3 text-center border border-gray-100 shadow-sm">
+                <b.icon className="w-5 h-5 text-primary mx-auto mb-1" />
+                <p className="text-[11px] font-black text-gray-800">{b.label}</p>
+                <p className="text-[10px] text-gray-500">{b.sub}</p>
+              </div>
+            ))}
+          </div>
 
-                        <h1 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight text-foreground leading-tight mb-4">
-                            {product.name}
-                        </h1>
-
-                        <div className="flex items-baseline gap-3 mb-6">
-                            <span className="text-4xl md:text-5xl font-black italic text-primary">
-                                {product.price.toLocaleString()} <span className="text-xl">DH</span>
-                            </span>
-                            {product.originalPrice && product.originalPrice > product.price && (
-                                <span className="text-xl text-muted-foreground line-through font-bold">
-                                    {product.originalPrice.toLocaleString()} DH
-                                </span>
-                            )}
-                        </div>
-
-                        {product.description && (
-                            <div className="text-muted-foreground text-sm font-medium leading-relaxed space-y-2 mb-8 bg-muted/20 p-4 lg:p-6 rounded-2xl border border-border">
-                                {product.description.split(/;|\n/).map((line: string, index: number) => {
-                                    const trimmedLine = line.trim();
-                                    return trimmedLine ? <p key={index} className="flex gap-2"><span className="text-primary">•</span> <span>{trimmedLine}</span></p> : null;
-                                })}
-                            </div>
-                        )}
-
-                        {/* Specs / Components */}
-                        {product.specs && product.specs.length > 0 && (
-                            <div className="space-y-4 mb-8">
-                                <h3 className="text-[10px] font-black text-foreground uppercase tracking-[0.3em] ml-1 bg-muted inline-block px-3 py-1 rounded-sm">COMPOSANTS & SPÉCIFICATIONS</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {product.specs.map((spec: string, index: number) => {
-                                        const match = spec.match(/^\{([^}]+)\}:\s*(.+)$/);
-                                        const key = match ? match[1] : undefined;
-                                        const displayValue = match ? match[2] : spec;
-                                        const Icon = getSpecIcon(key);
-
-                                        return (
-                                            <div key={index} className="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-border p-3 rounded-xl shadow-sm">
-                                                <div className="w-10 h-10 rounded-lg bg-primary/5 flex items-center justify-center border border-primary/10 shrink-0">
-                                                    <Icon className="w-5 h-5 text-primary" />
-                                                </div>
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">
-                                                        {key || 'Info'}
-                                                    </span>
-                                                    <span className="text-sm font-bold text-foreground uppercase tracking-tight truncate">
-                                                        {displayValue}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Quick Guarantees */}
-                        <div className="space-y-3 pt-6 border-t border-border">
-                            <div className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                    <Truck className="w-4 h-4" />
-                                </div>
-                                Paiement à la livraison (Cash on Delivery)
-                            </div>
-                            <div className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                    <Zap className="w-4 h-4" />
-                                </div>
-                                Livraison rapide partout au Maroc
-                            </div>
-                            <div className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
-                                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
-                                    <ShieldCheck className="w-4 h-4" />
-                                </div>
-                                Produit 100% Neuf & Garanti
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Quick Order Form */}
-                <div>
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-border shadow-2xl relative overflow-hidden"
-                    >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-
-                        <div className="text-center mb-8 relative z-10">
-                            <h2 className="text-xl lg:text-2xl font-black italic uppercase text-foreground">
-                                DEMANDEZ LE VOTRE <span className="text-primary">MAINTENANT</span>
-                            </h2>
-                            <p className="text-sm font-bold text-muted-foreground mt-2">
-                                Remplissez vos informations, nous vous contacterons pour confirmer la livraison.
-                            </p>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
-                            <div className="space-y-2">
-                                <Label htmlFor="fullName" className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    <User className="w-3.5 h-3.5" /> Nom complet
-                                </Label>
-                                <Input
-                                    id="fullName"
-                                    value={formData.fullName}
-                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                    placeholder="Ex: Ahmed Benjelloun"
-                                    className={`h-12 rounded-xl font-bold bg-zinc-50 dark:bg-zinc-950 ${errors.fullName ? "border-red-500 focus:border-red-500" : ""}`}
-                                />
-                                {errors.fullName && <p className="text-[10px] font-bold text-red-500">{errors.fullName}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="phone" className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    <Phone className="w-3.5 h-3.5" /> Téléphone
-                                </Label>
-                                <Input
-                                    id="phone"
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    placeholder="Ex: 06 12 34 56 78"
-                                    className={`h-12 rounded-xl font-bold bg-zinc-50 dark:bg-zinc-950 ${errors.phone ? "border-red-500 focus:border-red-500" : ""}`}
-                                />
-                                {errors.phone && <p className="text-[10px] font-bold text-red-500">{errors.phone}</p>}
-                            </div>
-
-                            <div className="space-y-2 relative">
-                                <Label htmlFor="city" className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    <MapPin className="w-3.5 h-3.5" /> Ville de livraison
-                                </Label>
-                                <Input
-                                    id="city"
-                                    value={formData.city}
-                                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                    placeholder="EX: CASABLANCA"
-                                    autoComplete="off"
-                                    className={`h-12 rounded-xl font-bold uppercase bg-zinc-50 dark:bg-zinc-950 ${errors.city ? "border-red-500 focus:border-red-500" : ""}`}
-                                />
-                                {formData.city.length > 0 && !cities.some(c => c.name.toLowerCase() === formData.city.toLowerCase()) && (
-                                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-zinc-800 border border-border rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                                        {cities
-                                            .filter(city => city.name.toLowerCase().includes(formData.city.toLowerCase()))
-                                            .map((city) => (
-                                                <button
-                                                    key={city.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setFormData({ ...formData, city: city.name });
-                                                        setErrors({ ...errors, city: "" });
-                                                    }}
-                                                    className="w-full px-4 py-3 text-left hover:bg-primary/10 border-b border-border/50 flex justify-between items-center"
-                                                >
-                                                    <span className="font-bold text-sm uppercase">{city.name}</span>
-                                                    <span className="text-[10px] text-muted-foreground font-bold">
-                                                        {city.shippingFee} DH
-                                                    </span>
-                                                </button>
-                                            ))}
-                                    </div>
-                                )}
-                                {errors.city && <p className="text-[10px] font-bold text-red-500">{errors.city}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="address" className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    Adresse (Facultatif)
-                                </Label>
-                                <Input
-                                    id="address"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    placeholder="Quartier, rue..."
-                                    className="h-12 rounded-xl font-bold bg-zinc-50 dark:bg-zinc-950"
-                                />
-                            </div>
-
-                            {/* Summary inside form */}
-                            {formData.city && settings && (
-                                <div className="mt-6 p-4 bg-zinc-50 dark:bg-zinc-950 border border-border rounded-xl space-y-2">
-                                    <div className="flex justify-between text-sm font-bold">
-                                        <span className="text-muted-foreground uppercase">Sous-total</span>
-                                        <span>{product.price.toLocaleString()} DH</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm font-bold">
-                                        <span className="text-muted-foreground uppercase">Livraison</span>
-                                        <span className={shippingFee === 0 ? "text-green-500" : ""}>
-                                            {shippingFee > 0 ? `+${shippingFee} DH` : "GRATUITE"}
-                                        </span>
-                                    </div>
-                                    <div className="border-t border-border pt-2 mt-2 flex justify-between items-baseline font-black">
-                                        <span className="text-lg uppercase italic">TOTAL</span>
-                                        <span className="text-2xl text-primary italic">{total.toLocaleString()} DH</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            <Button
-                                type="submit"
-                                className="w-full h-14 text-white text-lg font-black italic tracking-wider flex items-center justify-center gap-3 mt-6 hover:-translate-y-1 transition-transform shadow-[0_10px_20px_rgba(235,68,50,0.2)]"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? (
-                                    <Loader2 className="w-6 h-6 animate-spin" />
-                                ) : (
-                                    <>
-                                        <CheckCircle2 className="w-6 h-6" />
-                                        ACHETER MAINTENANT
-                                    </>
-                                )}
-                            </Button>
-                        </form>
-                    </motion.div>
-                </div>
-            </div>
+          {/* Social proof ticker */}
+          <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-bold text-orange-700">
+            <Zap className="w-4 h-4 shrink-0" />
+            <span>🔥 12 personnes regardent ce produit en ce moment</span>
+          </div>
         </div>
-    );
+
+        {/* ── RIGHT: ORDER FORM ── */}
+        <div className="md:sticky md:top-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+          >
+            {/* Form header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-500 px-6 py-5 text-white text-center">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <BadgePercent className="w-5 h-5" />
+                <span className="text-xs font-bold uppercase tracking-widest opacity-90">Offre Exclusive</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-black">COMMANDER MAINTENANT</h2>
+              <p className="text-xs opacity-80 mt-1 font-medium">Livraison gratuite · Paiement à la réception</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Nom */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" /> Nom complet *
+                </Label>
+                <Input
+                  value={formData.fullName}
+                  onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                  placeholder="Prénom et Nom"
+                  className={`h-12 rounded-xl border-2 font-semibold text-sm bg-gray-50 focus:bg-white transition-colors ${errors.fullName ? "border-red-400" : "border-gray-200 focus:border-red-500"}`}
+                />
+                {errors.fullName && <p className="text-[11px] text-red-500 font-semibold">{errors.fullName}</p>}
+              </div>
+
+              {/* Téléphone */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" /> Téléphone *
+                </Label>
+                <Input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="06 XX XX XX XX"
+                  className={`h-12 rounded-xl border-2 font-semibold text-sm bg-gray-50 focus:bg-white transition-colors ${errors.phone ? "border-red-400" : "border-gray-200 focus:border-red-500"}`}
+                />
+                {errors.phone && <p className="text-[11px] text-red-500 font-semibold">{errors.phone}</p>}
+              </div>
+
+              {/* Ville */}
+              <div className="space-y-1.5 relative">
+                <Label className="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" /> Ville *
+                </Label>
+                <div className="relative">
+                  <Input
+                    value={formData.city}
+                    onChange={e => { setFormData({ ...formData, city: e.target.value }); setCityOpen(true); }}
+                    onFocus={() => setCityOpen(true)}
+                    placeholder="Ex: Casablanca"
+                    autoComplete="off"
+                    className={`h-12 rounded-xl border-2 font-semibold text-sm bg-gray-50 focus:bg-white pr-10 transition-colors ${errors.city ? "border-red-400" : "border-gray-200 focus:border-red-500"}`}
+                  />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+                <AnimatePresence>
+                  {cityOpen && formData.city.length > 0 && filteredCities.length > 0 && !cities.some(c => c.name.toLowerCase() === formData.city.toLowerCase()) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden max-h-44 overflow-y-auto"
+                    >
+                      {filteredCities.map(city => (
+                        <button
+                          key={city.id}
+                          type="button"
+                          onClick={() => { setFormData({ ...formData, city: city.name }); setCityOpen(false); setErrors({ ...errors, city: "" }); }}
+                          className="w-full px-4 py-3 text-left hover:bg-red-50 border-b border-gray-50 flex justify-between items-center last:border-0"
+                        >
+                          <span className="font-bold text-sm text-gray-800">{city.name}</span>
+                          <span className="text-xs text-gray-400 font-semibold">
+                            {city.shippingFee === 0 ? "Gratuit" : `${city.shippingFee} ${currency}`}
+                          </span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {errors.city && <p className="text-[11px] text-red-500 font-semibold">{errors.city}</p>}
+              </div>
+
+              {/* Adresse */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black text-gray-500 uppercase tracking-wider">
+                  Adresse (facultatif)
+                </Label>
+                <Input
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Quartier, rue, bâtiment..."
+                  className="h-12 rounded-xl border-2 border-gray-200 focus:border-red-500 font-semibold text-sm bg-gray-50 focus:bg-white transition-colors"
+                />
+              </div>
+
+              {/* Order summary */}
+              {formData.city && settings && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-2">
+                  <div className="flex justify-between text-sm font-semibold text-gray-600">
+                    <span>Produit</span>
+                    <span>{product.price.toLocaleString()} {currency}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold text-gray-600">
+                    <span>Livraison</span>
+                    <span className={shippingFee === 0 ? "text-green-600 font-bold" : ""}>
+                      {shippingFee === 0 ? "GRATUITE 🎁" : `+${shippingFee} ${currency}`}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
+                    <span className="font-black text-gray-800 text-base">TOTAL</span>
+                    <span className="text-2xl font-black text-red-600">{total.toLocaleString()} {currency}</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* CTA Button */}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-14 text-white text-base font-black tracking-wide rounded-xl shadow-lg hover:shadow-red-200 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 disabled:opacity-70 flex items-center justify-center gap-2"
+              >
+                {isSubmitting
+                  ? <><Loader2 className="w-5 h-5 animate-spin" /> Traitement...</>
+                  : <><CheckCircle2 className="w-5 h-5" /> CONFIRMER MA COMMANDE</>
+                }
+              </Button>
+
+              {/* Micro trust */}
+              <p className="text-center text-[11px] text-gray-400 font-medium flex items-center justify-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
+                Paiement 100% à la livraison · Aucun frais caché
+              </p>
+            </form>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── FOOTER ── */}
+      <footer className="text-center py-6 text-xs text-gray-400 border-t border-gray-100 bg-white mt-6">
+        {settings?.storeName || "MKARIM"} · {settings?.footerCopyright || `© ${new Date().getFullYear()} Tous droits réservés`}
+      </footer>
+    </div>
+  );
 };
 
 export default PromoPage;

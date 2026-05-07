@@ -408,7 +408,7 @@ const Customers = () => {
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-primary">{customer.totalSpent.toLocaleString()} {currency}</span>
-                                                {customer.isFavorite && <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Client VIP</span>}
+                                                {customer.isFavorite && <span className="text-[10px] text-red-500 font-bold  tracking-wider">Client VIP</span>}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">

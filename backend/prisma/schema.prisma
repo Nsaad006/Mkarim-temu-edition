@@ -44,6 +44,9 @@ model Category {
   icon      String?
   image     String?
   active    Boolean   @default(true)
+  parentId  String?
+  parent    Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   
@@ -218,6 +221,7 @@ model Settings {
   codEnabled        Boolean  @default(true)
   freeShippingEnabled Boolean @default(false)
   freeShippingThreshold Int   @default(0)
+  freeShippingText  String?   @default("Livraison gratuite")
   whatsappNumber    String   @default("+212600000000")
   currency          String   @default("DH")
   logo              String?  @default("/uploads/logo-placeholder.png")
@@ -279,13 +283,13 @@ model Settings {
   aboutMissionTitle     String   @default("Notre Mission")
   aboutStatsLabel       String   @default("Clients Satisfaits")
   aboutValuesTitle      String   @default("Nos Valeurs")
-  productsPageTitle     String   @default("Catalogue Tech")
-  productsPageSubtitle  String   @default("ARSYENAL MKARIM")
-  filterBudgetTitle     String   @default("Budget de Déploiement")
-  filterSortTitle       String   @default("Ordre de Tri")
-  filterCategoryTitle   String   @default("Secteur d'Arsenal")
-  cartSummaryTitle      String   @default("Résumé Tactique")
-  cartSubtotalText      String   @default("Sous-total matériel")
+  productsPageTitle     String   @default("Catalogue Produits")
+  productsPageSubtitle  String   @default("MKARIM")
+  filterBudgetTitle     String   @default("Budget")
+  filterSortTitle       String   @default("Tri")
+  filterCategoryTitle   String   @default("Catégorie")
+  cartSummaryTitle      String   @default("Résumé de la Commande")
+  cartSubtotalText      String   @default("Sous-total")
   
   // Low Stock Settings
   lowStockThreshold Int      @default(5)
