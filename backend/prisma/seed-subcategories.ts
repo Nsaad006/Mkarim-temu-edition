@@ -73,6 +73,21 @@ async function main() {
         { name: 'PC Gamer MKARIM Pro RTX 4070', subSlug: 'high-gaming-pc' },
         { name: 'Logitech G Pro X Superlight', subSlug: 'wireless-mice' },
         { name: 'Razer BlackWidow V3', subSlug: 'mechanical-keyboards' },
+        { name: 'ASUS ROG Strix G15', subSlug: 'gaming-laptops' },
+        { name: 'HyperX Cloud II Wireless', subSlug: 'wireless-headsets' },
+        { name: 'MSI Optix MAG274QRF-QD', subSlug: 'high-refresh-monitors' },
+        { name: 'NVIDIA GeForce RTX 4090', subSlug: 'gpu' },
+        { name: 'Apple AirPods Pro 2', subSlug: 'true-wireless' },
+        { name: 'SteelSeries Apex Pro TKL', subSlug: 'tkl-keyboards' },
+        { name: 'Corsair Vengeance RGB 32GB', subSlug: 'ram' },
+        { name: 'Samsung 990 PRO 2TB', subSlug: 'components' },
+        { name: 'Razer DeathAdder V3 Pro', subSlug: 'wireless-mice' },
+        { name: 'Elgato Stream Deck MK.2', subSlug: 'webcams' },
+        { name: 'ASUS ROG Zephyrus G14', subSlug: 'gaming-laptops' },
+        { name: 'Sony INZONE H9', subSlug: 'wireless-headsets' },
+        { name: 'LG UltraGear 27GN950-B', subSlug: '4k-monitors' },
+        { name: 'NZXT Kraken Elite 360', subSlug: 'components' },
+        { name: 'Secretlab TITAN Evo', subSlug: 'mousepads' }
     ];
 
     for (const upd of updates) {
