@@ -552,7 +552,15 @@ export default function Wholesalers() {
                                                     }} title="Détails">
                                                         <Eye className="w-4 h-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => generateWholesaleInvoicePDF(order, currency, settings)} title="Télécharger Facture">
+                                                    <Button variant="ghost" size="sm" onClick={() => {
+                                                        try {
+                                                            generateWholesaleInvoicePDF(order, currency, settings);
+                                                            toast({ title: "Succès", description: "Facture téléchargée." });
+                                                        } catch (err: any) {
+                                                            console.error("INVOICE PDF ERROR:", err);
+                                                            toast({ title: "Erreur PDF", description: String(err), variant: "destructive" });
+                                                        }
+                                                    }} title="Télécharger Facture">
                                                         <FileText className="w-4 h-4 text-blue-600" />
                                                     </Button>
                                                     <Button variant="ghost" size="sm" onClick={() => handleEmailInvoice(order)} title="Envoyer Facture par Email">

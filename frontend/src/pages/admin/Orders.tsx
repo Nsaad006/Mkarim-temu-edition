@@ -350,7 +350,7 @@ const Orders = () => {
 
     // Helper function to check if a specific action can be performed on an order
     const canPerformAction = (order: Order, targetStatus: string): boolean => {
-        const currentStatus = order.status.to();
+        const currentStatus = order.status.toUpperCase();
 
         // Must have the general permission first
         if (!canUpdateStatus(targetStatus)) return false;
@@ -385,7 +385,7 @@ const Orders = () => {
     const isOrderVisible = (order: Order): boolean => {
         if (userRole === 'magasinier') {
             // Magasinier can only see CONFIRMED, SHIPPED, DELIVERED, RETOUR and CANCELLED orders
-            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR', 'CANCELLED'].includes(order.status.to());
+            return ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR', 'CANCELLED'].includes(order.status.toUpperCase());
         }
         return true; // All other roles can see all orders
     };
@@ -550,10 +550,26 @@ const Orders = () => {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => exportOrdersToExcel(filteredOrders, currency)}>
+                            <DropdownMenuItem onClick={() => {
+                                try {
+                                    exportOrdersToExcel(filteredOrders, currency);
+                                    toast({ title: "Succès", description: "Fichier Excel généré." });
+                                } catch (err: any) {
+                                    console.error("EXCEL ERROR:", err);
+                                    toast({ title: "Erreur", description: String(err), variant: "destructive" });
+                                }
+                            }}>
                                 <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (.xlsx)
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => exportOrdersToPDF(filteredOrders, currency)}>
+                            <DropdownMenuItem onClick={() => {
+                                try {
+                                    exportOrdersToPDF(filteredOrders, currency);
+                                    toast({ title: "Succès", description: "Fichier PDF généré." });
+                                } catch (err: any) {
+                                    console.error("PDF ERROR:", err);
+                                    toast({ title: "Erreur", description: String(err), variant: "destructive" });
+                                }
+                            }}>
                                 <FileText className="mr-2 h-4 w-4" /> PDF (.pdf)
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -684,7 +700,13 @@ const Orders = () => {
                                                     size="icon"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        generateInvoicePDF(order, currency, settings);
+                                                        try {
+                                                            generateInvoicePDF(order, currency, settings);
+                                                            toast({ title: "Succès", description: "Facture téléchargée." });
+                                                        } catch (err: any) {
+                                                            console.error("INVOICE PDF ERROR:", err);
+                                                            toast({ title: "Erreur PDF", description: String(err), variant: "destructive" });
+                                                        }
                                                     }}
                                                     title="Télécharger la facture"
                                                 >
@@ -862,7 +884,7 @@ const Orders = () => {
                                 </div>
 
                                 {/* Return Reason Section */}
-                                {(selectedOrder.status.to() === 'RETOUR' || selectedOrder.returnReason) && (
+                                {(selectedOrder.status.toUpperCase() === 'RETOUR' || selectedOrder.returnReason) && (
                                     <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
                                         <p className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
                                             <RotateCcw className="w-4 h-4" /> Raison du retour

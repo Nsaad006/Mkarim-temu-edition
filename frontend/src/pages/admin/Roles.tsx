@@ -209,7 +209,7 @@ const Roles = () => {
                                                 deleteMutation.mutate(role.id);
                                             }
                                         }}
-                                        disabled={role._count?.admins! > 0}
+                                        disabled={(role._count?.admins || 0) > 0}
                                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                     >
                                         <Trash className="w-4 h-4" />
