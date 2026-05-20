@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+
 import { ShoppingCart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/data/products";
@@ -56,11 +56,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   if (isBestseller) {
     const isSuperBestseller = soldCount > 10000;
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4 }}
+      <div
         className="group relative flex flex-col h-full bg-white dark:bg-card overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
         onClick={handleCardClick}
       >
@@ -126,17 +122,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   if (isPromo) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4 }}
+      <div
         className="group relative flex flex-col h-full bg-white dark:bg-card border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl"
         onClick={handleCardClick}
       >
@@ -199,16 +191,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
              </span>
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4 }}
+    <div
       className="group relative flex flex-col h-full bg-card/40 border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-[0_0_30px_rgba(235,68,50,0.15)] hover:-translate-y-1 cursor-pointer"
       onClick={handleCardClick}
     >
@@ -314,7 +302,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </Link>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
