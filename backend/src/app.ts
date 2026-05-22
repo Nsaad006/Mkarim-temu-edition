@@ -31,22 +31,44 @@ app.use(helmet({
 }));
 app.use(cors({
     origin: (origin, callback) => {
-        const allowedOrigins = [
-            process.env.FRONTEND_URL,
+        // Allow all origins if CORS_ALLOW_ALL is set (use only for debugging)
+        if (process.env.CORS_ALLOW_ALL === 'true') {
+            return callback(null, true);
+        }
+
+        // Build list of allowed origins — supports comma-separated FRONTEND_URL
+        const envOrigins = (process.env.FRONTEND_URL || '')
+            .split(',')
+            .map(u => u.trim())
+            .filter(Boolean);
+
+        const allowedOrigins: (string | RegExp)[] = [
+            ...envOrigins,
             'https://mkarim.ma',
             'https://www.mkarim.ma',
             'http://localhost:8080',
             'http://localhost:8081',
             'http://localhost:8082',
             'http://localhost:5173',
-            /\.railway\.app$/  // Allow any Railway app domain
-        ].filter(Boolean);
+            /\.railway\.app$/,       // Railway deployments
+            /\.dokploy\.com$/,       // Dokploy deployments
+            /\.hostinger\.com$/,     // Hostinger domains
+            /\.vercel\.app$/,        // Vercel preview deployments
+        ];
 
-        if (!origin || allowedOrigins.some(pattern =>
+        // No origin = same-origin / server-to-server request → allow
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        const allowed = allowedOrigins.some(pattern =>
             pattern instanceof RegExp ? pattern.test(origin) : pattern === origin
-        )) {
+        );
+
+        if (allowed) {
             callback(null, true);
         } else {
+            console.warn(`[CORS] Blocked request from origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
