@@ -58,6 +58,17 @@ export const ordersApi = {
         return data;
     },
 
+    // Delete single order (super_admin only)
+    delete: async (id: string): Promise<void> => {
+        await apiClient.delete(`/api/orders/${id}`);
+    },
+
+    // Bulk delete orders (super_admin only)
+    bulkDelete: async (ids: string[]): Promise<{ success: boolean; deleted: number }> => {
+        const { data } = await apiClient.post('/api/orders/bulk-delete', { ids });
+        return data;
+    },
+
     // Send invoice email
     sendInvoiceEmail: async (id: string, pdfBlob: Blob) => {
         const formData = new FormData();

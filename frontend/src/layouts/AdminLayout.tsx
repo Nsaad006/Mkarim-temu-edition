@@ -83,7 +83,11 @@ const AdminLayout = () => {
     // Auto-redirect from Dashboard if not authorized, or any unauthorized protected path
     useEffect(() => {
         // The dashboard is at path "/admin"
-        const isAuthorizedForCurrentPath = filteredSidebarItems.some(item => item.path === location.pathname);
+        const isAuthorizedForCurrentPath = filteredSidebarItems.some(item => {
+            if (location.pathname === item.path) return true;
+            if (item.path !== "/admin" && location.pathname.startsWith(item.path + "/")) return true;
+            return false;
+        });
 
         // If they are at the root `/admin` and don't have dashboard access, OR they are at another unauthorized URL
         if (!isAuthorizedForCurrentPath && filteredSidebarItems.length > 0) {

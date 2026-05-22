@@ -17,6 +17,7 @@ export interface Product {
   specs?: string[];
   weightedAverageCost?: number;
   stockValue?: number;
+  salesCount?: number;
   isFeatured?: boolean;
   published?: boolean;
 }

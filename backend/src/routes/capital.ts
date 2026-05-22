@@ -1,11 +1,12 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // GET /api/capital - List all capital entries
-router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, res) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.ANALYTICS_VIEW), async (req, res) => {
     try {
         const entries = await prisma.capitalEntry.findMany({
             include: {
@@ -21,7 +22,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor']), async (req, 
 });
 
 // POST /api/capital - Add capital (Injection)
-router.post('/', authenticate, authorize(['super_admin']), async (req: any, res: Response) => {
+router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.SETTINGS_MANAGE), async (req: any, res: Response) => {
     try {
         const { amount, description, type = 'INJECTION' } = req.body;
         const adminId = req.user?.id;

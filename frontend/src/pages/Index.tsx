@@ -20,6 +20,7 @@ const Index = () => {
   const promoParam = searchParams.get("promo") === "true";
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const catDropdownRef = useRef<HTMLDivElement>(null);
+  const [browseActiveCat, setBrowseActiveCat] = useState<string | null>(null);
 
   // Close cat dropdown on outside click
   useEffect(() => {
@@ -532,7 +533,107 @@ const Index = () => {
             </button>
           </div>
 
+          {/* ── TEMU-STYLE CATEGORIES BROWSE (mobile "Catégories" tab) ── */}
+          {categorySlug === 'all' && (
+            <div className="flex min-h-[60vh] mt-2 -mx-2 sm:-mx-4">
+              {/* Left sidebar: parent categories */}
+              <div className="w-24 sm:w-32 shrink-0 bg-muted/40 border-r border-border overflow-y-auto flex flex-col">
+                <button
+                  onClick={() => setBrowseActiveCat(null)}
+                  className={`w-full text-left px-3 py-3 text-xs font-bold transition-colors border-l-2 ${!browseActiveCat ? 'border-primary bg-background text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                >
+                  En vedette
+                </button>
+                {(categories as any[]).filter((c: any) => !c.parentId && c.active).map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setBrowseActiveCat(cat.id)}
+                    className={`w-full text-left px-3 py-3 text-xs font-medium leading-tight transition-colors border-l-2 ${browseActiveCat === cat.id ? 'border-primary bg-background text-primary font-bold' : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Right content: subcategory tiles or parent tiles */}
+              <div className="flex-1 overflow-y-auto p-3">
+                {!browseActiveCat ? (
+                  <>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Acheter par catégorie</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {(categories as any[]).filter((c: any) => !c.parentId && c.active).map((cat: any) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => { setSearchParams({ category: cat.slug }); }}
+                          className="flex flex-col items-center gap-1.5 group"
+                        >
+                          <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted border border-border group-hover:border-primary/50 transition-all relative">
+                            {cat.image ? (
+                              <img src={getImageUrl(cat.image)} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-[10px] font-bold text-muted-foreground text-center px-1">{cat.name}</span>
+                              </div>
+                            )}
+                            {(categories as any[]).filter((c: any) => c.parentId === cat.id).length > 3 && (
+                              <span className="absolute top-1 right-1 bg-[#ff6b00] text-white text-[8px] font-bold px-1 py-0.5 rounded">HOT</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] sm:text-xs font-medium text-center leading-tight text-foreground line-clamp-2 w-full">
+                            {cat.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  (() => {
+                    const parent = (categories as any[]).find((c: any) => c.id === browseActiveCat);
+                    const subs = (categories as any[]).filter((c: any) => c.parentId === browseActiveCat && c.active);
+                    return (
+                      <>
+                        <button
+                          onClick={() => setSearchParams({ category: parent?.slug || '' })}
+                          className="w-full mb-3 py-2 px-3 bg-primary text-white rounded-lg text-xs font-bold text-center"
+                        >
+                          Voir tout — {parent?.name}
+                        </button>
+                        {subs.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-3">
+                            {subs.map((sub: any) => (
+                              <button
+                                key={sub.id}
+                                onClick={() => { setSearchParams({ category: parent?.slug || '', sub: sub.slug }); }}
+                                className="flex flex-col items-center gap-1.5 group"
+                              >
+                                <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted border border-border group-hover:border-primary/50 transition-all">
+                                  {sub.image ? (
+                                    <img src={getImageUrl(sub.image)} alt={sub.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <span className="text-[9px] font-bold text-muted-foreground text-center px-1">{sub.name}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-medium text-center leading-tight text-foreground line-clamp-2 w-full">
+                                  {sub.name}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground text-center py-8">Aucune sous-catégorie</p>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── RESULTS HEADER ── */}
+          {categorySlug !== 'all' && (
           <div className="flex items-center justify-between py-2 mt-1">
             <p className="text-sm text-muted-foreground">
               {isLoading ? "Chargement..." : (
@@ -548,59 +649,64 @@ const Index = () => {
               </button>
             )}
           </div>
-
-          {/* ── PRODUCT GRID ── */}
-          {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 py-4">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="rounded-xl border border-border overflow-hidden bg-card/40 animate-pulse">
-                  <div className="aspect-[4/5] bg-muted/50" />
-                  <div className="p-3 space-y-2">
-                    <div className="h-3 w-3/4 bg-muted/60 rounded" />
-                    <div className="h-3 w-1/2 bg-muted/50 rounded" />
-                    <div className="h-5 w-1/3 bg-muted/70 rounded" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : paginatedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 py-2">
-              {paginatedProducts.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.4) }}
-                >
-                  <ProductCard product={product} />
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-24">
-              <p className="text-muted-foreground font-medium">Aucun produit trouvé.</p>
-              <button
-                onClick={() => setSearchParams({}, { replace: true })}
-                className="mt-4 text-sm text-primary font-semibold hover:underline"
-              >
-                Réinitialiser les filtres
-              </button>
-            </div>
           )}
 
-          {/* ── PAGINATION (VOIR PLUS) ── */}
-          {currentPage * ITEMS_PER_PAGE < filteredProducts.length && (
-            <div className="flex justify-center py-8">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  setCurrentPage(p => p + 1);
-                }}
-                className="bg-card border border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/50 font-bold py-3 px-12 rounded-full shadow-sm transition-all text-sm uppercase tracking-wider"
-              >
-                Voir plus
-              </button>
-            </div>
+          {/* ── PRODUCT GRID ── */}
+          {categorySlug !== 'all' && (
+            <>
+              {isLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 py-4">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-border overflow-hidden bg-card/40 animate-pulse">
+                      <div className="aspect-[4/5] bg-muted/50" />
+                      <div className="p-3 space-y-2">
+                        <div className="h-3 w-3/4 bg-muted/60 rounded" />
+                        <div className="h-3 w-1/2 bg-muted/50 rounded" />
+                        <div className="h-5 w-1/3 bg-muted/70 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : paginatedProducts.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 py-2">
+                  {paginatedProducts.map((product, index) => (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.4) }}
+                    >
+                      <ProductCard product={product} />
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-24">
+                  <p className="text-muted-foreground font-medium">Aucun produit trouvé.</p>
+                  <button
+                    onClick={() => setSearchParams({}, { replace: true })}
+                    className="mt-4 text-sm text-primary font-semibold hover:underline"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                </div>
+              )}
+
+              {/* ── PAGINATION (VOIR PLUS) ── */}
+              {currentPage * ITEMS_PER_PAGE < filteredProducts.length && (
+                <div className="flex justify-center py-8">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage(p => p + 1);
+                    }}
+                    className="bg-card border border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/50 font-bold py-3 px-12 rounded-full shadow-sm transition-all text-sm uppercase tracking-wider"
+                  >
+                    Voir plus
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

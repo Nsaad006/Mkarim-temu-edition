@@ -102,8 +102,9 @@ const AdminProducts = () => {
         quantity: "0",
         badge: "",
         specs: [] as { key: string, value: string }[],
-        supplierId: "", // New required field
-        unitCostPrice: "", // New required field
+        supplierId: "",
+        unitCostPrice: "",
+        salesCount: "0",
         isFeatured: false,
         published: true,
     });
@@ -114,8 +115,11 @@ const AdminProducts = () => {
         queryFn: () => categoriesApi.getAll(true),
     });
 
-    // Fetch suppliers for the creation form — only if user has logistics permission
-    const canViewLogistics = user.role === 'super_admin' || user.role === 'editor' || userPermissions.includes(PERMISSIONS.LOGISTICS_VIEW);
+    // Fetch suppliers for the creation form — for users who can create/edit products or view logistics
+    const canViewLogistics = user.role === 'super_admin' || user.role === 'editor'
+        || userPermissions.includes(PERMISSIONS.LOGISTICS_VIEW)
+        || userPermissions.includes(PERMISSIONS.PRODUCTS_CREATE)
+        || userPermissions.includes(PERMISSIONS.PRODUCTS_EDIT);
     const { data: suppliers = [] } = useQuery({
         queryKey: ['suppliers'],
         queryFn: suppliersApi.getAll,
@@ -199,22 +203,34 @@ const AdminProducts = () => {
 
     // Cost adjustment mutation
     const adjustCostMutation = useMutation({
-        mutationFn: ({ id, cost, password }: { id: string, cost: number, password: string }) =>
+        mutationFn: ({ id, cost, password, pendingData }: { id: string, cost: number, password: string, pendingData: any }) =>
             productsApi.adjustCost(id, cost, password),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
             toast({ title: "Coût ajusté", description: "Le prix d'achat a été mis à jour avec succès." });
             setIsPasswordDialogOpen(false);
-            setIsDialogOpen(false); // Close the main edit form too
             setAdjustmentPassword("");
+            // Also save the rest of the product data — use variables.pendingData to avoid stale closure
+            if (variables.pendingData) {
+                const { unitCostPrice: _cost, ...restData } = variables.pendingData;
+                updateMutation.mutate({ id: variables.id, data: restData });
+            } else {
+                setIsDialogOpen(false);
+                resetForm();
+            }
         },
         onError: (error: AxiosError<{ error: string }>) => {
+            const msg = error.response?.data?.error || "";
             toast({
-                title: "Erreur",
-                description: error.response?.data?.error || "Mot de passe incorrect ou erreur serveur.",
+                title: "Mot de passe incorrect",
+                description: msg.includes('incorrect') || error.response?.status === 401
+                    ? "Le mot de passe saisi est incorrect. Veuillez réessayer."
+                    : msg || "Une erreur est survenue. Veuillez réessayer.",
                 variant: "destructive",
             });
+            // Keep dialog open so the admin can retry — just clear the field
+            setAdjustmentPassword("");
         },
     });
 
@@ -340,6 +356,7 @@ const AdminProducts = () => {
             specs: [],
             supplierId: "",
             unitCostPrice: "",
+            salesCount: "0",
             isFeatured: false,
             published: true,
         });
@@ -363,8 +380,9 @@ const AdminProducts = () => {
                 if (match) return { key: match[1], value: match[2] };
                 return { key: "Général", value: s };
             }) || [],
-            supplierId: (product as any).procurements?.[0]?.supplierId || "",
+            supplierId: (product as any).supplierId || (product as any).procurements?.[0]?.supplierId || "",
             unitCostPrice: (product as any).weightedAverageCost?.toString() || "",
+            salesCount: (product as any).salesCount?.toString() || "0",
             isFeatured: (product as any).isFeatured || false,
             published: product.published ?? true,
         });
@@ -406,6 +424,7 @@ const AdminProducts = () => {
             specs: formData.specs.map(s => s.key === "Général" ? s.value : `{${s.key}}: ${s.value}`),
             supplierId: formData.supplierId,
             unitCostPrice: formData.unitCostPrice,
+            salesCount: parseInt(formData.salesCount) || 0,
             isFeatured: formData.isFeatured,
             published: formData.published,
             image: formData.images[0] || "",
@@ -437,6 +456,7 @@ const AdminProducts = () => {
 
             if (newCost !== originalCost && originalCost > 0) {
                 setPasswordActionType('COST');
+                setPendingProductData(productData);
                 setIsPasswordDialogOpen(true);
                 return;
             }
@@ -1058,32 +1078,38 @@ const AdminProducts = () => {
                                 )}
                             </div>
 
-                            {/* Supplier & Cost Price Section - Restricted to Admins */}
-                            {(user.role === 'super_admin' || userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW)) && (
+                            {/* Supplier & Cost Price Section - Visible to any user who can create/edit products */}
+                            {(user.role === 'super_admin' || user.role === 'editor'
+                                || userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW)
+                                || userPermissions.includes(PERMISSIONS.PRODUCTS_CREATE)
+                                || userPermissions.includes(PERMISSIONS.PRODUCTS_EDIT)) && (
                                 <>
-                                    <div className="space-y-2">
-                                        <Label>Prix d'Achat Unitaire ({currency})</Label>
-                                        <div className="relative">
-                                            <Input
-                                                type="number"
-                                                required
-                                                value={formData.unitCostPrice}
-                                                onChange={(e) => setFormData({ ...formData, unitCostPrice: e.target.value })}
-                                                placeholder="Ex: 12000"
-                                                className={editingProduct && (editingProduct.weightedAverageCost || 0) > 0 ? "border-orange-500/50 bg-orange-50/5 pl-8" : "border-primary/50 bg-primary/5"}
-                                            />
+                                    {/* Only show cost price if user has PRODUCTS_COST_VIEW (or is super_admin/editor) */}
+                                    {(user.role === 'super_admin' || user.role === 'editor' || userPermissions.includes(PERMISSIONS.PRODUCTS_COST_VIEW)) && (
+                                        <div className="space-y-2">
+                                            <Label>Prix d'Achat Unitaire ({currency})</Label>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    required
+                                                    value={formData.unitCostPrice}
+                                                    onChange={(e) => setFormData({ ...formData, unitCostPrice: e.target.value })}
+                                                    placeholder="Ex: 12000"
+                                                    className={editingProduct && (editingProduct.weightedAverageCost || 0) > 0 ? "border-orange-500/50 bg-orange-50/5 pl-8" : "border-primary/50 bg-primary/5"}
+                                                />
+                                                {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
+                                                    <div className="absolute left-2.5 top-2.5 text-orange-500">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                                                    </div>
+                                                )}
+                                            </div>
                                             {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
-                                                <div className="absolute left-2.5 top-2.5 text-orange-500">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                                                </div>
+                                                <p className="text-[10px] text-orange-600 font-medium ">
+                                                    Note: Une modification du coût nécessite votre mot de passe admin.
+                                                </p>
                                             )}
                                         </div>
-                                        {editingProduct && (editingProduct.weightedAverageCost || 0) > 0 && (
-                                            <p className="text-[10px] text-orange-600 font-medium ">
-                                                Note: Une modification du coût nécessite votre mot de passe admin.
-                                            </p>
-                                        )}
-                                    </div>
+                                    )}
 
                                     {/* Supplier Section */}
                                     <div className="space-y-2">
@@ -1114,6 +1140,17 @@ const AdminProducts = () => {
                                     )}
                                 </>
                             )}
+
+                            <div className="space-y-2">
+                                <Label>Nombre de ventes affiché</Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={formData.salesCount}
+                                    onChange={(e) => setFormData({ ...formData, salesCount: e.target.value })}
+                                    placeholder="0"
+                                />
+                            </div>
 
                             <div className="flex items-center space-x-2">
                                 <Switch
@@ -1450,7 +1487,8 @@ const AdminProducts = () => {
                                             adjustCostMutation.mutate({
                                                 id: editingProduct!.id,
                                                 cost: parseInt(formData.unitCostPrice),
-                                                password: adjustmentPassword
+                                                password: adjustmentPassword,
+                                                pendingData: pendingProductData
                                             });
                                         } else {
                                             updateMutation.mutate({
@@ -1477,7 +1515,8 @@ const AdminProducts = () => {
                                     adjustCostMutation.mutate({
                                         id: editingProduct!.id,
                                         cost: parseInt(formData.unitCostPrice),
-                                        password: adjustmentPassword
+                                        password: adjustmentPassword,
+                                        pendingData: pendingProductData
                                     });
                                 } else {
                                     updateMutation.mutate({

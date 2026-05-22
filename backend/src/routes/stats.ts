@@ -330,7 +330,7 @@ router.get('/analytics', authenticate, async (req: Request, res: Response) => {
         ]);
 
         // Financial Calculations
-        const isStaff = ['super_admin', 'editor'].includes((req as any).user.role);
+        const isStaff = ['super_admin', 'editor'].includes((req as any).user.role) || (req as any).user.permissions?.includes(PERMISSIONS.ANALYTICS_VIEW);
         let financialData = {};
 
         if (isStaff) {

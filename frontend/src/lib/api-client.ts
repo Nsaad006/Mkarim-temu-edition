@@ -37,11 +37,20 @@ apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token expired or invalid
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-            localStorage.removeItem('isAuthenticated');
-            window.location.href = '/login';
+            // Don't log out for password-verification endpoints — let the mutation's onError handle it
+            const url: string = error.config?.url || '';
+            const isPasswordVerification =
+                url.includes('/adjust-cost') ||
+                url.includes('/verify-password') ||
+                url.includes('/confirm-password');
+
+            if (!isPasswordVerification) {
+                // Token expired or invalid — force logout
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('isAuthenticated');
+                window.location.href = '/login';
+            }
         }
 
         if (import.meta.env.DEV) {

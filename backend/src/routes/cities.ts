@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/cities - Create city (super_admin/editor)
-router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: Request, res: Response) => {
     try {
         const { name, shippingFee, deliveryTime, active } = req.body;
 
@@ -45,7 +46,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor']), async (req:
 });
 
 // PUT /api/cities/:id - Update city (super_admin/editor)
-router.put('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_MANAGE), async (req: Request, res: Response) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
         const { name, shippingFee, deliveryTime, active } = req.body;

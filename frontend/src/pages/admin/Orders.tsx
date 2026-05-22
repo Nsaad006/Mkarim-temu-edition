@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -120,6 +121,9 @@ const Orders = () => {
     const [returnReason, setReturnReason] = useState("");
     const [orderToReturn, setOrderToReturn] = useState<string | null>(null);
     const [returnItems, setReturnItems] = useState<{ productId: string, name: string, quantity: number, maxQuantity: number }[]>([]);
+
+    // Bulk selection state
+    const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
     // Edit Order State
     const [isEditingOrder, setIsEditingOrder] = useState(false);
@@ -224,6 +228,26 @@ const Orders = () => {
             });
         }
     });
+
+    const bulkDeleteOrdersMutation = useMutation({
+        mutationFn: (ids: string[]) => ordersApi.bulkDelete(ids),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+            setSelectedOrderIds([]);
+            toast({ title: "Commandes supprimées", description: `${data.deleted} commande(s) supprimée(s).` });
+        },
+        onError: (error: any) => {
+            toast({ title: "Erreur", description: error.response?.data?.error || "Impossible de supprimer les commandes.", variant: "destructive" });
+        }
+    });
+
+    const handleBulkDelete = () => {
+        if (selectedOrderIds.length === 0) return;
+        if (window.confirm(`Supprimer définitivement ${selectedOrderIds.length} commande(s) ? Cette action est irréversible.`)) {
+            bulkDeleteOrdersMutation.mutate(selectedOrderIds);
+        }
+    };
 
     const handleSaveEditOrder = () => {
         if (!selectedOrder) return;
@@ -360,7 +384,7 @@ const Orders = () => {
 
         // Status transition rules
         if (targetStatus === 'CONFIRMED') {
-            return currentStatus === 'PENDING';
+            return ['PENDING', 'CANCELLED'].includes(currentStatus);
         }
         if (targetStatus === 'SHIPPED') {
             return currentStatus === 'CONFIRMED';
@@ -543,6 +567,17 @@ const Orders = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold tracking-tight">Commandes</h1>
                 <div className="flex gap-2">
+                    {selectedOrderIds.length > 0 && (userRole === 'super_admin' || userPermissions.includes(PERMISSIONS.ORDERS_MANAGE)) && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                            disabled={bulkDeleteOrdersMutation.isPending}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer ({selectedOrderIds.length})
+                        </Button>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm">
@@ -639,6 +674,20 @@ const Orders = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                {(userRole === 'super_admin' || userPermissions.includes(PERMISSIONS.ORDERS_MANAGE)) && (
+                                    <TableHead className="w-10">
+                                        <Checkbox
+                                            checked={paginatedOrders.length > 0 && paginatedOrders.every(o => selectedOrderIds.includes(o.id))}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedOrderIds(prev => [...new Set([...prev, ...paginatedOrders.map(o => o.id)])]);
+                                                } else {
+                                                    setSelectedOrderIds(prev => prev.filter(id => !paginatedOrders.map(o => o.id).includes(id)));
+                                                }
+                                            }}
+                                        />
+                                    </TableHead>
+                                )}
                                 <TableHead>Numéro</TableHead>
                                 <TableHead>Client</TableHead>
                                 <TableHead>Ville</TableHead>
@@ -651,7 +700,7 @@ const Orders = () => {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                             <span>Chargement des commandes...</span>
@@ -660,7 +709,19 @@ const Orders = () => {
                                 </TableRow>
                             ) : paginatedOrders.length > 0 ? (
                                 paginatedOrders.map((order) => (
-                                    <TableRow key={order.id} className="cursor-pointer hover:bg-muted/5 transition-colors">
+                                    <TableRow key={order.id} className={`cursor-pointer hover:bg-muted/5 transition-colors ${selectedOrderIds.includes(order.id) ? 'bg-muted/20' : ''}`}>
+                                        {(userRole === 'super_admin' || userPermissions.includes(PERMISSIONS.ORDERS_MANAGE)) && (
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox
+                                                    checked={selectedOrderIds.includes(order.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        setSelectedOrderIds(prev =>
+                                                            checked ? [...prev, order.id] : prev.filter(id => id !== order.id)
+                                                        );
+                                                    }}
+                                                />
+                                            </TableCell>
+                                        )}
                                         <TableCell className="font-mono font-medium">{order.orderNumber}</TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
@@ -789,7 +850,7 @@ const Orders = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                         Aucune commande trouvée.
                                     </TableCell>
                                 </TableRow>

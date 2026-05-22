@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/hero-slides/all - Admin only
-router.get('/all', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.get('/all', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.SETTINGS_MANAGE]), async (req: Request, res: Response) => {
     try {
         const slides = await prisma.heroSlide.findMany({
             orderBy: { order: 'asc' }
@@ -32,7 +33,7 @@ router.get('/all', authenticate, authorize(['super_admin', 'editor']), async (re
 });
 
 // POST /api/hero-slides - Admin only
-router.post('/', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response) => {
     try {
         const { image, title, subtitle, description, buttonText, buttonLink, badge, order, active } = req.body;
 
@@ -58,7 +59,7 @@ router.post('/', authenticate, authorize(['super_admin']), async (req: Request, 
 });
 
 // PUT /api/hero-slides/:id - Admin only
-router.put('/:id', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+router.put('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { image, title, subtitle, description, buttonText, buttonLink, badge, order, active } = req.body;
@@ -86,7 +87,7 @@ router.put('/:id', authenticate, authorize(['super_admin']), async (req: Request
 });
 
 // DELETE /api/hero-slides/:id - Admin only
-router.delete('/:id', authenticate, authorize(['super_admin']), async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await prisma.heroSlide.delete({ where: { id } });

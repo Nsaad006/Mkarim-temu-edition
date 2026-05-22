@@ -445,7 +445,7 @@ router.delete('/orders/:id', authenticate, authorize(['super_admin', 'editor'], 
 });
 
 // POST /api/wholesalers/orders/:id/email-invoice - Send PDF Invoice via Email
-router.post('/orders/:id/email-invoice', authenticate, authorize(['super_admin', 'editor']), uploadPdf.single('invoice'), async (req, res) => {
+router.post('/orders/:id/email-invoice', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.WHOLESALERS_VIEW, PERMISSIONS.LOGISTICS_VIEW]), uploadPdf.single('invoice'), async (req, res) => {
     try {
         const { id } = req.params;
         const file = req.file;

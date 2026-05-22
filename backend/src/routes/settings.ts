@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/settings - Update settings (super_admin and editor)
-router.put('/', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.put('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response) => {
     try {
         const {
             storeName,

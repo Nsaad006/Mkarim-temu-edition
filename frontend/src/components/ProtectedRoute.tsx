@@ -16,8 +16,8 @@ const ProtectedRoute = () => {
 
     // Redirect commercial and magasinier to orders page if they try to access other admin pages
     if (userRole === 'commercial' || userRole === 'magasinier') {
-        // Allow access only to /admin/orders
-        if (location.pathname !== '/admin/orders' && location.pathname.startsWith('/admin')) {
+        // Allow access only to /admin/orders and its subpaths
+        if (location.pathname !== '/admin/orders' && !location.pathname.startsWith('/admin/orders/') && location.pathname.startsWith('/admin')) {
             return <Navigate to="/admin/orders" replace />;
         }
     }

@@ -15,7 +15,7 @@ export function MultiImageUpload({
     value = [],
     onChange,
     disabled,
-    maxImages = 6
+    maxImages = 10
 }: MultiImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false);
 

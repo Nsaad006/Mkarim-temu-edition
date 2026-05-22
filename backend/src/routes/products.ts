@@ -100,8 +100,9 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
             const totalQty = p.procurements.reduce((sum, pr) => sum + pr.quantityPurchased, 0);
             const wac = totalQty > 0 ? Math.round(totalCost / totalQty) : 0;
             const stockValue = p.quantity * wac;
+            const latestSupplierId = p.procurements.length > 0 ? p.procurements[p.procurements.length - 1].supplierId : null;
             const { procurements, ...productData } = p;
-            return { ...productData, weightedAverageCost: wac, stockValue };
+            return { ...productData, weightedAverageCost: wac, stockValue, supplierId: latestSupplierId };
         });
 
         res.json(productsWithStats);
@@ -235,18 +236,18 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.PRODUCTS_STOCK_MANAGE]), async (req: any, res: Response) => {
+router.post('/', authenticate, authorize(['super_admin', 'editor', 'commercial'], [PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.PRODUCTS_STOCK_MANAGE]), async (req: any, res: Response) => {
     try {
-        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, isFeatured, published, supplierId, unitCostPrice } = req.body;
-        if (!supplierId || unitCostPrice === undefined) return res.status(400).json({ error: 'Supplier and unit cost price are required for new products' });
+        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, isFeatured, published, supplierId, unitCostPrice, salesCount } = req.body;
+        if (!supplierId) return res.status(400).json({ error: 'Supplier is required for new products' });
         const initialQuantity = Number(quantity) || 0;
-        const costPrice = Number(unitCostPrice);
+        const costPrice = Number(unitCostPrice) || 0;
         const adminId = req.user?.id;
         const imageArray = images && Array.isArray(images) ? images : (image ? [image] : []);
         const primaryImage = imageArray[0] || image || '';
         const result = await prisma.$transaction(async (tx) => {
             const newProduct = await tx.product.create({
-                data: { name, description, price: Number(price), originalPrice: originalPrice ? Number(originalPrice) : null, image: primaryImage, images: imageArray, categoryId, inStock: inStock ?? true, quantity: initialQuantity, badge, specs: specs || [], isFeatured: isFeatured ?? false, published: published ?? true } as any,
+                data: { name, description, price: Number(price), originalPrice: originalPrice ? Number(originalPrice) : null, image: primaryImage, images: imageArray, categoryId, inStock: inStock ?? true, quantity: initialQuantity, badge, specs: specs || [], isFeatured: isFeatured ?? false, published: published ?? true, salesCount: Number(salesCount) || 0 } as any,
                 include: { category: true }
             });
             await tx.procurement.create({ data: { supplierId, productId: newProduct.id, quantityPurchased: initialQuantity, unitCostPrice: costPrice, totalCost: initialQuantity * costPrice, createdByAdminId: adminId } });
@@ -259,10 +260,10 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS
     }
 });
 
-router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_EDIT, PERMISSIONS.PRODUCTS_STOCK_MANAGE]), async (req: Request, res: Response) => {
+router.put('/:id', authenticate, authorize(['super_admin', 'editor', 'commercial'], [PERMISSIONS.PRODUCTS_EDIT, PERMISSIONS.PRODUCTS_STOCK_MANAGE]), async (req: Request, res: Response) => {
     try {
         const id = req.params.id;
-        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, isFeatured, published, supplierId, unitCostPrice, password } = req.body;
+        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, isFeatured, published, supplierId, unitCostPrice, salesCount, password } = req.body;
         const adminId = (req as any).user?.id;
         const userPerms = (req as any).user?.permissions || [];
         const existingProduct = await prisma.product.findUnique({ where: { id }, include: { procurements: { orderBy: { purchaseDate: 'desc' }, take: 1 } } });
@@ -290,7 +291,8 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
             ...(badge !== undefined && { badge }),
             ...(specs && { specs }),
             ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
-            ...(published !== undefined && { published: Boolean(published) })
+            ...(published !== undefined && { published: Boolean(published) }),
+            ...(salesCount !== undefined && { salesCount: Number(salesCount) })
         } as any;
         if (images !== undefined) {
             const imageArray = Array.isArray(images) ? images : (images ? [images] : []);
@@ -313,7 +315,22 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
             }
             if (supplierId && updatedProduct.procurements.length > 0) {
                 const latest = updatedProduct.procurements[0];
-                if (latest.supplierId !== supplierId) await tx.procurement.update({ where: { id: latest.id }, data: { supplierId } });
+                const procUpdateData: any = {};
+                if (latest.supplierId !== supplierId) procUpdateData.supplierId = supplierId;
+                // Allow updating cost from 0 → non-zero without password (initial cost setup)
+                if (unitCostPrice !== undefined && Number(unitCostPrice) > 0 && latest.unitCostPrice === 0) {
+                    procUpdateData.unitCostPrice = Number(unitCostPrice);
+                    procUpdateData.totalCost = updatedProduct.quantity * Number(unitCostPrice);
+                }
+                if (Object.keys(procUpdateData).length > 0) {
+                    await tx.procurement.update({ where: { id: latest.id }, data: procUpdateData });
+                }
+            } else if (supplierId && !updatedProduct.procurements.length) {
+                // No procurement at all and no qty change — create one if cost provided
+                if (unitCostPrice !== undefined && Number(unitCostPrice) > 0) {
+                    const costPrice = Number(unitCostPrice);
+                    await tx.procurement.create({ data: { supplierId, productId: updatedProduct.id, quantityPurchased: updatedProduct.quantity, unitCostPrice: costPrice, totalCost: updatedProduct.quantity * costPrice, createdByAdminId: adminId } });
+                }
             }
             return updatedProduct;
         });

@@ -6,7 +6,7 @@ import { PERMISSIONS } from '../constants/permissions';
 const router = Router();
 
 // GET /api/suppliers - List all suppliers
-router.get('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.LOGISTICS_VIEW), async (req, res) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS.LOGISTICS_VIEW, PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.PRODUCTS_EDIT]), async (req, res) => {
     try {
         const suppliers = await prisma.supplier.findMany({
             orderBy: { name: 'asc' },

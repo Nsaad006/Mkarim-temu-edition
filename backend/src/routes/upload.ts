@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { upload, processImage, processImages } from '../middleware/upload';
 import { authenticate, authorize } from './auth';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 
 // POST /api/upload/product-image (single)
 router.post('/product-image',
     authenticate,
-    authorize(['super_admin', 'editor']),
+    authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.PRODUCTS_EDIT]),
     upload.single('image'),
     processImage,
     (req, res) => {
@@ -24,7 +25,7 @@ router.post('/product-image',
 // POST /api/upload/product-images (multiple - max 6)
 router.post('/product-images',
     authenticate,
-    authorize(['super_admin', 'editor']),
+    authorize(['super_admin', 'editor'], [PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.PRODUCTS_EDIT]),
     upload.array('images', 6),  // Max 6 images
     processImages,
     (req, res) => {

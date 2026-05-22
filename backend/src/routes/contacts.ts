@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, authorize } from './auth';
 import { z } from 'zod';
+import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -47,7 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Admin endpoint - Get all contacts
-router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer']), async (req: Request, res: Response) => {
+router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.MESSAGES_VIEW), async (req: Request, res: Response) => {
     try {
         const contacts = await prisma.contact.findMany({
             orderBy: {
@@ -62,7 +63,7 @@ router.get('/', authenticate, authorize(['super_admin', 'editor', 'viewer']), as
 });
 
 // Admin endpoint - Update contact status
-router.patch('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.patch('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.MESSAGES_MANAGE), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -80,7 +81,7 @@ router.patch('/:id', authenticate, authorize(['super_admin', 'editor']), async (
 });
 
 // Admin endpoint - Delete contact
-router.delete('/:id', authenticate, authorize(['super_admin', 'editor']), async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.MESSAGES_MANAGE), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 

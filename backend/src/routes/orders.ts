@@ -579,25 +579,24 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
             if (status === 'RETOUR' && !perms.includes(PERMISSIONS.ORDERS_RETURN) && userRole !== 'magasinier') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission d'effectuer un retour" });
             }
-            if (status === 'PENDING' && !perms.includes(PERMISSIONS.ORDERS_EDIT)) {
+            if (status === 'PENDING' && !perms.includes(PERMISSIONS.ORDERS_EDIT) && !perms.includes(PERMISSIONS.ORDERS_CANCEL) && userRole !== 'commercial') {
                 return res.status(403).json({ error: "Vous n'avez pas la permission de remettre en attente" });
             }
 
-            // Additional logic for specific "roles" (even if permission based)
-            // Example: Commercial logic (if they only have confirm/cancel)
-            if (perms.includes(PERMISSIONS.ORDERS_CONFIRM) && !perms.includes(PERMISSIONS.ORDERS_SHIP)) {
-                if (status === 'CONFIRMED' && oldStatus !== 'PENDING') {
-                    return res.status(403).json({ error: 'Vous ne pouvez confirmer que les commandes en attente' });
+            // Commercial logic: can confirm PENDING or CANCELLED orders
+            if ((perms.includes(PERMISSIONS.ORDERS_CONFIRM) || userRole === 'commercial') && !perms.includes(PERMISSIONS.ORDERS_SHIP) && userRole !== 'magasinier') {
+                if (status === 'CONFIRMED' && !['PENDING', 'CANCELLED'].includes(oldStatus)) {
+                    return res.status(403).json({ error: 'Vous ne pouvez confirmer que les commandes en attente ou annulées' });
                 }
             }
 
-            // Example: Magasinier logic (if they only have ship/deliver/return)
-            if (!perms.includes(PERMISSIONS.ORDERS_CONFIRM)) {
+            // Magasinier logic (if they only have ship/deliver/return, not confirm)
+            if (!perms.includes(PERMISSIONS.ORDERS_CONFIRM) && userRole !== 'commercial') {
                 if (status === 'RETOUR') {
                     if (!['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(oldStatus)) {
                         return res.status(403).json({ error: 'Vous ne pouvez retourner que les commandes confirmées, expédiées ou livrées' });
                     }
-                } else {
+                } else if (status !== 'PENDING') {
                     if (!['CONFIRMED', 'SHIPPED'].includes(oldStatus)) {
                         return res.status(403).json({ error: 'Vous ne pouvez traiter que les commandes confirmées ou expédiées' });
                     }
@@ -742,6 +741,43 @@ router.post('/:id/email-invoice', authenticate, authorize(['super_admin', 'edito
     } catch (error) {
         console.error('Error sending invoice email:', error);
         res.status(500).json({ error: 'Failed to send invoice email' });
+    }
+});
+
+// DELETE /api/orders/:id - Delete a single order (super_admin only)
+router.delete('/:id', authenticate, authorize(['super_admin'], [PERMISSIONS.ORDERS_MANAGE]), async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id;
+        const order = await prisma.order.findUnique({ where: { id } });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        await prisma.$transaction(async (tx) => {
+            await tx.orderItem.deleteMany({ where: { orderId: id } });
+            await tx.order.delete({ where: { id } });
+        });
+
+        res.status(204).send();
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        res.status(500).json({ error: 'Failed to delete order' });
+    }
+});
+
+// DELETE /api/orders/bulk - Delete multiple orders (super_admin only)
+router.post('/bulk-delete', authenticate, authorize(['super_admin'], [PERMISSIONS.ORDERS_MANAGE]), async (req: Request, res: Response) => {
+    try {
+        const { ids } = req.body as { ids: string[] };
+        if (!ids || ids.length === 0) return res.status(400).json({ error: 'No order IDs provided' });
+
+        await prisma.$transaction(async (tx) => {
+            await tx.orderItem.deleteMany({ where: { orderId: { in: ids } } });
+            await tx.order.deleteMany({ where: { id: { in: ids } } });
+        });
+
+        res.json({ success: true, deleted: ids.length });
+    } catch (error) {
+        console.error('Error bulk deleting orders:', error);
+        res.status(500).json({ error: 'Failed to delete orders' });
     }
 });
 

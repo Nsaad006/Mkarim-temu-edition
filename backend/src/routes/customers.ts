@@ -105,6 +105,46 @@ router.patch('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISS
     }
 });
 
+// DELETE /api/customers/:id - Delete a customer (disconnects from orders first)
+router.delete('/:id', authenticate, authorize(['super_admin'], [PERMISSIONS.CUSTOMERS_DELETE, PERMISSIONS.CUSTOMERS_MANAGE]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        await prisma.order.updateMany({
+            where: { customerId: id },
+            data: { customerId: null }
+        });
+
+        await prisma.customer.delete({ where: { id } });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        res.status(500).json({ error: 'Failed to delete customer' });
+    }
+});
+
+// POST /api/customers/bulk-delete - Bulk delete customers
+router.post('/bulk-delete', authenticate, authorize(['super_admin'], [PERMISSIONS.CUSTOMERS_DELETE, PERMISSIONS.CUSTOMERS_MANAGE]), async (req: Request, res: Response) => {
+    try {
+        const { ids } = req.body as { ids: string[] };
+        if (!ids || ids.length === 0) return res.status(400).json({ error: 'No customer IDs provided' });
+
+        // Disconnect orders from customers first
+        await prisma.order.updateMany({
+            where: { customerId: { in: ids } },
+            data: { customerId: null }
+        });
+
+        const result = await prisma.customer.deleteMany({ where: { id: { in: ids } } });
+
+        res.json({ success: true, deleted: result.count });
+    } catch (error) {
+        console.error('Error bulk deleting customers:', error);
+        res.status(500).json({ error: 'Failed to bulk delete customers' });
+    }
+});
+
 // GET /api/customers/:customerId/orders - Get all orders for a specific customer
 router.get('/:customerId/orders', authenticate, authorize(['super_admin', 'editor', 'viewer'], PERMISSIONS.CUSTOMERS_VIEW), async (req: Request, res: Response) => {
     try {

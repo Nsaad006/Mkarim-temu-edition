@@ -51,10 +51,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
     return Math.abs(hash % 150) + 12;
   };
 
-  const soldCount = pseudoRandom(product.id) * 350 + 2000; // Fake large numbers for bestseller
+  const soldCount = product.salesCount ?? 0;
 
   if (isBestseller) {
-    const isSuperBestseller = soldCount > 10000;
+    const isSuperBestseller = soldCount > 1000;
     return (
       <div
         className="group relative flex flex-col h-full bg-white dark:bg-card overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
@@ -89,10 +89,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
               {product.originalPrice && (
                 <span className="text-[9px] sm:text-[10px] text-muted-foreground line-through ml-0.5">{product.originalPrice.toLocaleString()}</span>
               )}
-              <span className="text-[9px] sm:text-[10px] text-muted-foreground ml-1 flex items-center gap-0.5">
-                <span className="text-orange-500">🔥</span>
-                {soldCount.toLocaleString()}+ ventes
-              </span>
+              {soldCount > 0 && (
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground ml-1 flex items-center gap-0.5">
+                  <span className="text-orange-500">🔥</span>
+                  {soldCount.toLocaleString()}+ ventes
+                </span>
+              )}
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); if (product.inStock) handleAddToCart(e); }}
@@ -110,7 +112,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
           {/* Rating */}
           <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground mb-1.5">
             <span className="text-black dark:text-white tracking-widest text-[9px]">★★★★★</span>
-            <span>{pseudoRandom(product.id + "reviews") * 10 + 100}</span>
           </div>
 
           {/* Vendeur vedette */}
@@ -184,11 +185,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
           {/* Social Proof */}
           <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-muted-foreground mt-auto pt-1">
-             <span>{soldCount}K+ ventes</span>
-             <span className="text-border">|</span>
-             <span className="flex items-center text-foreground font-bold">
-               ★ 4.{(pseudoRandom(product.id + "rating") % 5) + 3} <span className="text-muted-foreground font-normal ml-0.5">({pseudoRandom(product.id + "rcount") * 10 + 100})</span>
-             </span>
+             {soldCount > 0 && <span>{soldCount.toLocaleString()}+ ventes</span>}
+             {soldCount > 0 && <span className="text-border">|</span>}
+             <span className="flex items-center text-foreground font-bold">★★★★★</span>
           </div>
         </div>
       </div>
@@ -201,7 +200,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       onClick={handleCardClick}
     >
       {/* Image Section */}
-      <div className="relative aspect-square overflow-hidden bg-muted">
+      <div className="relative aspect-square overflow-hidden bg-muted max-h-[240px]">
         <img
           src={getImageUrl(product.image)}
           alt={product.name}
@@ -256,9 +255,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <span className="text-[10px] font-bold text-red-500">
             {product.quantity > 0 && product.quantity < 10 ? `Presque épuisé ! Plus que ${product.quantity}` : "Livraison Gratuite"}
           </span>
-          <span className="text-[9px] md:text-[10px] text-muted-foreground flex items-center gap-1">
-            {soldCount}K+ vendus
-          </span>
+          {soldCount > 0 && (
+            <span className="text-[9px] md:text-[10px] text-muted-foreground flex items-center gap-1">
+              {soldCount.toLocaleString()}+ vendus
+            </span>
+          )}
         </div>
 
         {/* Pricing */}

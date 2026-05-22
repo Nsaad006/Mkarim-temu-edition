@@ -43,6 +43,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { PERMISSIONS } from "@/constants/permissions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Customers = () => {
     const { currency } = useSettings();
@@ -64,6 +65,9 @@ const Customers = () => {
     const isSuperAdmin = user.role === 'super_admin';
     const canCreate = isSuperAdmin || userPermissions.includes(PERMISSIONS.CUSTOMERS_CREATE) || userPermissions.includes(PERMISSIONS.CUSTOMERS_MANAGE);
     const canEdit = isSuperAdmin || userPermissions.includes(PERMISSIONS.CUSTOMERS_EDIT) || userPermissions.includes(PERMISSIONS.CUSTOMERS_MANAGE);
+    const canDelete = isSuperAdmin || userPermissions.includes(PERMISSIONS.CUSTOMERS_DELETE) || userPermissions.includes(PERMISSIONS.CUSTOMERS_MANAGE);
+
+    const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
 
     const [newCustomer, setNewCustomer] = useState({
         name: "",
@@ -275,6 +279,42 @@ const Customers = () => {
         }
     });
 
+    const deleteCustomerMutation = useMutation({
+        mutationFn: (dbId: string) => customersApi.delete(dbId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+            toast({ title: "Client supprimé", description: "Le client a été supprimé avec succès." });
+        },
+        onError: () => {
+            toast({ title: "Erreur", description: "Impossible de supprimer ce client.", variant: "destructive" });
+        }
+    });
+
+    const handleDeleteCustomer = (customer: Customer) => {
+        if (window.confirm(`Supprimer définitivement "${customer.name}" ? Cette action est irréversible.`)) {
+            deleteCustomerMutation.mutate(customer.dbId);
+        }
+    };
+
+    const bulkDeleteCustomersMutation = useMutation({
+        mutationFn: (dbIds: string[]) => customersApi.bulkDelete(dbIds),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+            setSelectedCustomerIds([]);
+            toast({ title: "Clients supprimés", description: `${data.deleted} client(s) supprimé(s).` });
+        },
+        onError: () => {
+            toast({ title: "Erreur", description: "Impossible de supprimer les clients.", variant: "destructive" });
+        }
+    });
+
+    const handleBulkDeleteCustomers = () => {
+        if (selectedCustomerIds.length === 0) return;
+        if (window.confirm(`Supprimer définitivement ${selectedCustomerIds.length} client(s) ? Cette action est irréversible.`)) {
+            bulkDeleteCustomersMutation.mutate(selectedCustomerIds);
+        }
+    };
+
     const toggleFavorite = (customer: Customer) => {
         updateCustomerMutation.mutate({
             dbId: customer.dbId,
@@ -295,6 +335,17 @@ const Customers = () => {
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
                 <div className="flex gap-2">
+                    {selectedCustomerIds.length > 0 && canDelete && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDeleteCustomers}
+                            disabled={bulkDeleteCustomersMutation.isPending}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer ({selectedCustomerIds.length})
+                        </Button>
+                    )}
                     {canCreate && (
                         <Button onClick={() => setShowAddCustomer(true)} className="gap-2">
                             <UserPlus className="h-4 w-4" />
@@ -351,6 +402,20 @@ const Customers = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                {canDelete && (
+                                    <TableHead className="w-10">
+                                        <Checkbox
+                                            checked={paginatedCustomers.length > 0 && paginatedCustomers.every(c => selectedCustomerIds.includes(c.dbId))}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedCustomerIds(prev => [...new Set([...prev, ...paginatedCustomers.map(c => c.dbId)])]);
+                                                } else {
+                                                    setSelectedCustomerIds(prev => prev.filter(id => !paginatedCustomers.map(c => c.dbId).includes(id)));
+                                                }
+                                            }}
+                                        />
+                                    </TableHead>
+                                )}
                                 <TableHead>Client</TableHead>
                                 <TableHead>Contact</TableHead>
                                 <TableHead>Ville</TableHead>
@@ -363,7 +428,7 @@ const Customers = () => {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                             <span>Chargement des clients...</span>
@@ -372,7 +437,19 @@ const Customers = () => {
                                 </TableRow>
                             ) : paginatedCustomers.length > 0 ? (
                                 paginatedCustomers.map((customer) => (
-                                    <TableRow key={customer.id} className="hover:bg-muted/50">
+                                    <TableRow key={customer.id} className={`hover:bg-muted/50 ${selectedCustomerIds.includes(customer.dbId) ? 'bg-muted/20' : ''}`}>
+                                        {canDelete && (
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox
+                                                    checked={selectedCustomerIds.includes(customer.dbId)}
+                                                    onCheckedChange={(checked) => {
+                                                        setSelectedCustomerIds(prev =>
+                                                            checked ? [...prev, customer.dbId] : prev.filter(id => id !== customer.dbId)
+                                                        );
+                                                    }}
+                                                />
+                                            </TableCell>
+                                        )}
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-9 w-9">
@@ -448,6 +525,14 @@ const Customers = () => {
                                                         <DropdownMenuItem onSelect={() => window.open(`https://wa.me/${customer.phone.replace(/\s+/g, '')}`, "_blank")}>
                                                             <Phone className="w-4 h-4 mr-2" /> WhatsApp
                                                         </DropdownMenuItem>
+                                                        {canDelete && (
+                                                            <DropdownMenuItem
+                                                                onSelect={() => handleDeleteCustomer(customer)}
+                                                                className="text-destructive focus:text-destructive"
+                                                            >
+                                                                <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+                                                            </DropdownMenuItem>
+                                                        )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>
@@ -456,7 +541,7 @@ const Customers = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                         Aucun client trouvé.
                                     </TableCell>
                                 </TableRow>

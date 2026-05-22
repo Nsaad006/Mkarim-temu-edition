@@ -39,5 +39,16 @@ export const customersApi = {
         const { data } = await apiClient.get(`/api/customers/${customerId}/orders`);
         return data;
     },
+
+    // Delete a customer
+    delete: async (dbId: string): Promise<void> => {
+        await apiClient.delete(`/api/customers/${dbId}`);
+    },
+
+    // Bulk delete customers
+    bulkDelete: async (dbIds: string[]): Promise<{ success: boolean; deleted: number }> => {
+        const { data } = await apiClient.post('/api/customers/bulk-delete', { ids: dbIds });
+        return data;
+    },
 };
 
