@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "npx prisma migrate deploy && node dist/server.js",
-    "start:prod": " migrate deploy && node dist/server.js",
+    "start:prod": "npx prisma migrate deploy && node dist/server.js",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

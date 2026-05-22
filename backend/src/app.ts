@@ -31,44 +31,28 @@ app.use(helmet({
 }));
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow all origins if CORS_ALLOW_ALL is set (use only for debugging)
-        if (process.env.CORS_ALLOW_ALL === 'true') {
-            return callback(null, true);
-        }
+        // No origin = server-to-server or same-origin → allow
+        if (!origin) return callback(null, true);
 
-        // Build list of allowed origins — supports comma-separated FRONTEND_URL
-        const envOrigins = (process.env.FRONTEND_URL || '')
-            .split(',')
-            .map(u => u.trim())
-            .filter(Boolean);
-
-        const allowedOrigins: (string | RegExp)[] = [
-            ...envOrigins,
+        const allowedOrigins = [
+            'https://mkarim.net',
+            'https://www.mkarim.net',
             'https://mkarim.ma',
             'https://www.mkarim.ma',
             'http://localhost:8080',
             'http://localhost:8081',
             'http://localhost:8082',
             'http://localhost:5173',
-            /\.railway\.app$/,       // Railway deployments
-            /\.dokploy\.com$/,       // Dokploy deployments
-            /\.hostinger\.com$/,     // Hostinger domains
-            /\.vercel\.app$/,        // Vercel preview deployments
         ];
 
-        // No origin = same-origin / server-to-server request → allow
-        if (!origin) {
-            return callback(null, true);
-        }
+        // Also allow any origin set via FRONTEND_URL env var (comma-separated)
+        const envOrigins = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim()).filter(Boolean);
+        const allAllowed = [...allowedOrigins, ...envOrigins];
 
-        const allowed = allowedOrigins.some(pattern =>
-            pattern instanceof RegExp ? pattern.test(origin) : pattern === origin
-        );
-
-        if (allowed) {
+        if (allAllowed.includes(origin)) {
             callback(null, true);
         } else {
-            console.warn(`[CORS] Blocked request from origin: ${origin}`);
+            console.warn(`[CORS] Blocked: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
