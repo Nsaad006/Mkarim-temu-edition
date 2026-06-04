@@ -19,6 +19,7 @@ import procurementsRouter from './routes/procurements';
 import capitalRouter from './routes/capital';
 import wholesalersRouter from './routes/wholesalers';
 import rolesRouter from './routes/roles';
+import eventsRouter from './routes/events';
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use('/api/procurements', procurementsRouter);
 app.use('/api/capital', capitalRouter);
 app.use('/api/wholesalers', wholesalersRouter);
 app.use('/api/roles', rolesRouter);
+app.use('/api/events', eventsRouter);
 
 // Health check
 app.get('/health', (req, res) => {

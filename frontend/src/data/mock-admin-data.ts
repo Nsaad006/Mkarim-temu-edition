@@ -28,6 +28,7 @@ export interface Order {
     productId: string;
     quantity: number;
     price: number;
+    selectedVariants?: Record<string, string>;
     product?: {
       name: string;
       image: string;

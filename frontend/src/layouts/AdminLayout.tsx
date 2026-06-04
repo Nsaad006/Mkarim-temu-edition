@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard,
@@ -48,6 +49,9 @@ const AdminLayout = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Real-time sync: invalidates queries when any admin performs a mutation
+    useRealtimeUpdates();
 
     // Auto-close sidebar on route change for mobile
     useEffect(() => {

@@ -4,6 +4,7 @@ import { Product } from '@/data/products';
 export interface CartItem {
     product: Product;
     quantity: number;
+    selectedVariants?: Record<string, string>; // e.g. { "Couleur": "Rouge", "Taille": "M" }
 }
 
 interface CartState {
@@ -11,7 +12,7 @@ interface CartState {
 }
 
 type CartAction =
-    | { type: 'ADD_ITEM'; product: Product; quantity?: number }
+    | { type: 'ADD_ITEM'; product: Product; quantity?: number; selectedVariants?: Record<string, string> }
     | { type: 'REMOVE_ITEM'; productId: string }
     | { type: 'UPDATE_QUANTITY'; productId: string; quantity: number }
     | { type: 'CLEAR_CART' }
@@ -19,7 +20,7 @@ type CartAction =
 
 interface CartContextType {
     state: CartState;
-    addItem: (product: Product, quantity?: number) => void;
+    addItem: (product: Product, quantity?: number, selectedVariants?: Record<string, string>) => void;
     removeItem: (productId: string) => void;
     updateQuantity: (productId: string, quantity: number) => void;
     clearCart: () => void;
@@ -36,18 +37,21 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     switch (action.type) {
         case 'ADD_ITEM': {
             const addedQty = action.quantity || 1;
+            // If variants selected, treat as distinct item (different variant = different cart entry)
+            const variantKey = action.selectedVariants ? JSON.stringify(action.selectedVariants) : '';
             const existingItemIndex = state.items.findIndex(
-                (item) => item.product.id === action.product.id
+                (item) => item.product.id === action.product.id &&
+                    JSON.stringify(item.selectedVariants || {}) === JSON.stringify(action.selectedVariants || {})
             );
 
             if (existingItemIndex > -1) {
-                const newItems = JSON.parse(JSON.stringify(state.items)); // Deep copy to trigger state update
+                const newItems = JSON.parse(JSON.stringify(state.items));
                 newItems[existingItemIndex].quantity += addedQty;
                 return { items: newItems };
             }
 
             return {
-                items: [...state.items, { product: action.product, quantity: addedQty }],
+                items: [...state.items, { product: action.product, quantity: addedQty, selectedVariants: action.selectedVariants }],
             };
         }
 
@@ -98,8 +102,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
     }, [state.items]);
 
-    const addItem = (product: Product, quantity?: number) => {
-        dispatch({ type: 'ADD_ITEM', product, quantity });
+    const addItem = (product: Product, quantity?: number, selectedVariants?: Record<string, string>) => {
+        dispatch({ type: 'ADD_ITEM', product, quantity, selectedVariants });
         setLastAddedTime(Date.now());
     };
 

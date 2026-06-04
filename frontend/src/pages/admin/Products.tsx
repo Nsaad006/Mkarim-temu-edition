@@ -8,6 +8,7 @@ import {
     Target, Snowflake, RefreshCw, Layout, Scale, ArchiveRestore,
     ArrowLeft, Link
 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import {
     Table,
     TableBody,
@@ -78,6 +79,9 @@ const AdminProducts = () => {
     const [selectedItemToRestock, setSelectedItemToRestock] = useState<any>(null);
     const [restockQuantity, setRestockQuantity] = useState("1");
 
+    // Variant option input buffer per variant index
+    const [variantOptionInput, setVariantOptionInput] = useState<Record<number, string>>({});
+
     const queryClient = useQueryClient();
 
     // Pagination state
@@ -101,7 +105,8 @@ const AdminProducts = () => {
         inStock: true,
         quantity: "0",
         badge: "",
-        specs: [] as { key: string, value: string }[],
+        specs: [] as { key: string, value: string, customKey?: string, customIcon?: string }[],
+        variants: [] as { type: string, options: string[], required: boolean }[],
         supplierId: "",
         unitCostPrice: "",
         salesCount: "0",
@@ -354,6 +359,7 @@ const AdminProducts = () => {
             quantity: "0",
             badge: "",
             specs: [],
+            variants: [],
             supplierId: "",
             unitCostPrice: "",
             salesCount: "0",
@@ -377,9 +383,21 @@ const AdminProducts = () => {
             badge: product.badge || "",
             specs: product.specs?.map(s => {
                 const match = s.match(/^\{(.*?)\}:\s*(.*)$/);
-                if (match) return { key: match[1], value: match[2] };
+                if (match) {
+                    const predefinedKeys = ['Général','cpu','gpu','ram','stockage','marque','marque_pc','ecran','os','carte_mere','alimentation','boitier','refroidissement','resolution','frequence','connectivite','batterie','poids','chipset','format','switch','dpi','capteur','eclairage','polling_rate','garantie'];
+                    const rawKey = match[1]; // may contain "~iconName"
+                    const [baseKey, iconName] = rawKey.split('~');
+                    const isCustom = !predefinedKeys.includes(baseKey);
+                    return {
+                        key: isCustom ? 'custom' : baseKey,
+                        value: match[2],
+                        customKey: isCustom ? baseKey : undefined,
+                        customIcon: isCustom && iconName ? iconName : undefined
+                    };
+                }
                 return { key: "Général", value: s };
             }) || [],
+            variants: (product as any).variants || [],
             supplierId: (product as any).supplierId || (product as any).procurements?.[0]?.supplierId || "",
             unitCostPrice: (product as any).weightedAverageCost?.toString() || "",
             salesCount: (product as any).salesCount?.toString() || "0",
@@ -421,7 +439,13 @@ const AdminProducts = () => {
             inStock: formData.inStock,
             quantity: parseInt(formData.quantity) || 0,
             badge: formData.badge || undefined,
-            specs: formData.specs.map(s => s.key === "Général" ? s.value : `{${s.key}}: ${s.value}`),
+            specs: formData.specs.map(s => {
+                const actualKey = s.key === 'custom'
+                    ? (s.customKey?.trim() || 'Info') + (s.customIcon ? `~${s.customIcon}` : '')
+                    : s.key;
+                return actualKey === "Général" ? s.value : `{${actualKey}}: ${s.value}`;
+            }),
+            variants: formData.variants.filter(v => v.type.trim() && v.options.length > 0),
             supplierId: formData.supplierId,
             unitCostPrice: formData.unitCostPrice,
             salesCount: parseInt(formData.salesCount) || 0,
@@ -1188,7 +1212,7 @@ const AdminProducts = () => {
                                         className="h-7 text-[11px]"
                                         onClick={() => setFormData({
                                             ...formData,
-                                            specs: [...formData.specs, { key: "cpu", value: "" }]
+                                            specs: [...formData.specs, { key: "custom", value: "", customKey: "" }]
                                         })}
                                     >
                                         <Plus className="w-3 h-3 mr-1" /> Ajouter une spécification
@@ -1373,10 +1397,70 @@ const AdminProducts = () => {
                                                                         <span>Garantie</span>
                                                                     </div>
                                                                 </SelectItem>
+                                                                <SelectItem value="custom">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Plus className="w-3.5 h-3.5 text-primary" />
+                                                                        <span className="font-semibold text-primary">✦ Personnalisé</span>
+                                                                    </div>
+                                                                </SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    <div className="flex-1">
+                                                    <div className="flex-1 flex flex-col gap-1.5">
+                                                        {spec.key === 'custom' && (
+                                                            <div className="flex flex-col gap-1.5">
+                                                                <Input
+                                                                    className="h-8 text-xs border-primary/40 bg-primary/5"
+                                                                    placeholder="Nom de la spéc (ex: Matière, Couleur...)"
+                                                                    value={spec.customKey || ''}
+                                                                    onChange={(e) => {
+                                                                        const newSpecs = [...formData.specs];
+                                                                        newSpecs[idx] = { ...newSpecs[idx], customKey: e.target.value };
+                                                                        setFormData({ ...formData, specs: newSpecs });
+                                                                    }}
+                                                                />
+                                                                {/* Lucide icon name input + live preview */}
+                                                                <div className="flex gap-2 items-center">
+                                                                    <div className="flex-1 relative">
+                                                                        <Input
+                                                                            className="h-8 text-xs pr-8"
+                                                                            placeholder="Icône Lucide (ex: Camera, Cpu, Palette...)"
+                                                                            value={spec.customIcon || ''}
+                                                                            onChange={(e) => {
+                                                                                const newSpecs = [...formData.specs];
+                                                                                newSpecs[idx] = { ...newSpecs[idx], customIcon: e.target.value };
+                                                                                setFormData({ ...formData, specs: newSpecs });
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    {/* Live icon preview */}
+                                                                    {(() => {
+                                                                        const iconName = spec.customIcon?.trim();
+                                                                        if (!iconName) return (
+                                                                            <div className="w-8 h-8 rounded-md bg-muted border border-border flex items-center justify-center shrink-0">
+                                                                                <span className="text-[10px] text-muted-foreground">?</span>
+                                                                            </div>
+                                                                        );
+                                                                        const found = Object.keys(LucideIcons).find(k => k.toLowerCase() === iconName.toLowerCase());
+                                                                        const Icon = found ? (LucideIcons as any)[found] : null;
+                                                                        return Icon ? (
+                                                                            <div className="w-8 h-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0" title={found}>
+                                                                                <Icon className="w-4 h-4 text-primary" />
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="w-8 h-8 rounded-md bg-destructive/10 border border-destructive/30 flex items-center justify-center shrink-0" title="Icône introuvable dans v0.462">
+                                                                                <span className="text-[9px] text-destructive font-bold">✗</span>
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground">
+                                                                    Icônes disponibles (v1.17) :{' '}
+                                                                    <a href="https://lucide.dev/icons" target="_blank" rel="noreferrer" className="text-primary hover:underline">lucide.dev/icons</a>
+                                                                    {' '}— ex: <span className="font-mono text-foreground">Camera</span>, <span className="font-mono text-foreground">CardSim</span>, <span className="font-mono text-foreground">Cpu</span>
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                         <Input
                                                             className="h-8 text-xs"
                                                             placeholder={spec.key === "Général" ? "Ex: Garantie 2 ans..." : "Valeur..."}
@@ -1411,6 +1495,157 @@ const AdminProducts = () => {
                                     <Sparkles className="w-3 h-3 text-primary" />
                                     <span>Les clés techniques (CPU, GPU, RAM...) sont utilisées pour les filtres avancés du catalogue.</span>
                                 </div>
+                            </div>
+
+                            {/* ── VARIANTS SECTION ── */}
+                            <div className="space-y-4 col-span-2">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm font-semibold">Variantes du produit</Label>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">Couleur, Taille, Matière... Le client choisira une option avant de commander.</p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-[11px] shrink-0"
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            variants: [...formData.variants, { type: "", options: [], required: true }]
+                                        })}
+                                    >
+                                        <Plus className="w-3 h-3 mr-1" /> Ajouter une variante
+                                    </Button>
+                                </div>
+
+                                {formData.variants.length > 0 && (
+                                    <div className="space-y-3">
+                                        {/* Quick preset buttons */}
+                                        <div className="flex flex-wrap gap-1.5">
+                                            <span className="text-[10px] text-muted-foreground self-center mr-1">Raccourcis :</span>
+                                            {['Couleur', 'Taille', 'Matière', 'Mémoire', 'Capacité', 'Style'].map(preset => (
+                                                <button
+                                                    key={preset}
+                                                    type="button"
+                                                    className="text-[10px] px-2 py-0.5 rounded-full border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
+                                                    onClick={() => {
+                                                        // Fill the last empty type variant, or add new
+                                                        const lastEmpty = formData.variants.findLastIndex(v => !v.type.trim());
+                                                        if (lastEmpty >= 0) {
+                                                            const nv = [...formData.variants];
+                                                            nv[lastEmpty] = { ...nv[lastEmpty], type: preset };
+                                                            setFormData({ ...formData, variants: nv });
+                                                        } else {
+                                                            setFormData({ ...formData, variants: [...formData.variants, { type: preset, options: [], required: true }] });
+                                                        }
+                                                    }}
+                                                >{preset}</button>
+                                            ))}
+                                        </div>
+
+                                        {formData.variants.map((variant, vi) => (
+                                            <div key={vi} className="border border-border rounded-lg p-3 bg-muted/20 space-y-2.5">
+                                                {/* Variant header */}
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        className="h-8 text-xs font-semibold flex-1"
+                                                        placeholder="Nom de la variante (ex: Couleur, Taille...)"
+                                                        value={variant.type}
+                                                        onChange={(e) => {
+                                                            const nv = [...formData.variants];
+                                                            nv[vi] = { ...nv[vi], type: e.target.value };
+                                                            setFormData({ ...formData, variants: nv });
+                                                        }}
+                                                    />
+                                                    <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground whitespace-nowrap cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={variant.required}
+                                                            className="w-3 h-3 accent-primary"
+                                                            onChange={(e) => {
+                                                                const nv = [...formData.variants];
+                                                                nv[vi] = { ...nv[vi], required: e.target.checked };
+                                                                setFormData({ ...formData, variants: nv });
+                                                            }}
+                                                        />
+                                                        Requis
+                                                    </label>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive shrink-0"
+                                                        onClick={() => setFormData({ ...formData, variants: formData.variants.filter((_, i) => i !== vi) })}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Options chips */}
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {variant.options.map((opt, oi) => (
+                                                        <span key={oi} className="inline-flex items-center gap-1 px-2 py-0.5 bg-background border border-border rounded-full text-xs">
+                                                            {opt}
+                                                            <button
+                                                                type="button"
+                                                                className="text-muted-foreground hover:text-destructive transition-colors"
+                                                                onClick={() => {
+                                                                    const nv = [...formData.variants];
+                                                                    nv[vi] = { ...nv[vi], options: nv[vi].options.filter((_, i) => i !== oi) };
+                                                                    setFormData({ ...formData, variants: nv });
+                                                                }}
+                                                            >×</button>
+                                                        </span>
+                                                    ))}
+                                                </div>
+
+                                                {/* Add option input */}
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        className="h-7 text-xs flex-1"
+                                                        placeholder={`Ajouter une option (ex: ${variant.type === 'Couleur' ? 'Rouge, Bleu...' : variant.type === 'Taille' ? 'S, M, L...' : 'Option...'})`}
+                                                        value={variantOptionInput[vi] || ''}
+                                                        onChange={(e) => setVariantOptionInput({ ...variantOptionInput, [vi]: e.target.value })}
+                                                        onKeyDown={(e) => {
+                                                            if ((e.key === 'Enter' || e.key === ',') && variantOptionInput[vi]?.trim()) {
+                                                                e.preventDefault();
+                                                                const val = variantOptionInput[vi].trim();
+                                                                const nv = [...formData.variants];
+                                                                if (!nv[vi].options.includes(val)) {
+                                                                    nv[vi] = { ...nv[vi], options: [...nv[vi].options, val] };
+                                                                    setFormData({ ...formData, variants: nv });
+                                                                }
+                                                                setVariantOptionInput({ ...variantOptionInput, [vi]: '' });
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 text-[11px] px-2"
+                                                        onClick={() => {
+                                                            const val = variantOptionInput[vi]?.trim();
+                                                            if (!val) return;
+                                                            const nv = [...formData.variants];
+                                                            if (!nv[vi].options.includes(val)) {
+                                                                nv[vi] = { ...nv[vi], options: [...nv[vi].options, val] };
+                                                                setFormData({ ...formData, variants: nv });
+                                                            }
+                                                            setVariantOptionInput({ ...variantOptionInput, [vi]: '' });
+                                                        }}
+                                                    ><Plus className="w-3 h-3" /></Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {formData.variants.length === 0 && (
+                                    <div className="border border-dashed border-border rounded-lg p-4 text-center">
+                                        <p className="text-[11px] text-muted-foreground">Aucune variante. Cliquez sur <strong>Ajouter une variante</strong> si le produit existe en plusieurs versions.</p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center space-x-2 col-span-2">

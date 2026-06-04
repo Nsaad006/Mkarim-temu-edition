@@ -5,6 +5,7 @@ export interface CreateOrderItemData {
     productId: string;
     quantity: number;
     price?: number;
+    selectedVariants?: Record<string, string>;
 }
 
 export interface CreateOrderData {

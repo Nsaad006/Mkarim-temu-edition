@@ -4,7 +4,9 @@ import {
   Star, ChevronRight, Check, Package, RefreshCw,
   Cpu, Zap, HardDrive, Tag, CircuitBoard, AppWindow, Monitor, LayoutGrid,
   Power, Box, Snowflake, Maximize, Activity, Wifi, Battery,
-  Scale, Keyboard, MousePointer2, Target, Palette, Terminal, Layers
+  Scale, Keyboard, MousePointer2, Target, Palette, Terminal, Layers,
+  Link2, Ruler, Droplets, Settings2, Globe, Wrench, Plug, Mic,
+  Thermometer, Sun, Hash, Info, Gem, Shirt
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -13,7 +15,8 @@ import { productsApi } from "@/api/products";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import * as LucideIcons from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { settingsApi } from "@/api/settings";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
@@ -40,6 +43,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { currency } = useSettings();
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const { m: countdownM, s: countdownS, expired: countdownExpired } = useCountdown(18);
 
   const { data: product, isLoading: isProductLoading } = useQuery({
@@ -99,29 +103,80 @@ const ProductDetailPage = () => {
 
   const getSpecIcon = (key?: string) => {
     if (!key) return LayoutGrid;
-    const k = key.toLowerCase();
-    if (k.includes('cpu') || k.includes('processeur')) return Cpu;
-    if (k.includes('gpu') || k.includes('graphique')) return Zap;
-    if (k.includes('ram')) return CircuitBoard;
-    if (k.includes('stockage') || k.includes('ssd') || k.includes('hdd')) return HardDrive;
-    if (k.includes('marque')) return Tag;
-    if (k.includes('carte_mere')) return CircuitBoard;
-    if (k.includes('alimentation')) return Power;
-    if (k.includes('boitier')) return Box;
-    if (k.includes('refroidissement')) return Snowflake;
-    if (k.includes('resolution')) return Maximize;
-    if (k.includes('frequence') || k.includes('hz')) return RefreshCw;
-    if (k.includes('connectivite') || k.includes('wifi')) return Wifi;
-    if (k.includes('batterie')) return Battery;
-    if (k.includes('poids')) return Scale;
-    if (k.includes('clavier') || k.includes('switch')) return Keyboard;
-    if (k.includes('dpi')) return MousePointer2;
-    if (k.includes('capteur')) return Target;
-    if (k.includes('rgb') || k.includes('eclairage')) return Palette;
-    if (k.includes('polling')) return Activity;
-    if (k.includes('garantie')) return ShieldCheck;
-    if (k.includes('os') || k.includes('windows')) return Terminal;
-    if (k.includes('ecran') || k.includes('display')) return Monitor;
+
+    // If key contains "~iconName" (admin-selected icon), resolve dynamically via LucideIcons
+    if (key.includes('~')) {
+      const iconName = key.split('~')[1]?.trim();
+      if (iconName) {
+        const found = Object.keys(LucideIcons).find(k => k.toLowerCase() === iconName.toLowerCase());
+        if (found) return (LucideIcons as any)[found];
+      }
+    }
+
+    const k = key.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents: é→e, ç→c, etc.
+      .replace(/[_\s-]+/g, ' ');
+
+    // Hardware components
+    if (k.includes('cpu') || k.includes('processeur') || k.includes('processor')) return Cpu;
+    if (k.includes('gpu') || k.includes('graphique') || k.includes('graphic')) return Monitor;
+    if (k.includes('ram') || k.includes('memoire') || k.includes('memory')) return CircuitBoard;
+    if (k.includes('stockage') || k.includes('ssd') || k.includes('hdd') || k.includes('storage') || k.includes('disque') || k.includes('capacite')) return HardDrive;
+    if (k.includes('carte mere') || k.includes('motherboard')) return CircuitBoard;
+    if (k.includes('alimentation') || k.includes('power supply') || k.includes('watt') || k.includes('puissance') || k.includes('tension') || k.includes('courant') || k.includes('voltage')) return Power;
+    if (k.includes('boitier') || k.includes('case') || k.includes('chassis')) return Box;
+    if (k.includes('refroidissement') || k.includes('cooling') || k.includes('ventilation') || k.includes('temperature') || k.includes('thermique')) return Snowflake;
+    if (k.includes('thermometre')) return Thermometer;
+
+    // Display
+    if (k.includes('ecran') || k.includes('display') || k.includes('moniteur') || k.includes('panneau')) return Monitor;
+    if (k.includes('resolution') || k.includes('pixel')) return Maximize;
+    if (k.includes('luminosite') || k.includes('brightness') || k.includes('nits') || k.includes('lumiere')) return Sun;
+    if (k.includes('contraste')) return Monitor;
+    if (k.includes('frequence') || k.includes('hz') || k.includes('taux')) return RefreshCw;
+
+    // Connectivity
+    if (k.includes('wifi') || k.includes('wireless') || k.includes('sans fil')) return Wifi;
+    if (k.includes('connectivite') || k.includes('connectivity') || k.includes('connexion') || k.includes('interface') || k.includes('port') || k.includes('usb') || k.includes('hdmi') || k.includes('bluetooth')) return Plug;
+    if (k.includes('compatib') || k.includes('compatible')) return Link2;
+    if (k.includes('protocole') || k.includes('norme') || k.includes('standard')) return Globe;
+
+    // Power / Battery
+    if (k.includes('batterie') || k.includes('battery') || k.includes('autonomie')) return Battery;
+
+    // Peripherals
+    if (k.includes('clavier') || k.includes('keyboard') || k.includes('switch')) return Keyboard;
+    if (k.includes('souris') || k.includes('mouse') || k.includes('dpi') || k.includes('curseur')) return MousePointer2;
+    if (k.includes('capteur') || k.includes('sensor')) return Target;
+    if (k.includes('polling') || k.includes('latence') || k.includes('latency') || k.includes('vitesse') || k.includes('speed')) return Activity;
+    if (k.includes('micro') || k.includes('microphone') || k.includes('voix')) return Mic;
+    if (k.includes('audio') || k.includes('son') || k.includes('haut parleur') || k.includes('speaker') || k.includes('casque')) return Activity;
+
+    // Appearance
+    if (k.includes('couleur') || k.includes('color') || k.includes('rgb') || k.includes('eclairage') || k.includes('lumiere') || k.includes('teinte')) return Palette;
+    if (k.includes('finition') || k.includes('texture') || k.includes('surface') || k.includes('brillant') || k.includes('mat') || k.includes('satin') || k.includes('lisse')) return Gem;
+    if (k.includes('design') || k.includes('forme') || k.includes('style') || k.includes('aspect') || k.includes('look')) return Palette;
+    if (k.includes('matiere') || k.includes('material') || k.includes('tissu') || k.includes('fabric') || k.includes('textile') || k.includes('cuir') || k.includes('plastique') || k.includes('aluminium') || k.includes('acier') || k.includes('metal')) return Layers;
+
+    // Clothing / apparel
+    if (k.includes('taille') || k.includes('size') || k.includes('pointure') || k.includes('tour de')) return Shirt;
+    if (k.includes('coupe') || k.includes('fit') || k.includes('coton') || k.includes('cotton') || k.includes('polyester')) return Shirt;
+
+    // Dimensions / measurements
+    if (k.includes('dimension') || k.includes('longueur') || k.includes('largeur') || k.includes('hauteur') || k.includes('diametre') || k.includes('epaisseur') || k.includes('profondeur') || k.includes('format') || k.includes('mm') || k.includes('cm')) return Ruler;
+    if (k.includes('poids') || k.includes('weight') || k.includes('gramme') || k.includes('kg')) return Scale;
+
+    // General product info
+    if (k.includes('marque') || k.includes('brand') || k.includes('fabricant') || k.includes('constructeur')) return Tag;
+    if (k.includes('modele') || k.includes('model') || k.includes('reference') || k.includes('sku') || k.includes('ref')) return Hash;
+    if (k.includes('garantie') || k.includes('warranty') || k.includes('assurance')) return ShieldCheck;
+    if (k.includes('os') || k.includes('windows') || k.includes('linux') || k.includes('systeme')) return Terminal;
+    if (k.includes('humidite') || k.includes('humidity') || k.includes('waterproof') || k.includes('etanche') || k.includes('resistant eau') || k.includes('splash')) return Droplets;
+    if (k.includes('type') || k.includes('categorie') || k.includes('gamme') || k.includes('serie')) return Settings2;
+    if (k.includes('quantite') || k.includes('quantity') || k.includes('nb') || k.includes('nombre') || k.includes('contenu')) return Package;
+    if (k.includes('maintenance') || k.includes('entretien') || k.includes('reparation') || k.includes('outil')) return Wrench;
+    if (k.includes('general') || k.includes('info') || k.includes('detail') || k.includes('description') || k.includes('autre')) return Info;
+
     return LayoutGrid;
   };
 
@@ -150,13 +205,24 @@ const ProductDetailPage = () => {
     );
   }
 
+  const productVariants: { type: string; options: string[]; required: boolean }[] = (product as any).variants || [];
+  const missingRequiredVariants = productVariants.filter(v => v.required && !selectedVariants[v.type]);
+
   const handleAddToCart = () => {
-    addItem(product, quantity);
+    if (missingRequiredVariants.length > 0) {
+      toast({ title: "Variante requise", description: `Veuillez choisir : ${missingRequiredVariants.map(v => v.type).join(', ')}`, variant: "destructive" });
+      return;
+    }
+    addItem(product, quantity, Object.keys(selectedVariants).length > 0 ? selectedVariants : undefined);
     toast({ title: "Ajouté au panier", description: `${quantity}x ${product.name}` });
   };
 
   const handleOrderNow = () => {
-    addItem(product, quantity);
+    if (missingRequiredVariants.length > 0) {
+      toast({ title: "Variante requise", description: `Veuillez choisir : ${missingRequiredVariants.map(v => v.type).join(', ')}`, variant: "destructive" });
+      return;
+    }
+    addItem(product, quantity, Object.keys(selectedVariants).length > 0 ? selectedVariants : undefined);
     navigate("/cart");
   };
 
@@ -320,6 +386,60 @@ const ProductDetailPage = () => {
                 </div>
               ) : (
                 <>
+                  {/* Variant selectors */}
+                  {productVariants.length > 0 && (
+                    <div className="space-y-3">
+                      {productVariants.map((variant) => {
+                        const isColor = variant.type.toLowerCase().includes('couleur') || variant.type.toLowerCase().includes('color');
+                        return (
+                          <div key={variant.type}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium">{variant.type}</span>
+                              {selectedVariants[variant.type] && (
+                                <span className="text-xs text-muted-foreground">— {selectedVariants[variant.type]}</span>
+                              )}
+                              {variant.required && !selectedVariants[variant.type] && (
+                                <span className="text-[10px] text-red-500 font-semibold">* Requis</span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {variant.options.map((opt) => {
+                                const isSelected = selectedVariants[variant.type] === opt;
+                                // Try to detect hex color in option like "Rouge|#FF0000" or just a named color
+                                const colorMatch = opt.match(/^(.+)\|?(#[0-9a-fA-F]{3,6})$/);
+                                const label = colorMatch ? colorMatch[1] : opt;
+                                const hex = colorMatch ? colorMatch[2] : null;
+                                return (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setSelectedVariants({ ...selectedVariants, [variant.type]: opt })}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all ${
+                                      isSelected
+                                        ? 'border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30'
+                                        : 'border-border hover:border-primary/50 text-foreground'
+                                    }`}
+                                  >
+                                    {isColor && hex && (
+                                      <span className="w-4 h-4 rounded-full border border-border/50 shrink-0" style={{ background: hex }} />
+                                    )}
+                                    {isColor && !hex && (
+                                      <span className="w-4 h-4 rounded-full border border-border/50 shrink-0" style={{ background: opt.toLowerCase() }} />
+                                    )}
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {missingRequiredVariants.length > 0 && (
+                        <p className="text-xs text-red-500">Veuillez sélectionner : {missingRequiredVariants.map(v => v.type).join(', ')}</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Quantity selector */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">Quantité</span>
@@ -343,14 +463,14 @@ const ProductDetailPage = () => {
                   {/* CTA buttons */}
                   <button
                     onClick={handleOrderNow}
-                    disabled={!product.inStock}
+                    disabled={!product.inStock || missingRequiredVariants.length > 0}
                     className="w-full h-13 py-3.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30 flex items-center justify-center gap-2"
                   >
                     <ShoppingCart className="w-4 h-4" /> Commander maintenant
                   </button>
                   <button
                     onClick={handleAddToCart}
-                    disabled={!product.inStock}
+                    disabled={!product.inStock || missingRequiredVariants.length > 0}
                     className="w-full h-13 py-3.5 bg-background hover:bg-muted disabled:opacity-50 text-foreground font-semibold rounded-xl text-sm border border-border transition-colors flex items-center justify-center gap-2"
                   >
                     Ajouter au panier
@@ -410,10 +530,11 @@ const ProductDetailPage = () => {
               <div className="divide-y divide-border">
                 {product.specs.map((spec, i) => {
                   const match = spec.match(/^\{([^}]+)\}:\s*(.+)$/);
-                  const key = match ? match[1] : undefined;
+                  const key = match ? match[1] : undefined;           // may contain "~iconName"
+                  const baseKey = key ? key.split('~')[0] : undefined; // clean key without icon
                   const value = match ? match[2] : spec;
                   const Icon = getSpecIcon(key);
-                  const label = key ? (specLabels[key.toLowerCase()] || key) : 'Général';
+                  const label = baseKey ? (specLabels[baseKey.toLowerCase()] || baseKey) : 'Général';
                   return (
                     <div key={i} className="flex items-center gap-3 py-2.5">
                       <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

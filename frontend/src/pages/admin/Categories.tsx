@@ -379,27 +379,27 @@ const Categories = () => {
 
             {/* Create / Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-                <DialogContent>
-                    <DialogHeader>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                    <DialogHeader className="pb-1">
                         <DialogTitle>
                             {selectedCategory ? "Modifier la catégorie" : formData.parentId ? "Nouvelle Sous-Catégorie" : "Nouvelle Catégorie Parente"}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-xs">
                             {formData.parentId
                                 ? `Sous-catégorie de : ${categories.find((c: any) => c.id === formData.parentId)?.name || "—"}`
-                                : "Catégorie principale — sera affichée dans la barre de navigation."}
+                                : "Catégorie principale — barre de navigation."}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleSave} className="space-y-4 py-4">
+                    <form onSubmit={handleSave} className="space-y-3 pt-1">
                         {/* Parent selector */}
-                        <div className="space-y-2">
-                            <Label>Catégorie Parente</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Catégorie Parente</Label>
                             <Select
                                 value={formData.parentId || "none"}
                                 onValueChange={(val) => setFormData({ ...formData, parentId: val === "none" ? null : val })}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-8 text-sm">
                                     <SelectValue placeholder="Aucune (Catégorie principale)" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -414,63 +414,66 @@ const Categories = () => {
                             </Select>
                         </div>
 
-                        {/* Name */}
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Nom *</Label>
-                            <Input
-                                id="name"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                required
-                                placeholder={formData.parentId ? "Ex: Souris Gaming" : "Ex: PC Gamer"}
-                            />
-                        </div>
-
-                        {/* Slug */}
-                        <div className="space-y-2">
-                            <Label htmlFor="slug">Slug (URL)</Label>
-                            <Input
-                                id="slug"
-                                value={formData.slug}
-                                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                placeholder={formData.parentId ? "ex: souris-gaming" : "ex: pc-gamer"}
-                            />
-                        </div>
-
-                        {/* Image */}
-                        <div className="space-y-2">
-                            <Label>Image (cercle sur la page d'accueil)</Label>
-                            <ImageUpload
-                                value={formData.image}
-                                onChange={(url) => setFormData({ ...formData, image: url })}
-                            />
-                            <p className="text-[10px] text-muted-foreground">Recommandé : 400×400 px, format carré</p>
-                        </div>
-
-                        {/* Fallback icon */}
-                        <div className="space-y-2">
-                            <Label htmlFor="icon">Icône de secours (Lucide)</Label>
-                            <div className="flex gap-3 items-center">
+                        {/* Name + Slug — side by side */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="name" className="text-xs">Nom *</Label>
                                 <Input
-                                    id="icon"
-                                    value={formData.icon}
-                                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                                    placeholder="Ex: Laptop, Gamepad2, Monitor"
-                                    className="flex-1"
+                                    id="name"
+                                    className="h-8 text-sm"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    required
+                                    placeholder={formData.parentId ? "Ex: Souris Gaming" : "Ex: PC Gamer"}
                                 />
-                                <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
-                                    {renderIconPreview(formData.icon)}
-                                </div>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                                Utilisée si aucune image. Voir{" "}
-                                <a href="https://lucide.dev/icons" target="_blank" rel="noreferrer" className="text-primary hover:underline">lucide.dev/icons</a>
-                            </p>
+                            <div className="space-y-1">
+                                <Label htmlFor="slug" className="text-xs">Slug (URL)</Label>
+                                <Input
+                                    id="slug"
+                                    className="h-8 text-sm"
+                                    value={formData.slug}
+                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                    placeholder={formData.parentId ? "souris-gaming" : "pc-gamer"}
+                                />
+                            </div>
                         </div>
 
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                        {/* Image + Icon — side by side */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Image (cercle accueil)</Label>
+                                <ImageUpload
+                                    compact
+                                    value={formData.image}
+                                    onChange={(url) => setFormData({ ...formData, image: url })}
+                                />
+                                <p className="text-[10px] text-muted-foreground">400×400 px, carré</p>
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="icon" className="text-xs">Icône Lucide</Label>
+                                <div className="flex gap-2 items-center">
+                                    <Input
+                                        id="icon"
+                                        className="h-8 text-sm flex-1"
+                                        value={formData.icon}
+                                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                                        placeholder="Ex: Laptop, Monitor"
+                                    />
+                                    <div className="w-8 h-8 rounded-md bg-muted border border-border flex items-center justify-center shrink-0">
+                                        {renderIconPreview(formData.icon)}
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Si aucune image.{" "}
+                                    <a href="https://lucide.dev/icons" target="_blank" rel="noreferrer" className="text-primary hover:underline">lucide.dev</a>
+                                </p>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="pt-1">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+                            <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending}>
                                 {createMutation.isPending || updateMutation.isPending ? "Enregistrement..." : "Enregistrer"}
                             </Button>
                         </DialogFooter>

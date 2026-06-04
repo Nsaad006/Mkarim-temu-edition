@@ -188,6 +188,15 @@ const CartPage = () => {
                                                 <p className="truncate text-[10px] sm:text-xs font-bold text-muted-foreground   mt-0.5">
                                                     {item.product.category?.name || item.product.categoryId?.replace("-", " ") || "MATÉRIEL"}
                                                 </p>
+                                                {item.selectedVariants && Object.keys(item.selectedVariants).length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {Object.entries(item.selectedVariants).map(([key, value]) => (
+                                                            <span key={key} className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 rounded-full px-1.5 py-0.5">
+                                                                {key}: {value}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             <Button
                                                 variant="outline"

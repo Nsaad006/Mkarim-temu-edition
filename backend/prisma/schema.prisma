@@ -24,6 +24,7 @@ model Product {
   quantity      Int      @default(0)
   badge         String?
   specs         String[] // Array of specs
+  variants      Json?    @default("[]") // Array of { type, options, required }
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   isFeatured    Boolean  @default(false)
@@ -90,12 +91,13 @@ model Customer {
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Int     // Price at time of purchase
-  
+  id               String  @id @default(uuid())
+  orderId          String
+  productId        String
+  quantity         Int
+  price            Int     // Price at time of purchase
+  selectedVariants Json?   // e.g. { "Couleur": "Rouge", "Taille": "M" }
+
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
 

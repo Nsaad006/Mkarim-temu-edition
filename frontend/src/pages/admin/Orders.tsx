@@ -1080,6 +1080,15 @@ const Orders = () => {
                                                     <div className="min-w-0">
                                                         <p className="font-medium truncate">{item.product?.name || 'Produit inconnu'}</p>
                                                         {!isEditingOrder && <p className="text-sm text-muted-foreground">Qté: {item.quantity}</p>}
+                                                        {!isEditingOrder && item.selectedVariants && Object.keys(item.selectedVariants).length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                {Object.entries(item.selectedVariants as Record<string, string>).map(([key, value]) => (
+                                                                    <span key={key} className="inline-flex items-center text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5">
+                                                                        {key}: {value}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
 

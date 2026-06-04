@@ -8,9 +8,10 @@ interface ImageUploadProps {
     value: string;
     onChange: (url: string) => void;
     disabled?: boolean;
+    compact?: boolean;
 }
 
-export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, disabled, compact }: ImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +55,7 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
                     <img
                         src={getImageUrl(value)}
                         alt="Product"
-                        className="w-full h-48 object-cover rounded-lg border border-border"
+                        className={`w-full object-cover rounded-lg border border-border ${compact ? 'h-24' : 'h-48'}`}
                     />
                     <Button
                         type="button"
@@ -68,18 +69,18 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
                     </Button>
                 </div>
             ) : (
-                <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <label className={`flex flex-col items-center justify-center w-full border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors ${compact ? 'h-24' : 'h-48'}`}>
+                    <div className={`flex flex-col items-center justify-center ${compact ? 'gap-1 py-2' : 'pt-5 pb-6'}`}>
                         {isUploading ? (
                             <>
-                                <Loader2 className="w-10 h-10 text-primary animate-spin mb-2" />
-                                <p className="text-sm text-muted-foreground">Téléchargement...</p>
+                                <Loader2 className={`text-primary animate-spin ${compact ? 'w-6 h-6' : 'w-10 h-10 mb-2'}`} />
+                                <p className="text-xs text-muted-foreground">Téléchargement...</p>
                             </>
                         ) : (
                             <>
-                                <Upload className="w-10 h-10 text-muted-foreground mb-2" />
-                                <p className="text-sm text-muted-foreground font-medium">Cliquez pour télécharger</p>
-                                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP (max 5MB)</p>
+                                <Upload className={`text-muted-foreground ${compact ? 'w-5 h-5' : 'w-10 h-10 mb-2'}`} />
+                                <p className={`text-muted-foreground font-medium ${compact ? 'text-xs' : 'text-sm'}`}>Cliquez pour télécharger</p>
+                                <p className="text-[10px] text-muted-foreground">PNG, JPG, WEBP (max 5MB)</p>
                             </>
                         )}
                     </div>

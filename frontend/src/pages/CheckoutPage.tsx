@@ -142,7 +142,10 @@ const CheckoutPage = () => {
       const order = await ordersApi.create({
         items: cartState.items.map(item => ({
           productId: item.product.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          ...(item.selectedVariants && Object.keys(item.selectedVariants).length > 0
+            ? { selectedVariants: item.selectedVariants }
+            : {})
         })),
         customerName: formData.fullName,
         email: formData.email,
@@ -214,7 +217,7 @@ const CheckoutPage = () => {
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white">
       <Navbar />
-      <div className="container-custom pt-24 lg:pt-32 pb-24">
+      <div className="container-custom pt-6 lg:pt-8 pb-24">
         <Button
           variant="ghost"
           onClick={() => navigate("/cart")}

@@ -18,7 +18,8 @@ const createOrderSchema = z.object({
     items: z.array(z.object({
         productId: z.string(),
         quantity: z.number().int().positive(),
-        price: z.number().positive().optional()
+        price: z.number().positive().optional(),
+        selectedVariants: z.record(z.string(), z.string()).optional()
     })).min(1, 'Votre panier est vide'),
     customerName: z.string().min(2, "Merci de saisir votre nom complet (min 2 caractères)"),
     email: z.string().email("Merci de saisir une adresse email valide").optional().or(z.literal("")),
@@ -46,6 +47,7 @@ function generateOrderNumber(): string {
 
 // import { sendOrderEmails, sendOrderUpdatedEmails } from '../lib/email';
 import { sendOrderEmails, sendOrderUpdatedEmails } from '../lib/email';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 // POST /api/orders - Create new COD order (Multi-item)
 router.post('/', async (req, res) => {
@@ -78,7 +80,10 @@ router.post('/', async (req, res) => {
             orderItems.push({
                 productId: item.productId,
                 quantity: item.quantity,
-                price: finalPrice
+                price: finalPrice,
+                ...(item.selectedVariants && Object.keys(item.selectedVariants).length > 0
+                    ? { selectedVariants: item.selectedVariants }
+                    : {})
             });
 
             // NOTE: Stock is NOT decremented here anymore. 
@@ -136,6 +141,14 @@ router.post('/', async (req, res) => {
             console.error('❌ Error sending order emails:', emailError);
             // Continue with order creation even if email fails
         }
+
+        // Broadcast to all connected admins
+        broadcastEvent(SSE_EVENTS.ORDER_CREATED, {
+            orderId: newOrder.id,
+            orderNumber: newOrder.orderNumber,
+            customerName: newOrder.customerName,
+            total: newOrder.total,
+        });
 
         res.status(201).json(newOrder);
     } catch (error) {
@@ -394,6 +407,14 @@ router.put('/:id/items', authenticate, authorize(['super_admin', 'editor', 'comm
         // Send emails
         await sendOrderUpdatedEmails(result, itemsForEmail);
 
+        // Broadcast to all connected admins
+        const actor = (req as any).user;
+        broadcastEvent(SSE_EVENTS.ORDER_ITEMS_UPDATED, {
+            orderId: result.id,
+            orderNumber: result.orderNumber,
+            updatedBy: actor?.id,
+        }, actor?.id);
+
         res.json(result);
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -514,6 +535,14 @@ router.post('/:id/partial-return', authenticate, authorize(['super_admin', 'edit
 
             return updatedOrder;
         });
+
+        const actor = (req as any).user;
+        broadcastEvent(SSE_EVENTS.ORDER_STATUS_UPDATED, {
+            orderId: result.id,
+            orderNumber: result.orderNumber,
+            status: result.status,
+            updatedBy: actor?.id,
+        }, actor?.id);
 
         res.json(result);
     } catch (error) {
@@ -686,6 +715,15 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
             return updatedOrder;
         });
 
+        // Broadcast to all connected admins
+        const actor = (req as any).user;
+        broadcastEvent(SSE_EVENTS.ORDER_STATUS_UPDATED, {
+            orderId: result.id,
+            orderNumber: result.orderNumber,
+            status: result.status,
+            updatedBy: actor?.id,
+        }, actor?.id);
+
         res.json(result);
     } catch (error) {
         console.error('Error updating order status:', error);
@@ -755,6 +793,9 @@ router.delete('/:id', authenticate, authorize(['super_admin'], [PERMISSIONS.ORDE
             await tx.orderItem.deleteMany({ where: { orderId: id } });
             await tx.order.delete({ where: { id } });
         });
+
+        const actor = (req as any).user;
+        broadcastEvent(SSE_EVENTS.ORDER_DELETED, { orderId: id }, actor?.id);
 
         res.status(204).send();
     } catch (error) {
