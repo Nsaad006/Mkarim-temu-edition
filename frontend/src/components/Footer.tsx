@@ -1,5 +1,35 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Phone, Mail, ChevronDown, ChevronUp } from "lucide-react";
+
+// Brand icons removed from lucide-react v1.x — using inline SVGs
+const FacebookIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
+const InstagramIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+    <circle cx="12" cy="12" r="4"/>
+    <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+  </svg>
+);
+const TwitterIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+const YoutubeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
+    <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/>
+  </svg>
+);
+const TiktokIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.02a8.16 8.16 0 0 0 4.77 1.53V7.1a4.85 4.85 0 0 1-1-.41z"/>
+  </svg>
+);
 import { useQuery } from "@tanstack/react-query";
 import { settingsApi } from "@/api/settings";
 import { categoriesApi } from "@/api/categories";
@@ -79,10 +109,11 @@ const Footer = () => {
             </p>
             <div className="flex gap-4 flex-wrap">
               {[
-                { Icon: Facebook, link: settings?.facebookLink, name: "Facebook" },
-                { Icon: Instagram, link: settings?.instagramLink, name: "Instagram" },
-                { Icon: Twitter, link: settings?.twitterLink, name: "Twitter" },
-                { Icon: Youtube, link: settings?.youtubeLink, name: "YouTube" },
+                { Icon: FacebookIcon, link: settings?.facebookLink, name: "Facebook" },
+                { Icon: InstagramIcon, link: settings?.instagramLink, name: "Instagram" },
+                { Icon: TwitterIcon, link: settings?.twitterLink, name: "Twitter / X" },
+                { Icon: YoutubeIcon, link: settings?.youtubeLink, name: "YouTube" },
+                { Icon: TiktokIcon, link: settings?.tiktokLink, name: "TikTok" },
               ].map(({ Icon, link, name }, i) => link ? (
                 <a key={i} href={link} target="_blank" rel="noopener noreferrer" aria-label={`Suivez-nous sur ${name}`} className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 group">
                   <Icon className="w-6 h-6 text-muted-foreground group-hover:text-primary-foreground" />
