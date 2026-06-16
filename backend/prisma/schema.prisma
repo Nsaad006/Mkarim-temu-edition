@@ -404,3 +404,19 @@ enum WholesaleStatus {
   PENDING
   PAID
 }
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  timestamp  DateTime @default(now())
+  userType   String   @default("guest") // "guest", "admin"
+  userId     String?
+  userEmail  String?
+  action     String   // "PRODUCT_VIEW", "ADD_TO_CART", "CHECKOUT_STARTED", "ORDER_PLACED", "ADMIN_LOGIN", "ADMIN_LOGOUT", "PAGE_VIEW"
+  metadata   Json?    // { productId, productName, orderId, pageUrl, ... }
+  ipAddress  String?
+  userAgent  String?
+
+  @@index([action])
+  @@index([timestamp])
+  @@index([userEmail])
+}

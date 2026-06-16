@@ -36,6 +36,7 @@ import { toast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/ImageUpload";
 import { getImageUrl } from "@/lib/image-utils";
 import { PERMISSIONS } from "@/constants/permissions";
+import { logEvent } from "@/lib/logger";
 
 type TabType = "parents" | "children";
 
@@ -86,8 +87,9 @@ const Categories = () => {
 
     const createMutation = useMutation({
         mutationFn: (data: Partial<Category>) => categoriesApi.create(data),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['categories'] });
+            logEvent({ action: "CATEGORY_CREATED", metadata: { categoryName: data.name } });
             toast({ title: "Catégorie créée avec succès" });
             setIsDialogOpen(false);
             resetForm();
@@ -96,8 +98,9 @@ const Categories = () => {
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: Partial<Category> }) => categoriesApi.update(id, data),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['categories'] });
+            logEvent({ action: "CATEGORY_UPDATED", metadata: { categoryId: variables.id, categoryName: variables.data.name } });
             toast({ title: "Catégorie modifiée" });
             setIsDialogOpen(false);
             resetForm();
@@ -106,8 +109,9 @@ const Categories = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => categoriesApi.delete(id),
-        onSuccess: () => {
+        onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: ['categories'] });
+            logEvent({ action: "CATEGORY_DELETED", metadata: { categoryId: id } });
             toast({ title: "Catégorie supprimée" });
         }
     });

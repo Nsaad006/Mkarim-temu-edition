@@ -5,6 +5,7 @@ export interface CartItem {
     product: Product;
     quantity: number;
     selectedVariants?: Record<string, string>; // e.g. { "Couleur": "Rouge", "Taille": "M" }
+    variantImage?: string; // URL of the image linked to the selected variant option
 }
 
 interface CartState {
@@ -12,7 +13,7 @@ interface CartState {
 }
 
 type CartAction =
-    | { type: 'ADD_ITEM'; product: Product; quantity?: number; selectedVariants?: Record<string, string> }
+    | { type: 'ADD_ITEM'; product: Product; quantity?: number; selectedVariants?: Record<string, string>; variantImage?: string }
     | { type: 'REMOVE_ITEM'; productId: string }
     | { type: 'UPDATE_QUANTITY'; productId: string; quantity: number }
     | { type: 'CLEAR_CART' }
@@ -20,7 +21,7 @@ type CartAction =
 
 interface CartContextType {
     state: CartState;
-    addItem: (product: Product, quantity?: number, selectedVariants?: Record<string, string>) => void;
+    addItem: (product: Product, quantity?: number, selectedVariants?: Record<string, string>, variantImage?: string) => void;
     removeItem: (productId: string) => void;
     updateQuantity: (productId: string, quantity: number) => void;
     clearCart: () => void;
@@ -51,7 +52,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
             }
 
             return {
-                items: [...state.items, { product: action.product, quantity: addedQty, selectedVariants: action.selectedVariants }],
+                items: [...state.items, { product: action.product, quantity: addedQty, selectedVariants: action.selectedVariants, variantImage: action.variantImage }],
             };
         }
 
@@ -102,8 +103,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
     }, [state.items]);
 
-    const addItem = (product: Product, quantity?: number, selectedVariants?: Record<string, string>) => {
-        dispatch({ type: 'ADD_ITEM', product, quantity, selectedVariants });
+    const addItem = (product: Product, quantity?: number, selectedVariants?: Record<string, string>, variantImage?: string) => {
+        dispatch({ type: 'ADD_ITEM', product, quantity, selectedVariants, variantImage });
         setLastAddedTime(Date.now());
     };
 

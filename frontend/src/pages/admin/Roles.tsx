@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash, Check, X, Shield, Info, Users } from "lucide-react";
+import { logEvent } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -86,9 +87,11 @@ const Roles = () => {
     const createMutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             await apiClient.post("/api/roles", data);
+            return data;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["roles"] });
+            logEvent({ action: "ROLE_CREATED", metadata: { roleName: data?.name } });
             toast({ title: "Rôle créé avec succès" });
             handleCloseDialog();
         },
@@ -104,9 +107,11 @@ const Roles = () => {
     const updateMutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             await apiClient.put(`/api/roles/${editingRole?.id}`, data);
+            return { ...data, id: editingRole?.id };
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["roles"] });
+            logEvent({ action: "ROLE_UPDATED", metadata: { roleId: data?.id, roleName: data?.name } });
             toast({ title: "Rôle mis à jour" });
             handleCloseDialog();
         },
@@ -122,9 +127,11 @@ const Roles = () => {
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
             await apiClient.delete(`/api/roles/${id}`);
+            return id;
         },
-        onSuccess: () => {
+        onSuccess: (id) => {
             queryClient.invalidateQueries({ queryKey: ["roles"] });
+            logEvent({ action: "ROLE_DELETED", metadata: { roleId: id } });
             toast({ title: "Rôle supprimé" });
         },
         onError: (error: any) => {

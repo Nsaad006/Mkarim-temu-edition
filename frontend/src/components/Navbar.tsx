@@ -13,8 +13,18 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [hoveredCat, setHoveredCat] = useState<string | null>(null);
+  const [toutHovered, setToutHovered] = useState(false);
+  const toutHoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const navWrapperRef = useRef<HTMLDivElement>(null);
+  const [navHeight, setNavHeight] = useState(0);
+  const mobileCatRef = useRef<HTMLDivElement>(null);
+  const [mobileCatCanScrollLeft, setMobileCatCanScrollLeft] = useState(false);
+  const [mobileCatCanScrollRight, setMobileCatCanScrollRight] = useState(false);
+  const desktopCatRef = useRef<HTMLDivElement>(null);
+  const [desktopCatCanScrollLeft, setDesktopCatCanScrollLeft] = useState(false);
+  const [desktopCatCanScrollRight, setDesktopCatCanScrollRight] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { getItemCount, lastAddedTime } = useCart();
@@ -66,6 +76,66 @@ const Navbar = () => {
     hoverTimeout.current = setTimeout(() => setHoveredCat(null), 150);
   };
 
+  const handleToutMouseEnter = () => {
+    if (toutHoverTimeout.current) clearTimeout(toutHoverTimeout.current);
+    setToutHovered(true);
+  };
+
+  const handleToutMouseLeave = () => {
+    toutHoverTimeout.current = setTimeout(() => setToutHovered(false), 200);
+  };
+
+  // Mobile category scroll arrows
+  const updateMobileCatScroll = () => {
+    const el = mobileCatRef.current;
+    if (!el) return;
+    setMobileCatCanScrollLeft(el.scrollLeft > 4);
+    setMobileCatCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  useEffect(() => {
+    updateMobileCatScroll();
+    const el = mobileCatRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateMobileCatScroll, { passive: true });
+    window.addEventListener('resize', updateMobileCatScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', updateMobileCatScroll);
+      window.removeEventListener('resize', updateMobileCatScroll);
+    };
+  }, [topCategories.length]);
+
+  // Desktop category pill bar scroll arrows
+  const updateDesktopCatScroll = () => {
+    const el = desktopCatRef.current;
+    if (!el) return;
+    setDesktopCatCanScrollLeft(el.scrollLeft > 4);
+    setDesktopCatCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  useEffect(() => {
+    updateDesktopCatScroll();
+    const el = desktopCatRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateDesktopCatScroll, { passive: true });
+    window.addEventListener('resize', updateDesktopCatScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', updateDesktopCatScroll);
+      window.removeEventListener('resize', updateDesktopCatScroll);
+    };
+  }, [topCategories.length]);
+
+  // Measure fixed navbar height so the page content isn't hidden behind it
+  useEffect(() => {
+    const el = navWrapperRef.current;
+    if (!el) return;
+    const update = () => setNavHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const hoveredCatObj = topCategories.find((c: any) => c.slug === hoveredCat);
   const hoveredChildren = hoveredCat
     ? categories.filter((c: any) => c.parentId === hoveredCatObj?.id)
@@ -73,6 +143,10 @@ const Navbar = () => {
 
   return (
     <>
+      {/* Spacer so content below isn't hidden behind the fixed navbar */}
+      <div style={{ height: navHeight }} aria-hidden="true" />
+      {/* ── FIXED WRAPPER: announcement bar + main header always visible ── */}
+      <div ref={navWrapperRef} className="fixed top-0 left-0 right-0 z-50">
       {/* ── TOP ANNOUNCEMENT BAR ── */}
       <div className="bg-foreground text-background text-[11px] font-medium hidden md:flex items-center justify-center gap-8 px-4 py-2">
         <span className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> Livraison gratuite — Partout au Maroc</span>
@@ -85,7 +159,7 @@ const Navbar = () => {
       </div>
 
       {/* ── MAIN HEADER ── */}
-      <header className="sticky top-0 z-50 bg-background shadow-sm border-b border-border">
+      <header className="bg-background shadow-sm border-b border-border">
         {/* === DESKTOP HEADER === */}
         <div className="hidden md:flex items-center gap-2 px-6 h-14">
 
@@ -204,55 +278,97 @@ const Navbar = () => {
             </form>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center overflow-x-auto scrollbar-hide px-4 gap-6 border-b border-border">
-            <Link
-              to="/"
-              className={`pb-2.5 text-[15px] whitespace-nowrap border-b-[3px] transition-colors relative ${
-                location.pathname === "/" && !currentCategory
-                  ? "font-black border-black text-black"
-                  : "font-semibold border-transparent text-gray-500 hover:text-black"
-              }`}
-            >
-              Tout
-              {location.pathname === "/" && !currentCategory && (
-                <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-6 h-[3px] bg-black rounded-t-sm"></span>
-              )}
-            </Link>
-
-            {topCategories.map((cat: any) => (
+          {/* Category Tabs with scroll arrows */}
+          <div className="relative">
+            {mobileCatCanScrollLeft && (
+              <button
+                className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-r from-white to-transparent"
+                onClick={() => mobileCatRef.current?.scrollBy({ left: -120, behavior: 'smooth' })}
+              >
+                <ChevronRight className="w-4 h-4 rotate-180 text-gray-600" />
+              </button>
+            )}
+            {mobileCatCanScrollRight && (
+              <button
+                className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-l from-white to-transparent"
+                onClick={() => mobileCatRef.current?.scrollBy({ left: 120, behavior: 'smooth' })}
+              >
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+              </button>
+            )}
+            <div ref={mobileCatRef} className="flex items-center overflow-x-auto scrollbar-hide px-4 gap-6 border-b border-border">
               <Link
-                key={cat.slug}
-                to={`/?category=${cat.slug}`}
+                to="/"
                 className={`pb-2.5 text-[15px] whitespace-nowrap border-b-[3px] transition-colors relative ${
-                  currentCategory === cat.slug
+                  location.pathname === "/" && !currentCategory
                     ? "font-black border-black text-black"
                     : "font-semibold border-transparent text-gray-500 hover:text-black"
                 }`}
               >
-                {cat.name}
-                {currentCategory === cat.slug && (
+                Tout
+                {location.pathname === "/" && !currentCategory && (
                   <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-6 h-[3px] bg-black rounded-t-sm"></span>
                 )}
               </Link>
-            ))}
+
+              {topCategories.map((cat: any) => (
+                <Link
+                  key={cat.slug}
+                  to={`/?category=${cat.slug}`}
+                  className={`pb-2.5 text-[15px] whitespace-nowrap border-b-[3px] transition-colors relative ${
+                    currentCategory === cat.slug
+                      ? "font-black border-black text-black"
+                      : "font-semibold border-transparent text-gray-500 hover:text-black"
+                  }`}
+                >
+                  {cat.name}
+                  {currentCategory === cat.slug && (
+                    <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-6 h-[3px] bg-black rounded-t-sm"></span>
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* ── CATEGORY PILL BAR with Hover Mega-Dropdown (Desktop Only) ── */}
         <div className="hidden md:block border-t border-border bg-background relative">
-          <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide px-3 md:px-6 h-10">
-            {/* "Tout" pill */}
-            <Link
-              to="/"
-              className={`shrink-0 flex items-center px-4 h-full text-sm font-semibold border-b-2 transition-colors whitespace-nowrap mr-1 ${
-                location.pathname === "/" && !currentCategory
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+          {/* Scroll arrows for desktop category bar */}
+          {desktopCatCanScrollLeft && (
+            <button
+              className="absolute left-0 top-0 bottom-0 z-20 w-8 flex items-center justify-center bg-gradient-to-r from-background to-transparent"
+              onClick={() => desktopCatRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
             >
-              Tout
-            </Link>
+              <ChevronRight className="w-4 h-4 rotate-180 text-muted-foreground" />
+            </button>
+          )}
+          {desktopCatCanScrollRight && (
+            <button
+              className="absolute right-0 top-0 bottom-0 z-20 w-8 flex items-center justify-center bg-gradient-to-l from-background to-transparent"
+              onClick={() => desktopCatRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+          <div ref={desktopCatRef} className="flex items-center gap-0 overflow-x-auto scrollbar-hide px-3 md:px-6 h-10">
+            {/* "Tout" pill — dropdown rendered OUTSIDE this overflow container to avoid clipping */}
+            <div
+              className="h-full flex items-stretch shrink-0 mr-1"
+              onMouseEnter={handleToutMouseEnter}
+              onMouseLeave={handleToutMouseLeave}
+            >
+              <Link
+                to="/"
+                className={`flex items-center gap-1 px-4 h-full text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                  location.pathname === "/" && !currentCategory
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Tout
+                <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${toutHovered ? "rotate-90" : ""}`} />
+              </Link>
+            </div>
 
             {topCategories.map((cat: any) => {
               const children = categories.filter((c: any) => c.parentId === cat.id);
@@ -280,6 +396,43 @@ const Navbar = () => {
               );
             })}
           </div>
+
+          {/* ── "TOUT" DROPDOWN — outside overflow-x-auto so it is never clipped ── */}
+          {toutHovered && (
+            <div
+              className="absolute top-full left-0 z-50 pt-1"
+              onMouseEnter={handleToutMouseEnter}
+              onMouseLeave={handleToutMouseLeave}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="ml-6 bg-background border border-border rounded-xl shadow-xl min-w-[200px] py-2"
+              >
+                <Link
+                  to="/"
+                  onClick={() => setToutHovered(false)}
+                  className="flex items-center px-4 py-2 text-sm font-bold text-foreground hover:bg-muted transition-colors"
+                >
+                  Tous les produits
+                </Link>
+                <div className="h-px bg-border mx-3 my-1" />
+                {topCategories.map((cat: any) => (
+                  <Link
+                    key={cat.slug}
+                    to={`/?category=${cat.slug}`}
+                    onClick={() => setToutHovered(false)}
+                    className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                  >
+                    {cat.name}
+                    <ChevronRight className="w-3 h-3 opacity-40" />
+                  </Link>
+                ))}
+              </motion.div>
+            </div>
+          )}
 
           {/* ── MEGA DROPDOWN ── */}
           <AnimatePresence>
@@ -342,6 +495,7 @@ const Navbar = () => {
           </AnimatePresence>
         </div>
       </header>
+      </div>{/* end sticky wrapper */}
 
       {/* ── MOBILE BOTTOM NAV ── */}
       {!isCartOrCheckout && (

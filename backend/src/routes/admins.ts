@@ -255,11 +255,23 @@ router.patch('/:id/categories', authenticate, authorize(['super_admin'], PERMISS
 });
 
 // PATCH /api/admins/:id/password - Update admin password
-router.patch('/:id/password', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response) => {
+// Allowed if: caller is super_admin, has USERS_MANAGE permission, OR is changing their own password
+router.patch('/:id/password', authenticate, async (req: Request, res: Response) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
-        const { password } = req.body;
+        const user = (req as any).user;
+        if (!user) return res.status(403).json({ error: 'Accès refusé' });
 
+        const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+
+        const isSelf = user.id === id;
+        const isSuperAdmin = user.role === 'super_admin';
+        const hasPermission = Array.isArray(user.permissions) && user.permissions.includes(PERMISSIONS.USERS_MANAGE);
+
+        if (!isSelf && !isSuperAdmin && !hasPermission) {
+            return res.status(403).json({ error: 'Accès refusé' });
+        }
+
+        const { password } = req.body;
         if (!password || password.length < 6) {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
@@ -272,14 +284,7 @@ router.patch('/:id/password', authenticate, authorize(['super_admin'], PERMISSIO
         const updatedAdmin = await prisma.admin.update({
             where: { id },
             data: { password: hashedPassword },
-            select: {
-                id: true,
-                email: true,
-                name: true,
-                role: true,
-                active: true,
-                createdAt: true
-            }
+            select: { id: true, email: true, name: true, role: true, active: true, createdAt: true }
         });
 
         res.json(updatedAdmin);

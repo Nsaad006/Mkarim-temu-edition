@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const isProd = import.meta.env.PROD;
-const API_BASE_URL = import.meta.env.VITE_API_URL || (isProd ? '/api' : 'http://localhost:3001/api');
+const API_BASE_URL = import.meta.env.VITE_API_URL || (isProd ? '/api' : 'http://localhost:3000/api');
 
 if (isProd && !import.meta.env.VITE_API_URL) {
     console.log('ℹ️ No VITE_API_URL provided, defaulting to relative /api proxy.');

@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Lock, Loader2 } from "lucide-react";
 
 import { authApi } from "@/api/auth";
+import { logEvent } from "@/lib/logger";
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -33,6 +34,8 @@ const Login = () => {
 
             // Set flag for simple protection check
             localStorage.setItem("isAuthenticated", "true");
+
+            logEvent({ action: "ADMIN_LOGIN", userType: "admin", userEmail: email });
 
             toast({
                 title: "Connexion réussie",

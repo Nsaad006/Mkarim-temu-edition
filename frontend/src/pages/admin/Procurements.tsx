@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Search, Loader2, Package, Truck, Calendar, DollarSign, History, ArrowUpCircle } from "lucide-react";
+import { Plus, Search, Loader2, Package, Truck, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Table,
     TableBody,
@@ -36,11 +37,13 @@ import { fr } from "date-fns/locale";
 import { useSettings } from "@/context/SettingsContext";
 import { useEffect } from "react";
 import { Pagination } from "@/components/admin/Pagination";
+import { logEvent } from "@/lib/logger";
 
 const Procurements = () => {
     const { currency } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const queryClient = useQueryClient();
 
     // Pagination state
@@ -88,10 +91,11 @@ const Procurements = () => {
             quantityPurchased: Number(data.quantityPurchased),
             unitCostPrice: Number(data.unitCostPrice)
         }),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['procurements'] });
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+            logEvent({ action: "PROCUREMENT_CREATED", metadata: { productId: data.productId, supplierId: data.supplierId, quantity: data.quantityPurchased } });
             toast({
                 title: "Approvisionnement réussi",
                 description: "Le stock et le capital ont été mis à jour."
@@ -106,6 +110,17 @@ const Procurements = () => {
                 variant: "destructive"
             });
         }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (ids: string[]) =>
+            ids.length === 1 ? procurementsApi.deleteOne(ids[0]) : procurementsApi.deleteBulk(ids),
+        onSuccess: (_, ids) => {
+            queryClient.invalidateQueries({ queryKey: ['procurements'] });
+            setSelectedIds([]);
+            toast({ title: "Supprimé", description: `${ids.length} approvisionnement(s) supprimé(s).` });
+        },
+        onError: () => toast({ title: "Erreur", description: "Impossible de supprimer.", variant: "destructive" }),
     });
 
     const resetForm = () => {
@@ -144,9 +159,22 @@ const Procurements = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Approvisionnements</h1>
-                <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter
-                </Button>
+                <div className="flex gap-2">
+                    {selectedIds.length > 0 && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(selectedIds)}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer ({selectedIds.length})
+                        </Button>
+                    )}
+                    <Button onClick={() => setIsDialogOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Ajouter
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
@@ -164,6 +192,15 @@ const Procurements = () => {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
+                                <TableHead className="w-10">
+                                    <Checkbox
+                                        checked={paginatedProcurements.length > 0 && paginatedProcurements.every((p: any) => selectedIds.includes(p.id))}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setSelectedIds(paginatedProcurements.map((p: any) => p.id));
+                                            else setSelectedIds([]);
+                                        }}
+                                    />
+                                </TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Produit</TableHead>
                                 <TableHead>Fournisseur</TableHead>
@@ -176,7 +213,7 @@ const Procurements = () => {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center">
+                                    <TableCell colSpan={8} className="h-32 text-center">
                                         <div className="flex flex-col items-center justify-center gap-2">
                                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                             <span className="text-muted-foreground">Chargement de l'historique...</span>
@@ -185,7 +222,16 @@ const Procurements = () => {
                                 </TableRow>
                             ) : paginatedProcurements.length > 0 ? (
                                 paginatedProcurements.map((proc: any) => (
-                                    <TableRow key={proc.id} className="hover:bg-muted/30 transition-colors">
+                                    <TableRow key={proc.id} className={`hover:bg-muted/30 transition-colors ${selectedIds.includes(proc.id) ? "bg-muted/50" : ""}`}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selectedIds.includes(proc.id)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setSelectedIds(prev => [...prev, proc.id]);
+                                                    else setSelectedIds(prev => prev.filter(id => id !== proc.id));
+                                                }}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium whitespace-nowrap text-xs">
                                             <div className="flex flex-col">
                                                 <span>{format(new Date(proc.purchaseDate), 'dd MMM yyyy', { locale: fr })}</span>
@@ -226,7 +272,7 @@ const Procurements = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         Aucun approvisionnement trouvé.
                                     </TableCell>
                                 </TableRow>

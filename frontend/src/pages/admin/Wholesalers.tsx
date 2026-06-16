@@ -25,6 +25,7 @@ import { getImageUrl } from "@/lib/image-utils"; const formatCurrency = (amount:
 };
 
 import { generateWholesaleInvoicePDF, getWholesaleInvoiceBlob } from '@/utils/exportUtils';
+import { logEvent } from "@/lib/logger";
 
 function ProductCombobox({ products, value, onChange }: { products: any[], value: string, onChange: (val: string) => void }) {
     const [open, setOpen] = useState(false);
@@ -182,18 +183,11 @@ export default function Wholesalers() {
 
     const createWholesalerMutation = useMutation({
         mutationFn: wholesalersApi.create,
-        onSuccess: () => {
+        onSuccess: (_, data: any) => {
             queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
             setIsAddWholesalerOpen(false);
-            setNewWholesaler({
-                type: 'PARTICULIER',
-                name: '',
-                address: '',
-                phone: '',
-                email: '',
-                ice: '',
-                responsibleName: ''
-            });
+            setNewWholesaler({ type: 'PARTICULIER', name: '', address: '', phone: '', email: '', ice: '', responsibleName: '' });
+            logEvent({ action: "WHOLESALER_CREATED", metadata: { name: data?.name, phone: data?.phone } });
             toast({ title: "Succès", description: "Grossiste ajouté avec succès" });
         },
         onError: () => {
@@ -204,9 +198,10 @@ export default function Wholesalers() {
     const updateWholesalerMutation = useMutation({
         mutationFn: (data: Partial<Wholesaler> & { id: string }) =>
             wholesalersApi.update(data.id, data),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
             setIsEditWholesalerOpen(false);
+            logEvent({ action: "WHOLESALER_UPDATED", metadata: { wholesalerId: data.id, name: data.name } });
             toast({ title: "Succès", description: "Grossiste mis à jour" });
         },
         onError: () => {
@@ -216,8 +211,9 @@ export default function Wholesalers() {
 
     const deleteWholesalerMutation = useMutation({
         mutationFn: wholesalersApi.delete,
-        onSuccess: () => {
+        onSuccess: (_, id: any) => {
             queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
+            logEvent({ action: "WHOLESALER_DELETED", metadata: { wholesalerId: id } });
             toast({ title: "Succès", description: "Grossiste supprimé avec succès" });
         },
         onError: (error: any) => {
@@ -256,9 +252,10 @@ export default function Wholesalers() {
     const createOrderMutation = useMutation({
         mutationFn: (data: { wholesalerId: string, items: any[], advanceAmount: number }) =>
             wholesalersApi.createOrder(data.wholesalerId, { items: data.items, advanceAmount: data.advanceAmount }),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] });
             setIsAddOrderOpen(false);
+            logEvent({ action: "WHOLESALE_ORDER_CREATED", metadata: { wholesalerId: data.wholesalerId, itemCount: data.items.length, advanceAmount: data.advanceAmount } });
             toast({ title: "Succès", description: "Commande créée avec succès" });
         },
         onError: (err: any) => {
@@ -269,16 +266,12 @@ export default function Wholesalers() {
     const addPaymentMutation = useMutation({
         mutationFn: (data: { orderId: string, amount: number, note: string }) =>
             wholesalersApi.addPayment(data.orderId, data.amount, data.note),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] });
-            // Refresh details if open
-            // We might need to refetch specific item or just close. 
-            // Better to invalidate 'wholesale-orders' then reload selectedOrder from the list if possible, 
-            // but selectedOrder is local state. We should close or update it.
-            // For now, let's close the modal or keep it open but we need to refresh data.
             setIsOrderDetailsOpen(false);
             setNewPaymentAmount('');
             setNewPaymentNote('');
+            logEvent({ action: "WHOLESALE_PAYMENT_ADDED", metadata: { orderId: data.orderId, amount: data.amount } });
             toast({ title: "Succès", description: "Paiement ajouté" });
         },
         onError: (err: any) => {
@@ -289,9 +282,10 @@ export default function Wholesalers() {
     const updateFullOrderMutation = useMutation({
         mutationFn: (data: { orderId: string, items: any[], advanceAmount: number }) =>
             wholesalersApi.updateFullOrder(data.orderId, { items: data.items, advanceAmount: data.advanceAmount }),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] });
             setIsEditOrderOpen(false);
+            logEvent({ action: "WHOLESALE_ORDER_UPDATED", metadata: { orderId: data.orderId, itemCount: data.items.length } });
             toast({ title: "Succès", description: "Commande modifiée avec succès" });
         },
         onError: (err: any) => {
@@ -301,9 +295,10 @@ export default function Wholesalers() {
 
     const cancelOrderMutation = useMutation({
         mutationFn: (orderId: string) => wholesalersApi.deleteOrder(orderId),
-        onSuccess: () => {
+        onSuccess: (_, orderId) => {
             queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] });
             setIsOrderDetailsOpen(false);
+            logEvent({ action: "WHOLESALE_ORDER_CANCELLED", metadata: { orderId } });
             toast({ title: "Succès", description: "Commande annulée" });
         },
         onError: (err: any) => {

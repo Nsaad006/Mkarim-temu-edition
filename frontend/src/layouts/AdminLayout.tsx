@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { authApi } from "@/api/auth";
-
+import { logEvent } from "@/lib/logger";
 import { PERMISSIONS } from "@/constants/permissions";
 
 const sidebarItems = [
@@ -41,6 +41,7 @@ const sidebarItems = [
     { icon: BarChart3, label: "Analyses", path: "/admin/analytics", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
     { icon: ShieldCheck, label: "Utilisateurs", path: "/admin/users", roles: ["super_admin"], permission: PERMISSIONS.USERS_VIEW },
     { icon: ShieldCheck, label: "Rôles", path: "/admin/roles", roles: ["super_admin"], permission: PERMISSIONS.ROLES_VIEW },
+    { icon: BookOpen, label: "Logs", path: "/admin/logs", roles: ["super_admin"], permission: PERMISSIONS.ANALYTICS_VIEW },
     { icon: Settings, label: "Paramètres", path: "/admin/settings", roles: ["super_admin"], permission: PERMISSIONS.SETTINGS_VIEW },
 ];
 
@@ -66,6 +67,7 @@ const AdminLayout = () => {
     const user = userStr ? JSON.parse(userStr) : { name: "Admin", role: "super_admin", permissions: [] };
 
     const handleLogout = () => {
+        logEvent({ action: "ADMIN_LOGOUT" });
         authApi.logout();
         navigate("/login");
     };

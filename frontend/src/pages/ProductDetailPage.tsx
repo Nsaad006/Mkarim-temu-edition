@@ -15,7 +15,7 @@ import { productsApi } from "@/api/products";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import * as LucideIcons from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { settingsApi } from "@/api/settings";
@@ -25,17 +25,39 @@ import SEO from "@/components/SEO";
 import { getImageUrl } from "@/lib/image-utils";
 import { Clock } from "lucide-react";
 
-/* ── Countdown hook (session-scoped: resets on page load) ── */
-const useCountdown = (minutes = 18) => {
-  const [secs, setSecs] = useState(minutes * 60);
+/* ── Countdown hook (localStorage-persisted per product, 2–6 days) ── */
+const useCountdown = (productId: string) => {
+  const storageKey = `cdx_${productId}`;
+  const MAX_SECS = 6 * 24 * 3600;
+
+  const [totalSecs, setTotalSecs] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const expiry = parseInt(stored, 10);
+        const remaining = Math.floor((expiry - Date.now()) / 1000);
+        if (remaining > 0) return remaining;
+        return 0;
+      }
+    } catch {}
+    // First visit: random 2–6 days
+    const days = 2 + Math.random() * 4;
+    const expiryMs = Date.now() + days * 24 * 3600 * 1000;
+    try { localStorage.setItem(storageKey, String(Math.round(expiryMs))); } catch {}
+    return Math.round(days * 24 * 3600);
+  });
+
   useEffect(() => {
-    if (secs <= 0) return;
-    const t = setInterval(() => setSecs(s => (s > 0 ? s - 1 : 0)), 1000);
+    if (totalSecs <= 0) return;
+    const t = setInterval(() => setTotalSecs(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, []);
-  const m = String(Math.floor(secs / 60)).padStart(2, "0");
-  const s = String(secs % 60).padStart(2, "0");
-  return { m, s, expired: secs === 0 };
+
+  const d = Math.floor(totalSecs / 86400);
+  const h = String(Math.floor((totalSecs % 86400) / 3600)).padStart(2, "0");
+  const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, "0");
+  const s = String(totalSecs % 60).padStart(2, "0");
+  return { d, h, m, s, expired: totalSecs === 0, totalSecs, maxSecs: MAX_SECS };
 };
 
 const ProductDetailPage = () => {
@@ -44,7 +66,8 @@ const ProductDetailPage = () => {
   const { currency } = useSettings();
   const [quantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
-  const { m: countdownM, s: countdownS, expired: countdownExpired } = useCountdown(18);
+  const [activeVariantImage, setActiveVariantImage] = useState<string | null>(null);
+  const countdown = useCountdown(id || 'default');
 
   const { data: product, isLoading: isProductLoading } = useQuery({
     queryKey: ['product', id],
@@ -68,6 +91,7 @@ const ProductDetailPage = () => {
   });
 
   const [relatedVisible, setRelatedVisible] = useState(10);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Full interleaved pool (no cap — Voir plus handles pagination)
   const relatedProducts = useMemo(() => {
@@ -89,6 +113,20 @@ const ProductDetailPage = () => {
     }
     return mixed; // full pool
   }, [allProducts, product, id]);
+
+  // Infinite scroll for related products — placed AFTER relatedProducts to avoid TDZ error
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setRelatedVisible(v => v + 10);
+      },
+      { rootMargin: '200px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [relatedProducts.length]);
 
   const discount = product?.originalPrice
     ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -205,7 +243,7 @@ const ProductDetailPage = () => {
     );
   }
 
-  const productVariants: { type: string; options: string[]; required: boolean }[] = (product as any).variants || [];
+  const productVariants: { type: string; options: string[]; required: boolean; images?: Record<string, string> }[] = (product as any).variants || [];
   const missingRequiredVariants = productVariants.filter(v => v.required && !selectedVariants[v.type]);
 
   const handleAddToCart = () => {
@@ -213,7 +251,7 @@ const ProductDetailPage = () => {
       toast({ title: "Variante requise", description: `Veuillez choisir : ${missingRequiredVariants.map(v => v.type).join(', ')}`, variant: "destructive" });
       return;
     }
-    addItem(product, quantity, Object.keys(selectedVariants).length > 0 ? selectedVariants : undefined);
+    addItem(product, quantity, Object.keys(selectedVariants).length > 0 ? selectedVariants : undefined, activeVariantImage || undefined);
     toast({ title: "Ajouté au panier", description: `${quantity}x ${product.name}` });
   };
 
@@ -222,7 +260,7 @@ const ProductDetailPage = () => {
       toast({ title: "Variante requise", description: `Veuillez choisir : ${missingRequiredVariants.map(v => v.type).join(', ')}`, variant: "destructive" });
       return;
     }
-    addItem(product, quantity, Object.keys(selectedVariants).length > 0 ? selectedVariants : undefined);
+    addItem(product, quantity, Object.keys(selectedVariants).length > 0 ? selectedVariants : undefined, activeVariantImage || undefined);
     navigate("/cart");
   };
 
@@ -267,14 +305,25 @@ const ProductDetailPage = () => {
         {/* ── MAIN PRODUCT SECTION ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-6 lg:gap-8 items-stretch">
 
-          {/* LEFT: Images */}
-          <div className="bg-card border border-border rounded-2xl p-3 h-full">
-            <ProductImageGallery
-              images={product.images && product.images.length > 0 ? product.images : [product.image]}
-              productName={product.name}
-              badge={product.badge}
-            />
-          </div>
+          {/* LEFT: Images — reorder to show variant image first */}
+          {(() => {
+            const base = product.images && product.images.length > 0 ? product.images : [product.image];
+            const galleryImages = activeVariantImage && !base.includes(activeVariantImage)
+              ? [activeVariantImage, ...base]
+              : activeVariantImage && base.includes(activeVariantImage)
+                ? [activeVariantImage, ...base.filter(i => i !== activeVariantImage)]
+                : base;
+            return (
+              <div className="bg-card border border-border rounded-2xl p-3 h-full">
+                <ProductImageGallery
+                  key={galleryImages[0]}
+                  images={galleryImages}
+                  productName={product.name}
+                  badge={product.badge}
+                />
+              </div>
+            );
+          })()}
 
           {/* RIGHT: Unified info panel */}
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
@@ -337,11 +386,12 @@ const ProductDetailPage = () => {
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="flex items-center gap-1.5 font-semibold text-orange-600 dark:text-orange-400">
                       <Clock className="w-3.5 h-3.5" />
-                      {countdownExpired ? "Offre expirée" : "Offre se termine dans"}
+                      {countdown.expired ? "Offre expirée" : "Offre se termine dans"}
                     </span>
-                    {!countdownExpired && (
-                      <span className="font-mono font-bold text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded-md border border-orange-200 dark:border-orange-800">
-                        {countdownM}:{countdownS}
+                    {!countdown.expired && (
+                      <span className="font-mono font-bold text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded-md border border-orange-200 dark:border-orange-800 flex items-center gap-1">
+                        {countdown.d > 0 && <><span>{countdown.d}j</span><span className="opacity-40 mx-0.5">·</span></>}
+                        <span>{countdown.h}:{countdown.m}:{countdown.s}</span>
                       </span>
                     )}
                   </div>
@@ -349,8 +399,8 @@ const ProductDetailPage = () => {
                     <div
                       className="h-2 rounded-full transition-all duration-1000"
                       style={{
-                        width: `${((parseInt(countdownM) * 60 + parseInt(countdownS)) / (18 * 60)) * 100}%`,
-                        background: countdownExpired
+                        width: `${Math.min(100, (countdown.totalSecs / countdown.maxSecs) * 100)}%`,
+                        background: countdown.expired
                           ? '#ef4444'
                           : 'linear-gradient(90deg, #f97316, #ef4444)'
                       }}
@@ -413,7 +463,12 @@ const ProductDetailPage = () => {
                                   <button
                                     key={opt}
                                     type="button"
-                                    onClick={() => setSelectedVariants({ ...selectedVariants, [variant.type]: opt })}
+                                    onClick={() => {
+                                    setSelectedVariants({ ...selectedVariants, [variant.type]: opt });
+                                    // Switch gallery image if this option has a linked image
+                                    const img = variant.images?.[opt];
+                                    setActiveVariantImage(img || null);
+                                  }}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all ${
                                       isSelected
                                         ? 'border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30'
@@ -565,15 +620,9 @@ const ProductDetailPage = () => {
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
+            {/* Infinite scroll sentinel */}
             {relatedVisible < relatedProducts.length && (
-              <div className="flex justify-center mt-6">
-                <button
-                  onClick={() => setRelatedVisible(v => v + 10)}
-                  className="px-8 py-2.5 rounded-full border border-border text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-all duration-200 hover:shadow-sm active:scale-95"
-                >
-                  Voir plus
-                </button>
-              </div>
+              <div ref={sentinelRef} className="h-8 mt-4" />
             )}
           </div>
         )}

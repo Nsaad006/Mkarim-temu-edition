@@ -172,7 +172,7 @@ const CartPage = () => {
                                     {/* Product Image — fixed width, never shrinks */}
                                     <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg sm:rounded-xl overflow-hidden bg-muted border border-border group-hover:border-primary/50 transition-colors self-center">
                                         <img
-                                            src={getImageUrl(item.product.image)}
+                                            src={getImageUrl(item.variantImage || item.product.image)}
                                             alt={item.product.name}
                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                         />

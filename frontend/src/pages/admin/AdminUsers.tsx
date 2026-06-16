@@ -34,11 +34,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminsApi, AdminUser } from "@/api/admins";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { logEvent } from "@/lib/logger";
 
 const AdminUsers = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+    const [originalRole, setOriginalRole] = useState<{ role: string; roleId: string | null }>({ role: "", roleId: null });
     const [newPassword, setNewPassword] = useState("");
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState({
@@ -76,8 +78,9 @@ const AdminUsers = () => {
     // Create admin
     const createMutation = useMutation({
         mutationFn: (data: typeof formData) => adminsApi.create(data),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+            logEvent({ action: "ADMIN_USER_CREATED", metadata: { newUserEmail: data.email, role: data.role } });
             toast({
                 title: "Utilisateur ajouté",
                 description: "Le nouvel administrateur a été créé avec succès.",
@@ -97,8 +100,9 @@ const AdminUsers = () => {
     // Delete admin
     const deleteMutation = useMutation({
         mutationFn: (id: string) => adminsApi.delete(id),
-        onSuccess: () => {
+        onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+            logEvent({ action: "ADMIN_USER_DELETED", metadata: { deletedUserId: id } });
             toast({
                 title: "Utilisateur supprimé",
                 description: "L'administrateur a été retiré avec succès.",
@@ -116,8 +120,9 @@ const AdminUsers = () => {
     // Status toggle
     const statusMutation = useMutation({
         mutationFn: ({ id, active }: { id: string; active: boolean }) => adminsApi.updateStatus(id, active),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+            logEvent({ action: "ADMIN_USER_STATUS_CHANGED", metadata: { userId: variables.id, active: variables.active } });
         }
     });
 
@@ -132,8 +137,9 @@ const AdminUsers = () => {
     // Update role mutation
     const updateRoleMutation = useMutation({
         mutationFn: ({ id, role }: { id: string; role: string }) => adminsApi.updateRole(id, role),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+            logEvent({ action: "ADMIN_USER_ROLE_CHANGED", metadata: { userId: variables.id, newRole: variables.role } });
             toast({
                 title: "Rôle modifié",
                 description: "Le rôle de l'utilisateur a été mis à jour avec succès.",
@@ -153,7 +159,8 @@ const AdminUsers = () => {
     // Update password mutation
     const updatePasswordMutation = useMutation({
         mutationFn: ({ id, password }: { id: string; password: string }) => adminsApi.updatePassword(id, password),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
+            logEvent({ action: "ADMIN_USER_PASSWORD_CHANGED", metadata: { userId: variables.id } });
             toast({
                 title: "Mot de passe modifié",
                 description: "Le mot de passe a été mis à jour avec succès.",
@@ -177,9 +184,13 @@ const AdminUsers = () => {
         if (!editingUser) return;
 
         try {
-            // Update role
-            const rolePayload = editingUser.roleId || editingUser.role;
-            await updateRoleMutation.mutateAsync({ id: editingUser.id, role: rolePayload });
+            // Only update role if it actually changed — avoids "Cannot change main admin role"
+            // error when the role dropdown was never touched
+            const newRolePayload = editingUser.roleId || editingUser.role;
+            const oldRolePayload = originalRole.roleId || originalRole.role;
+            if (newRolePayload !== oldRolePayload) {
+                await updateRoleMutation.mutateAsync({ id: editingUser.id, role: newRolePayload });
+            }
 
             // Update categories
             await updateCategoriesMutation.mutateAsync({ id: editingUser.id, allowedCategories: editingUser.allowedCategories || [] });
@@ -266,6 +277,7 @@ const AdminUsers = () => {
                                                 size="icon"
                                                 onClick={() => {
                                                     setEditingUser(user);
+                                                    setOriginalRole({ role: user.role, roleId: (user as any).roleId || null });
                                                     setIsEditDialogOpen(true);
                                                 }}
                                             >
@@ -487,6 +499,7 @@ const AdminUsers = () => {
                                         setIsEditDialogOpen(false);
                                         setEditingUser(null);
                                         setNewPassword("");
+                                        setOriginalRole({ role: "", roleId: null });
                                     }}
                                     disabled={updateRoleMutation.isPending}
                                 >

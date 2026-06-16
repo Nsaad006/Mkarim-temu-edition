@@ -75,4 +75,30 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
     }
 });
 
+// DELETE /api/procurements/bulk - Delete multiple procurement records
+router.delete('/bulk', authenticate, authorize(['super_admin'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs requis' });
+        }
+        const { count } = await prisma.procurement.deleteMany({ where: { id: { in: ids } } });
+        res.json({ deleted: count });
+    } catch (error) {
+        console.error('Error deleting procurements:', error);
+        res.status(500).json({ error: 'Failed to delete procurements' });
+    }
+});
+
+// DELETE /api/procurements/:id - Delete a single procurement record
+router.delete('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
+    try {
+        await prisma.procurement.delete({ where: { id: req.params.id } });
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Error deleting procurement:', error);
+        res.status(500).json({ error: 'Failed to delete procurement' });
+    }
+});
+
 export default router;

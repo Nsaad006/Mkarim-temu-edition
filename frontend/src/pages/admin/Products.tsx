@@ -56,6 +56,7 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { MultiImageUpload } from "@/components/MultiImageUpload";
 import { getImageUrl } from "@/lib/image-utils";
 import { useSettings } from "@/context/SettingsContext";
+import { logEvent } from "@/lib/logger";
 
 import { Pagination } from "@/components/admin/Pagination";
 import { PERMISSIONS } from "@/constants/permissions";
@@ -106,7 +107,7 @@ const AdminProducts = () => {
         quantity: "0",
         badge: "",
         specs: [] as { key: string, value: string, customKey?: string, customIcon?: string }[],
-        variants: [] as { type: string, options: string[], required: boolean }[],
+        variants: [] as { type: string, options: string[], required: boolean, images?: Record<string, string> }[],
         supplierId: "",
         unitCostPrice: "",
         salesCount: "0",
@@ -162,10 +163,11 @@ const AdminProducts = () => {
     // Create product mutation
     const createMutation = useMutation({
         mutationFn: (data: Omit<Product, 'id'>) => productsApi.create(data),
-        onSuccess: () => {
+        onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+            logEvent({ action: "PRODUCT_CREATED", metadata: { productName: (data as any).name } });
             toast({
                 title: "Produit créé",
                 description: "Le produit a été ajouté avec succès.",
@@ -186,10 +188,11 @@ const AdminProducts = () => {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) =>
             productsApi.update(id, data),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+            logEvent({ action: "PRODUCT_UPDATED", metadata: { productId: variables.id, productName: (variables.data as any).name } });
             toast({
                 title: "Produit modifié",
                 description: "Le produit a été mis à jour avec succès.",
@@ -242,10 +245,11 @@ const AdminProducts = () => {
     // Delete product mutation
     const deleteMutation = useMutation({
         mutationFn: (id: string) => showTrash ? productsApi.forceDelete(id) : productsApi.delete(id),
-        onSuccess: () => {
+        onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
             setSelectedProducts([]);
+            logEvent({ action: "PRODUCT_DELETED", metadata: { productId: id, permanent: showTrash } });
             toast({
                 title: showTrash ? "Produit supprimé définitivement" : "Produit déplacé vers la corbeille",
                 description: "L'opération a été effectuée avec succès.",
@@ -282,10 +286,11 @@ const AdminProducts = () => {
                 throw new Error(`${failed.length} produit(s) n'ont pas pu être traités.`);
             }
         },
-        onSuccess: () => {
+        onSuccess: (_, ids) => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
             setSelectedProducts([]);
+            logEvent({ action: "PRODUCT_BULK_DELETED", metadata: { count: ids.length, permanent: showTrash } });
             toast({
                 title: "Opération réussie",
                 description: showTrash ? "Les produits ont été supprimés définitivement." : "Les produits ont été mis à la corbeille.",
@@ -306,9 +311,10 @@ const AdminProducts = () => {
     // Restore mutation
     const restoreMutation = useMutation({
         mutationFn: (id: string) => productsApi.restore(id),
-        onSuccess: () => {
+        onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
+            logEvent({ action: "PRODUCT_RESTORED", metadata: { productId: id } });
             toast({
                 title: "Produit restauré",
                 description: "Le produit a été restauré avec succès dans le catalogue.",
@@ -326,10 +332,11 @@ const AdminProducts = () => {
     // Restock Return mutation
     const restockMutation = useMutation({
         mutationFn: ({ id, quantity }: { id: string, quantity: number }) => productsApi.restockReturn(id, quantity),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin-returned-products'] });
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
+            logEvent({ action: "PRODUCT_RESTOCKED", metadata: { productId: variables.id, quantity: variables.quantity } });
             toast({
                 title: "Stock mis à jour",
                 description: "Le produit a été remis en stock avec succès.",
@@ -397,7 +404,12 @@ const AdminProducts = () => {
                 }
                 return { key: "Général", value: s };
             }) || [],
-            variants: (product as any).variants || [],
+            variants: ((product as any).variants || []).map((v: any) => ({
+                type: v.type || '',
+                options: v.options || [],
+                required: v.required ?? true,
+                images: v.images || {},
+            })),
             supplierId: (product as any).supplierId || (product as any).procurements?.[0]?.supplierId || "",
             unitCostPrice: (product as any).weightedAverageCost?.toString() || "",
             salesCount: (product as any).salesCount?.toString() || "0",
@@ -1581,22 +1593,42 @@ const AdminProducts = () => {
                                                     </Button>
                                                 </div>
 
-                                                {/* Options chips */}
+                                                {/* Options chips with optional image URL */}
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    {variant.options.map((opt, oi) => (
-                                                        <span key={oi} className="inline-flex items-center gap-1 px-2 py-0.5 bg-background border border-border rounded-full text-xs">
-                                                            {opt}
-                                                            <button
-                                                                type="button"
-                                                                className="text-muted-foreground hover:text-destructive transition-colors"
-                                                                onClick={() => {
-                                                                    const nv = [...formData.variants];
-                                                                    nv[vi] = { ...nv[vi], options: nv[vi].options.filter((_, i) => i !== oi) };
-                                                                    setFormData({ ...formData, variants: nv });
-                                                                }}
-                                                            >×</button>
-                                                        </span>
-                                                    ))}
+                                                    {variant.options.map((opt, oi) => {
+                                                        const imgUrl = variant.images?.[opt] || '';
+                                                        return (
+                                                            <div key={oi} className="flex flex-col gap-1">
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-background border border-border rounded-full text-xs">
+                                                                    {imgUrl && <img src={imgUrl.startsWith('/') ? `${window.location.origin}${imgUrl}` : imgUrl} alt={opt} className="w-4 h-4 rounded-full object-cover border border-border" />}
+                                                                    {opt}
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-muted-foreground hover:text-destructive transition-colors"
+                                                                        onClick={() => {
+                                                                            const nv = [...formData.variants];
+                                                                            const newImages = { ...(nv[vi].images || {}) };
+                                                                            delete newImages[opt];
+                                                                            nv[vi] = { ...nv[vi], options: nv[vi].options.filter((_, i) => i !== oi), images: newImages };
+                                                                            setFormData({ ...formData, variants: nv });
+                                                                        }}
+                                                                    >×</button>
+                                                                </span>
+                                                                {/* Optional image URL per option */}
+                                                                <input
+                                                                    type="text"
+                                                                    className="h-5 text-[10px] px-1.5 rounded border border-dashed border-border bg-muted/30 w-28 focus:outline-none focus:border-primary placeholder:text-muted-foreground/50"
+                                                                    placeholder="Image URL…"
+                                                                    value={imgUrl}
+                                                                    onChange={(e) => {
+                                                                        const nv = [...formData.variants];
+                                                                        nv[vi] = { ...nv[vi], images: { ...(nv[vi].images || {}), [opt]: e.target.value } };
+                                                                        setFormData({ ...formData, variants: nv });
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
 
                                                 {/* Add option input */}

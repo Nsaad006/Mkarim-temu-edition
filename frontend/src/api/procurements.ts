@@ -14,5 +14,13 @@ export const procurementsApi = {
     }) => {
         const { data: result } = await apiClient.post('/api/procurements', data);
         return result;
-    }
+    },
+    deleteOne: async (id: string) => {
+        const { data } = await apiClient.delete(`/api/procurements/${id}`);
+        return data;
+    },
+    deleteBulk: async (ids: string[]) => {
+        const { data } = await apiClient.delete('/api/procurements/bulk', { data: { ids } });
+        return data;
+    },
 };

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -21,6 +21,22 @@ const Index = () => {
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const catDropdownRef = useRef<HTMLDivElement>(null);
   const [browseActiveCat, setBrowseActiveCat] = useState<string | null>(null);
+  const choixCarouselRef = useRef<HTMLDivElement>(null);
+  const [choixCanLeft, setChoixCanLeft] = useState(false);
+  const [choixCanRight, setChoixCanRight] = useState(false);
+  const infiniteSentinelRef = useRef<HTMLDivElement>(null);
+  // Session-stable shuffle seed (changes on page load, stable across re-renders)
+  const sessionSeed = useMemo(() => Math.random(), []);
+
+  // Pagination state — must be declared before filteredProducts so the infinite-scroll
+  // useEffect (which depends on filteredProducts) can safely reference setCurrentPage
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
+  // Reset page when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchParams]);
 
   // Close cat dropdown on outside click
   useEffect(() => {
@@ -33,19 +49,51 @@ const Index = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  // Track "Choix du moment" carousel scroll arrows
+  const updateChoixScroll = useCallback(() => {
+    const el = choixCarouselRef.current;
+    if (!el) return;
+    setChoixCanLeft(el.scrollLeft > 4);
+    setChoixCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
 
-  // Reset page when filters change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchParams]);
+    updateChoixScroll();
+    const el = choixCarouselRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateChoixScroll, { passive: true });
+    window.addEventListener('resize', updateChoixScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', updateChoixScroll);
+      window.removeEventListener('resize', updateChoixScroll);
+    };
+  }, [updateChoixScroll]);
 
   const { data: allProducts = [], isLoading: productsLoading } = useQuery({
     queryKey: ["all-products"],
     queryFn: () => productsApi.getAll({ published: true }),
   });
+
+  // Stable carousel products — MUST be after allProducts to avoid TDZ error
+  const choixProducts = useMemo(() => {
+    if (!allProducts.length) return [];
+    return [...allProducts]
+      .sort((a, b) => {
+        const ha = Math.abs(Math.sin((a.id.charCodeAt(0) + a.id.charCodeAt(a.id.length - 1)) * sessionSeed * 3571));
+        const hb = Math.abs(Math.sin((b.id.charCodeAt(0) + b.id.charCodeAt(b.id.length - 1)) * sessionSeed * 3571));
+        return ha - hb;
+      })
+      .slice(0, 12);
+  }, [allProducts, sessionSeed]);
+
+  // Re-check arrow visibility once products are rendered in the carousel DOM
+  // MUST be after choixProducts declaration to avoid TDZ error
+  useEffect(() => {
+    if (choixProducts.length > 0) {
+      const t = setTimeout(updateChoixScroll, 50);
+      return () => clearTimeout(t);
+    }
+  }, [choixProducts.length, updateChoixScroll]);
 
   const { data: categories = [], isLoading: catsLoading } = useQuery({
     queryKey: ["categories"],
@@ -115,6 +163,13 @@ const Index = () => {
       });
     } else if (sortParam === "new") {
       result = [...result].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    } else {
+      // Default: shuffle randomly each page load (stable within this session via sessionSeed)
+      result = [...result].sort((a, b) => {
+        const ha = Math.abs(Math.sin((a.id.charCodeAt(0) + a.id.charCodeAt(a.id.length - 1)) * sessionSeed * 9973)) ;
+        const hb = Math.abs(Math.sin((b.id.charCodeAt(0) + b.id.charCodeAt(b.id.length - 1)) * sessionSeed * 9973));
+        return ha - hb;
+      });
     }
 
     if (searchParams.get("onlyPromo") === "true") {
@@ -140,7 +195,21 @@ const Index = () => {
     }
 
     return result;
-  }, [allProducts, activeCategoryId, searchParam, searchParams]);
+  }, [allProducts, activeCategoryId, searchParam, searchParams, sessionSeed]);
+
+  // Infinite scroll observer — placed AFTER filteredProducts declaration to avoid TDZ error
+  useEffect(() => {
+    const el = infiniteSentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setCurrentPage(p => p + 1);
+      },
+      { rootMargin: '300px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [filteredProducts.length]);
 
   // Pagination
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
@@ -231,18 +300,34 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* CAROUSEL INSTEAD OF GRID */}
-              <div className="flex overflow-x-auto gap-3 scrollbar-hide snap-x pb-2">
-                {/* Take top 8 discounted or random products for the promo section */}
-                {[...allProducts]
-                  .sort((a, b) => 0.5 - Math.random()) // Randomize
-                  .slice(0, 8)
-                  .map((product, i) => (
+              {/* CAROUSEL WITH ARROWS */}
+              <div className="relative">
+                {choixCanLeft && (
+                  <button
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-border shadow flex items-center justify-center hover:bg-white transition-colors"
+                    onClick={() => choixCarouselRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                )}
+                {choixCanRight && (
+                  <button
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-border shadow flex items-center justify-center hover:bg-white transition-colors"
+                    onClick={() => choixCarouselRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                )}
+              <div ref={choixCarouselRef} className="flex overflow-x-auto gap-3 scrollbar-hide snap-x pb-2" onScroll={updateChoixScroll}>
+                {choixProducts.map((product, i) => {
+                  // Stable fake review count derived from product id — never changes on re-render
+                  const reviewCount = 12 + ((product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1)) * 7) % 488;
+                  return (
                     <motion.div
-                      key={`promo-${product.id}-${i}`}
+                      key={`promo-${product.id}`}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.1 }}
+                      transition={{ delay: Math.min(i * 0.05, 0.4) }}
                       className="shrink-0 w-[140px] sm:w-[160px] snap-center bg-card border border-border rounded-xl overflow-hidden shadow-sm relative group cursor-pointer hover:border-orange-500/50 transition-colors"
                       onClick={() => window.location.href = `/product/${product.id}`}
                     >
@@ -255,7 +340,7 @@ const Index = () => {
                         <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm text-white text-[10px] py-1 px-1.5 flex justify-between items-center">
                           <div className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                            <span className="text-[9px]">15:19:51</span>
+                            <span className="text-[9px]">En stock</span>
                           </div>
                         </div>
                       </div>
@@ -269,12 +354,14 @@ const Index = () => {
                         </div>
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                           <span className="text-yellow-400">★★★★★</span>
-                          <span className="text-[9px]">({Math.floor(Math.random() * 500) + 12})</span>
+                          <span className="text-[9px]">({reviewCount})</span>
                         </div>
                       </div>
                     </motion.div>
-                  ))}
-              </div>
+                  );
+                })}
+              </div>{/* end carousel scroll */}
+              </div>{/* end relative wrapper */}
             </div>
           </div>
         )}
@@ -692,18 +779,10 @@ const Index = () => {
                 </div>
               )}
 
-              {/* ── PAGINATION (VOIR PLUS) ── */}
+              {/* ── INFINITE SCROLL SENTINEL ── */}
               {currentPage * ITEMS_PER_PAGE < filteredProducts.length && (
-                <div className="flex justify-center py-8">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage(p => p + 1);
-                    }}
-                    className="bg-card border border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/50 font-bold py-3 px-12 rounded-full shadow-sm transition-all text-sm uppercase tracking-wider"
-                  >
-                    Voir plus
-                  </button>
+                <div ref={infiniteSentinelRef} className="h-12 flex items-center justify-center py-4">
+                  <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                 </div>
               )}
             </>

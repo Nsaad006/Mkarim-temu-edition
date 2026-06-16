@@ -59,7 +59,7 @@ const OrderSuccess = () => {
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary selection:text-white">
             <Navbar />
-            <div className="container mx-auto px-4 pt-32 pb-24 flex-1">
+            <div className="container mx-auto px-4 pt-8 pb-24 flex-1">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}

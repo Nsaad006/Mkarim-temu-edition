@@ -25,6 +25,7 @@ import { citiesApi } from "@/api/cities";
 import { City } from "@/api/cities";
 import { toast } from "@/hooks/use-toast";
 import { useSettings } from "@/context/SettingsContext";
+import { logEvent } from "@/lib/logger";
 
 import { settingsApi } from "@/api/settings";
 
@@ -89,8 +90,9 @@ const Cities = () => {
     // Create mutation
     const createMutation = useMutation({
         mutationFn: (data: Omit<City, 'id'>) => citiesApi.create(data),
-        onSuccess: () => {
+        onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: ['admin-cities'] });
+            logEvent({ action: "CITY_CREATED", metadata: { cityName: result?.name } });
             toast({ title: "Ville ajoutée" });
             setIsDialogOpen(false);
             resetForm();
@@ -100,8 +102,9 @@ const Cities = () => {
     // Update mutation
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: Partial<City> }) => citiesApi.update(id, data),
-        onSuccess: () => {
+        onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin-cities'] });
+            logEvent({ action: "CITY_UPDATED", metadata: { cityId: variables.id, cityName: result?.name } });
             toast({ title: "Ville modifiée" });
             setIsDialogOpen(false);
             resetForm();

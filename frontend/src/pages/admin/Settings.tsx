@@ -5,15 +5,46 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Save, Loader2, Store, Phone, CreditCard, Mail, FileText } from "lucide-react";
+import { Save, Loader2, Store, Phone, CreditCard, Mail, FileText, KeyRound } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsApi, GlobalSettings } from "@/api/settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/ImageUpload";
+import { logEvent } from "@/lib/logger";
+import { adminsApi } from "@/api/admins";
 
 const Settings = () => {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<Partial<GlobalSettings>>({});
+
+    // Password change state (for logged-in super admin)
+    const [pwdForm, setPwdForm] = useState({ newPassword: "", confirmPassword: "" });
+    const currentUser = (() => { try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; } })();
+
+    const changePasswordMutation = useMutation({
+        mutationFn: (newPwd: string) => adminsApi.updatePassword(currentUser.id, newPwd),
+        onSuccess: () => {
+            logEvent({ action: "ADMIN_USER_PASSWORD_CHANGED", metadata: { userId: currentUser.id } });
+            setPwdForm({ newPassword: "", confirmPassword: "" });
+            toast({ title: "Mot de passe modifié", description: "Votre mot de passe a été mis à jour avec succès." });
+        },
+        onError: () => {
+            toast({ title: "Erreur", description: "Impossible de modifier le mot de passe.", variant: "destructive" });
+        },
+    });
+
+    const handleChangePassword = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (pwdForm.newPassword.length < 6) {
+            toast({ title: "Erreur", description: "Le mot de passe doit comporter au moins 6 caractères.", variant: "destructive" });
+            return;
+        }
+        if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+            toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" });
+            return;
+        }
+        changePasswordMutation.mutate(pwdForm.newPassword);
+    };
 
     const { data: settings, isLoading } = useQuery({
         queryKey: ['settings'],
@@ -28,6 +59,7 @@ const Settings = () => {
         mutationFn: (data: Partial<GlobalSettings>) => settingsApi.update(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['settings'] });
+            logEvent({ action: "SETTINGS_UPDATED" });
             toast({ title: "Paramètres enregistrés", description: "La configuration de la boutique a été mise à jour." });
         },
         onError: () => {
@@ -65,6 +97,7 @@ const Settings = () => {
                         <TabsTrigger value="checkout" className={tabClass}><CreditCard className="w-4 h-4" />Paiement</TabsTrigger>
                         <TabsTrigger value="email" className={tabClass}><Mail className="w-4 h-4" />Email</TabsTrigger>
                         <TabsTrigger value="invoice" className={tabClass}><FileText className="w-4 h-4" />Facture</TabsTrigger>
+                        <TabsTrigger value="account" className={tabClass}><KeyRound className="w-4 h-4" />Mon Compte</TabsTrigger>
                     </TabsList>
 
                     <div className="mt-6">
@@ -466,6 +499,51 @@ const Settings = () => {
                                         />
                                     </div>
                                 </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* ── COMPTE TAB ──────────────────────────────────── */}
+                        <TabsContent value="account" className="space-y-6 m-0">
+                            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+                                <div className="flex items-center gap-3 pb-2 border-b">
+                                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
+                                        {(currentUser.name || currentUser.email || "?").charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{currentUser.name || "—"}</p>
+                                        <p className="text-xs text-muted-foreground">{currentUser.email || "—"}</p>
+                                    </div>
+                                </div>
+
+                                <h2 className="text-base font-semibold pt-1">Changer le mot de passe</h2>
+                                <form onSubmit={handleChangePassword} className="space-y-4 max-w-sm">
+                                    <div className="space-y-2">
+                                        <Label>Nouveau mot de passe</Label>
+                                        <Input
+                                            type="password"
+                                            placeholder="Minimum 6 caractères"
+                                            value={pwdForm.newPassword}
+                                            onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Confirmer le mot de passe</Label>
+                                        <Input
+                                            type="password"
+                                            placeholder="Répétez le mot de passe"
+                                            value={pwdForm.confirmPassword}
+                                            onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <Button type="submit" disabled={changePasswordMutation.isPending} className="gap-2">
+                                        {changePasswordMutation.isPending
+                                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Modification...</>
+                                            : <><KeyRound className="w-4 h-4" /> Modifier le mot de passe</>
+                                        }
+                                    </Button>
+                                </form>
                             </div>
                         </TabsContent>
                     </div>

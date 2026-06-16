@@ -229,16 +229,25 @@ const ProductsPage = () => {
     });
   }, [allProducts, filters, searchParam]);
 
+  // Session-stable seed — changes on every page load but stays constant within the session
+  const sessionSeed = useMemo(() => Math.random(), []);
+
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
       switch (sortBy) {
         case "price-asc": return a.price - b.price;
         case "price-desc": return b.price - a.price;
         case "name": return a.name.localeCompare(b.name);
-        default: return 0;
+        case "new": return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        default: {
+          // "featured" — shuffle with session-stable deterministic order
+          const ha = Math.abs(Math.sin((a.id.charCodeAt(0) + a.id.charCodeAt(a.id.length - 1)) * sessionSeed * 9973));
+          const hb = Math.abs(Math.sin((b.id.charCodeAt(0) + b.id.charCodeAt(b.id.length - 1)) * sessionSeed * 9973));
+          return ha - hb;
+        }
       }
     });
-  }, [filteredProducts, sortBy]);
+  }, [filteredProducts, sortBy, sessionSeed]);
 
   // Pagination logic
   const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);

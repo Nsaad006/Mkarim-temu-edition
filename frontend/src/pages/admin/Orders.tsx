@@ -100,6 +100,7 @@ import { toast } from "@/hooks/use-toast";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { useSettings } from "@/context/SettingsContext";
+import { logEvent } from "@/lib/logger";
 import { getImageUrl } from "@/lib/image-utils";
 
 const Orders = () => {
@@ -163,15 +164,43 @@ const Orders = () => {
         queryFn: () => productsApi.getAll(),
     });
 
+    const STATUS_ACTION_MAP: Record<string, any> = {
+        CONFIRMED: "ORDER_CONFIRMED",
+        SHIPPED:   "ORDER_SHIPPED",
+        DELIVERED: "ORDER_DELIVERED",
+        CANCELLED: "ORDER_CANCELLED",
+        PENDING:   "ORDER_PENDING",
+    };
+
+    // Returns the variant-specific image if one was selected, otherwise the product's default image
+    const getItemImage = (item: any): string => {
+        if (item.selectedVariants && item.product?.variants) {
+            const variants: any[] = Array.isArray(item.product.variants) ? item.product.variants : [];
+            for (const variant of variants) {
+                if (variant.images) {
+                    const selectedValue = item.selectedVariants[variant.type];
+                    if (selectedValue && variant.images[selectedValue]) {
+                        return variant.images[selectedValue];
+                    }
+                }
+            }
+        }
+        return item.product?.image || "";
+    };
+
     const updateStatusMutation = useMutation({
-        mutationFn: ({ id, status, reason }: { id: string; status: string; reason?: string }) =>
+        mutationFn: ({ id, status, reason, orderNumber }: { id: string; status: string; reason?: string; orderNumber?: string }) =>
             ordersApi.updateStatus(id, status, reason),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
 
-            // If the updated order is the one currently selected in the details sheet,
-            // we close the sheet to avoid stale data and trigger backdrop cleanup.
+            const action = STATUS_ACTION_MAP[variables.status] || "ORDER_STATUS_CHANGED";
+            logEvent({
+                action,
+                metadata: { orderId: variables.id, orderNumber: variables.orderNumber, reason: variables.reason },
+            });
+
             if (selectedOrder?.id === variables.id) {
                 setIsDetailsOpen(false);
                 setSelectedOrder(null);
@@ -194,9 +223,11 @@ const Orders = () => {
     const partialReturnMutation = useMutation({
         mutationFn: ({ id, items, reason }: { id: string; items: { productId: string; quantity: number }[]; reason?: string }) =>
             ordersApi.partialReturn(id, items, reason),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+            const retOrder = orders.find((o: any) => o.id === variables.id);
+            logEvent({ action: "ORDER_RETURN", metadata: { orderId: variables.id, orderNumber: retOrder?.orderNumber, itemCount: variables.items.length, reason: variables.reason } });
             toast({
                 title: "Retour enregistré",
                 description: "Le retour a été traité avec succès.",
@@ -214,10 +245,12 @@ const Orders = () => {
     const updateItemsMutation = useMutation({
         mutationFn: ({ id, items }: { id: string; items: { productId: string; quantity: number; price: number }[] }) =>
             ordersApi.updateItems(id, items),
-        onSuccess: (updatedOrder) => {
+        onSuccess: (updatedOrder, variables) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             setSelectedOrder(updatedOrder);
             setIsEditingOrder(false);
+            const editOrder = orders.find((o: any) => o.id === variables.id);
+            logEvent({ action: "ORDER_EDITED", metadata: { orderId: variables.id, orderNumber: editOrder?.orderNumber || updatedOrder?.orderNumber, itemCount: variables.items.length } });
             toast({ title: "Succès", description: "La commande a été modifiée avec succès." });
         },
         onError: (error: any) => {
@@ -231,10 +264,11 @@ const Orders = () => {
 
     const bulkDeleteOrdersMutation = useMutation({
         mutationFn: (ids: string[]) => ordersApi.bulkDelete(ids),
-        onSuccess: (data) => {
+        onSuccess: (data, ids) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
             setSelectedOrderIds([]);
+            logEvent({ action: "ORDER_DELETED", metadata: { count: data.deleted, orderIds: ids } });
             toast({ title: "Commandes supprimées", description: `${data.deleted} commande(s) supprimée(s).` });
         },
         onError: (error: any) => {
@@ -507,7 +541,8 @@ const Orders = () => {
             }
             return;
         }
-        updateStatusMutation.mutate({ id: orderId, status: newStatus });
+        const order = orders.find((o: any) => o.id === orderId);
+        updateStatusMutation.mutate({ id: orderId, status: newStatus, orderNumber: order?.orderNumber });
     };
 
     const confirmReturn = () => {
@@ -1071,8 +1106,8 @@ const Orders = () => {
                                             <div key={idx} className="p-3 flex justify-between items-center bg-card hover:bg-muted/10 transition-colors">
                                                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                                                     <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center shrink-0 overflow-hidden">
-                                                        {item.product?.image ? (
-                                                            <img src={getImageUrl(item.product.image)} alt={item.product?.name || "produit"} className="w-full h-full object-cover" />
+                                                        {getItemImage(item) ? (
+                                                            <img src={getImageUrl(getItemImage(item))} alt={item.product?.name || "produit"} className="w-full h-full object-cover" />
                                                         ) : (
                                                             <Package className="w-5 h-5 text-gray-500" />
                                                         )}

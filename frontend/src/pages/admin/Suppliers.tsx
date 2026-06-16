@@ -30,6 +30,7 @@ import { suppliersApi } from "@/api/suppliers";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { logEvent } from "@/lib/logger";
 
 const Suppliers = () => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -63,8 +64,9 @@ const Suppliers = () => {
     // Create mutation
     const createMutation = useMutation({
         mutationFn: (data: any) => suppliersApi.create(data),
-        onSuccess: () => {
+        onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+            logEvent({ action: "SUPPLIER_CREATED", metadata: { supplierName: result?.name } });
             toast({ title: "Fournisseur ajouté" });
             setIsDialogOpen(false);
             resetForm();
@@ -74,8 +76,9 @@ const Suppliers = () => {
     // Update mutation
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: any }) => suppliersApi.update(id, data),
-        onSuccess: () => {
+        onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+            logEvent({ action: "SUPPLIER_UPDATED", metadata: { supplierId: variables.id, supplierName: result?.name } });
             toast({ title: "Fournisseur mis à jour" });
             setIsDialogOpen(false);
             resetForm();
@@ -85,8 +88,9 @@ const Suppliers = () => {
     // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: (id: string) => suppliersApi.delete(id),
-        onSuccess: () => {
+        onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+            logEvent({ action: "SUPPLIER_DELETED", metadata: { supplierId: id } });
             toast({ title: "Fournisseur supprimé" });
         },
         onError: (err: any) => {
