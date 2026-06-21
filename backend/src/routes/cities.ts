@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -38,6 +39,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
             }
         });
 
+        broadcastEvent(SSE_EVENTS.CITY_CHANGED);
         res.status(201).json(newCity);
     } catch (error) {
         console.error('Error creating city:', error);
@@ -61,6 +63,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
             }
         });
 
+        broadcastEvent(SSE_EVENTS.CITY_CHANGED);
         res.json(updatedCity);
     } catch (error) {
         console.error('Error updating city:', error);

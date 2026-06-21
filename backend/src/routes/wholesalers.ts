@@ -5,6 +5,7 @@ import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
 import { sendEmail } from '../lib/email';
 import multer from 'multer';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const uploadPdf = multer({ storage: multer.memoryStorage() });
 
@@ -126,6 +127,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS
                 responsibleName: type === 'ENTREPRISE' ? responsibleName : null
             }
         });
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.status(201).json(wholesaler);
     } catch (error) {
         console.error('Error creating wholesaler:', error);
@@ -157,6 +159,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
                 responsibleName: type === 'ENTREPRISE' ? responsibleName : null
             }
         });
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.json(wholesaler);
     } catch (error) {
         console.error('Error updating wholesaler:', error);
@@ -183,6 +186,7 @@ router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMIS
             where: { id }
         });
 
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.status(204).send();
     } catch (error) {
         console.error('Error deleting wholesaler:', error);
@@ -265,6 +269,7 @@ router.post('/:id/orders', authenticate, authorize(['super_admin', 'editor'], [P
             return order;
         });
 
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.status(201).json(result);
     } catch (error: any) {
         console.error('Error creating wholesale order:', error);
@@ -321,6 +326,7 @@ router.post('/orders/:orderId/payments', authenticate, authorize(['super_admin',
             });
         });
 
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.json({ success: true });
     } catch (error: any) {
         console.error('Error adding payment:', error);
@@ -405,6 +411,7 @@ router.put('/orders/:id', authenticate, authorize(['super_admin', 'editor'], PER
             });
         });
 
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.json({ success: true });
     } catch (error: any) {
         console.error('Error updating order:', error);
@@ -437,6 +444,7 @@ router.delete('/orders/:id', authenticate, authorize(['super_admin', 'editor'], 
             await tx.wholesaleOrder.delete({ where: { id } });
         });
 
+        broadcastEvent(SSE_EVENTS.WHOLESALER_CHANGED);
         res.status(204).send();
     } catch (error: any) {
         console.error('Error deleting order:', error);

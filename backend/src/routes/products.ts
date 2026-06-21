@@ -353,6 +353,7 @@ router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMIS
             where: { id },
             data: { deletedAt: new Date(), published: false }
         });
+        broadcastEvent(SSE_EVENTS.PRODUCT_DELETED, { productId: id });
         res.status(204).send();
     } catch (error) {
         console.error('Error softly deleting product:', error);
@@ -368,6 +369,7 @@ router.post('/:id/restore', authenticate, authorize(['super_admin', 'editor'], [
             where: { id },
             data: { deletedAt: null }
         });
+        broadcastEvent(SSE_EVENTS.PRODUCT_UPDATED, { productId: id });
         res.json({ success: true });
     } catch (error) {
         console.error('Error restoring product:', error);
@@ -392,6 +394,7 @@ router.delete('/:id/force', authenticate, authorize(['super_admin', 'editor'], [
         }
 
         await prisma.product.delete({ where: { id } });
+        broadcastEvent(SSE_EVENTS.PRODUCT_DELETED, { productId: id });
         res.status(204).send();
     } catch (error) {
         console.error('Error force deleting product:', error);

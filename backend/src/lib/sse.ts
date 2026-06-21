@@ -68,6 +68,34 @@ export const SSE_EVENTS = {
     PRODUCT_UPDATED:      'PRODUCT_UPDATED',
     PRODUCT_DELETED:      'PRODUCT_DELETED',
 
+    // Categories
+    CATEGORY_CHANGED:     'CATEGORY_CHANGED',
+
+    // Customers
+    CUSTOMER_CHANGED:     'CUSTOMER_CHANGED',
+
+    // Cities
+    CITY_CHANGED:         'CITY_CHANGED',
+
+    // Settings
+    SETTINGS_CHANGED:     'SETTINGS_CHANGED',
+
+    // Suppliers
+    SUPPLIER_CHANGED:     'SUPPLIER_CHANGED',
+
+    // Promotions
+    PROMOTION_CHANGED:    'PROMOTION_CHANGED',
+
+    // Procurements
+    PROCUREMENT_CHANGED:  'PROCUREMENT_CHANGED',
+
+    // Wholesalers
+    WHOLESALER_CHANGED:   'WHOLESALER_CHANGED',
+
+    // Admin users & roles
+    ADMIN_USER_CHANGED:   'ADMIN_USER_CHANGED',
+    ROLE_CHANGED:         'ROLE_CHANGED',
+
     // Stats / generic
     STATS_UPDATED:        'STATS_UPDATED',
 };

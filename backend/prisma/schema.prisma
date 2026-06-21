@@ -67,9 +67,11 @@ model Order {
   status       OrderStatus @default(PENDING)
   returnReason String?     // Reason for return
   total        Int
+  discount     Int         @default(0)
+  promoCode    String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
-  
+
   customer     Customer?   @relation(fields: [customerId], references: [id])
   items        OrderItem[]
   returnedItems ReturnedItem[]
@@ -403,6 +405,24 @@ model WholesaleOrderItem {
 enum WholesaleStatus {
   PENDING
   PAID
+}
+
+model Promotion {
+  id            String    @id @default(uuid())
+  name          String
+  type          String    // "VOLUME_DISCOUNT" | "PROMO_CODE"
+  code          String?   @unique
+  discountType  String    // "PERCENT" | "FIXED"
+  discountValue Float
+  minQuantity   Int?      // VOLUME_DISCOUNT: minimum units per product to trigger
+  productId     String?   // VOLUME_DISCOUNT: null = applies to all products
+  minOrderTotal Float?    // PROMO_CODE: minimum cart total to apply
+  maxUses       Int?      // null = unlimited
+  usedCount     Int       @default(0)
+  active        Boolean   @default(true)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model ActivityLog {

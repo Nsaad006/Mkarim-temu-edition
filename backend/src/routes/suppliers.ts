@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -86,6 +87,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
             data: { name, phone, email, city, notes }
         });
 
+        broadcastEvent(SSE_EVENTS.SUPPLIER_CHANGED);
         res.status(201).json(newSupplier);
     } catch (error) {
         console.error('Error creating supplier:', error);
@@ -104,6 +106,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISSION
             data: { name, phone, email, city, notes }
         });
 
+        broadcastEvent(SSE_EVENTS.SUPPLIER_CHANGED);
         res.json(updatedSupplier);
     } catch (error) {
         console.error('Error updating supplier:', error);
@@ -126,6 +129,7 @@ router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], PERMISS
         }
 
         await prisma.supplier.delete({ where: { id } });
+        broadcastEvent(SSE_EVENTS.SUPPLIER_CHANGED);
         res.status(204).send();
     } catch (error) {
         console.error('Error deleting supplier:', error);

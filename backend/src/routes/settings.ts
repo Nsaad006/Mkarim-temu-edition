@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -172,6 +173,7 @@ router.put('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.S
             freeShippingThreshold: updatedSettings.freeShippingThreshold
         });
 
+        broadcastEvent(SSE_EVENTS.SETTINGS_CHANGED);
         res.json(updatedSettings);
     } catch (error) {
         console.error('Error updating settings:', error);

@@ -53,7 +53,7 @@ const Customers = () => {
     const [showOrderHistory, setShowOrderHistory] = useState(false);
     const [showCreateOrder, setShowCreateOrder] = useState(false);
     const [showAddCustomer, setShowAddCustomer] = useState(false);
-    const [orderItems, setOrderItems] = useState<Array<{ productId: string; quantity: number; price: number }>>([]);
+    const [orderItems, setOrderItems] = useState<Array<{ productId: string; quantity: number; price: number; selectedVariants: Record<string, string> }>>([]);
     const [productSearch, setProductSearch] = useState("");
     const [showProductDropdown, setShowProductDropdown] = useState(false);
     const [typeFilter, setTypeFilter] = useState("all");
@@ -186,13 +186,25 @@ const Customers = () => {
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
+        // Initialize selectedVariants with empty string for each variant type
+        const variants: any[] = Array.isArray((product as any).variants) ? (product as any).variants : [];
+        const selectedVariants: Record<string, string> = {};
+        variants.forEach((v: any) => { selectedVariants[v.type] = ""; });
+
         setOrderItems([...orderItems, {
             productId: product.id,
             quantity: 1,
-            price: product.price
+            price: product.price,
+            selectedVariants,
         }]);
         setProductSearch("");
         setShowProductDropdown(false);
+    };
+
+    const handleUpdateVariant = (index: number, variantType: string, value: string) => {
+        const newItems = [...orderItems];
+        newItems[index].selectedVariants = { ...newItems[index].selectedVariants, [variantType]: value };
+        setOrderItems(newItems);
     };
 
     const handleRemoveProduct = (index: number) => {
@@ -246,7 +258,8 @@ const Customers = () => {
             items: orderItems.map(item => ({
                 productId: item.productId,
                 quantity: item.quantity,
-                price: item.price
+                price: item.price,
+                selectedVariants: Object.keys(item.selectedVariants).length > 0 ? item.selectedVariants : undefined,
             })),
             bypassStockCheck: true // Admin can create orders regardless of stock
         };
@@ -731,10 +744,31 @@ const Customers = () => {
                                         <TableBody>
                                             {orderItems.map((item, index) => {
                                                 const product = products.find(p => p.id === item.productId);
+                                                const productVariants: any[] = Array.isArray((product as any)?.variants) ? (product as any).variants : [];
                                                 return (
                                                     <TableRow key={index}>
                                                         <TableCell className="font-medium">
-                                                            {product?.name || 'Produit inconnu'}
+                                                            <div className="space-y-2">
+                                                                <span>{product?.name || 'Produit inconnu'}</span>
+                                                                {productVariants.map((variant: any) => (
+                                                                    <div key={variant.type} className="flex items-center gap-2">
+                                                                        <span className="text-xs text-muted-foreground w-16 shrink-0">{variant.type}:</span>
+                                                                        <Select
+                                                                            value={item.selectedVariants[variant.type] || ""}
+                                                                            onValueChange={(val) => handleUpdateVariant(index, variant.type, val)}
+                                                                        >
+                                                                            <SelectTrigger className="h-7 text-xs w-32">
+                                                                                <SelectValue placeholder="Choisir..." />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {(variant.options || []).map((opt: string) => (
+                                                                                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </TableCell>
                                                         <TableCell>
                                                             <Input

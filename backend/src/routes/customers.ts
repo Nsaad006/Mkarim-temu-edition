@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -69,6 +70,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS
             }
         });
 
+        broadcastEvent(SSE_EVENTS.CUSTOMER_CHANGED);
         res.status(201).json(customer);
     } catch (error: any) {
         if (error.code === 'P2002') {
@@ -98,6 +100,7 @@ router.patch('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISS
             }
         });
 
+        broadcastEvent(SSE_EVENTS.CUSTOMER_CHANGED);
         res.json(customer);
     } catch (error) {
         console.error('Error updating customer:', error);
@@ -117,6 +120,7 @@ router.delete('/:id', authenticate, authorize(['super_admin'], [PERMISSIONS.CUST
 
         await prisma.customer.delete({ where: { id } });
 
+        broadcastEvent(SSE_EVENTS.CUSTOMER_CHANGED);
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting customer:', error);
@@ -138,6 +142,7 @@ router.post('/bulk-delete', authenticate, authorize(['super_admin'], [PERMISSION
 
         const result = await prisma.customer.deleteMany({ where: { id: { in: ids } } });
 
+        broadcastEvent(SSE_EVENTS.CUSTOMER_CHANGED);
         res.json({ success: true, deleted: result.count });
     } catch (error) {
         console.error('Error bulk deleting customers:', error);

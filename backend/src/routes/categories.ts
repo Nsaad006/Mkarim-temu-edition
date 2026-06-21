@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, optionalAuthenticate } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -71,6 +72,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], [PERMISSIONS
             }
         });
 
+        broadcastEvent(SSE_EVENTS.CATEGORY_CHANGED);
         res.status(201).json(newCategory);
     } catch (error) {
         console.error('Error creating category:', error);
@@ -96,6 +98,7 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMISSIO
             }
         });
 
+        broadcastEvent(SSE_EVENTS.CATEGORY_CHANGED);
         res.json(updatedCategory);
     } catch (error) {
         console.error('Error updating category:', error);
@@ -115,6 +118,7 @@ router.delete('/:id', authenticate, authorize(['super_admin', 'editor'], [PERMIS
             where: { id }
         });
 
+        broadcastEvent(SSE_EVENTS.CATEGORY_CHANGED);
         res.status(204).send();
     } catch (error) {
         console.error('Error deleting category:', error);

@@ -54,7 +54,7 @@ export const ordersApi = {
     },
 
     // Update order items (admin)
-    updateItems: async (id: string, items: { productId: string; quantity: number; price: number }[]): Promise<Order> => {
+    updateItems: async (id: string, items: { productId: string; quantity: number; price: number; selectedVariants?: Record<string, string> }[]): Promise<Order> => {
         const { data } = await apiClient.put<Order>(`/api/orders/${id}/items`, { items });
         return data;
     },

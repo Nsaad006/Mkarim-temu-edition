@@ -37,12 +37,13 @@ export function useRealtimeUpdates() {
 
                     switch (type) {
                         case 'CONNECTED':
-                            // Initial connection confirmation — no action needed
                             break;
 
+                        // ── Orders ──
                         case 'ORDER_CREATED':
                             queryClient.invalidateQueries({ queryKey: ['orders'] });
                             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+                            queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
                             toast({
                                 title: '🛒 Nouvelle commande',
                                 description: `Commande ${data?.orderNumber} — ${data?.customerName}`,
@@ -51,25 +52,75 @@ export function useRealtimeUpdates() {
                             break;
 
                         case 'ORDER_STATUS_UPDATED':
-                            queryClient.invalidateQueries({ queryKey: ['orders'] });
-                            queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
-                            break;
-
                         case 'ORDER_ITEMS_UPDATED':
-                            queryClient.invalidateQueries({ queryKey: ['orders'] });
-                            queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
-                            break;
-
                         case 'ORDER_DELETED':
                             queryClient.invalidateQueries({ queryKey: ['orders'] });
                             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+                            queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
                             break;
 
+                        // ── Products ──
                         case 'PRODUCT_CREATED':
                         case 'PRODUCT_UPDATED':
                         case 'PRODUCT_DELETED':
                             queryClient.invalidateQueries({ queryKey: ['products'] });
+                            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
                             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+                            break;
+
+                        // ── Categories ──
+                        case 'CATEGORY_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['categories'] });
+                            break;
+
+                        // ── Customers ──
+                        case 'CUSTOMER_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+                            queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+                            break;
+
+                        // ── Cities ──
+                        case 'CITY_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['admin-cities'] });
+                            queryClient.invalidateQueries({ queryKey: ['cities'] });
+                            break;
+
+                        // ── Settings ──
+                        case 'SETTINGS_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['settings'] });
+                            break;
+
+                        // ── Suppliers ──
+                        case 'SUPPLIER_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+                            break;
+
+                        // ── Promotions ──
+                        case 'PROMOTION_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['promotions'] });
+                            queryClient.invalidateQueries({ queryKey: ['promotions-public'] });
+                            break;
+
+                        // ── Procurements ──
+                        case 'PROCUREMENT_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['procurements'] });
+                            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+                            queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+                            break;
+
+                        // ── Wholesalers ──
+                        case 'WHOLESALER_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['wholesalers'] });
+                            queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] });
+                            break;
+
+                        // ── Admin users & roles ──
+                        case 'ADMIN_USER_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+                            break;
+
+                        case 'ROLE_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['roles'] });
                             break;
 
                         default:

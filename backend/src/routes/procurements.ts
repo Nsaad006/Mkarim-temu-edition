@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -68,6 +69,8 @@ router.post('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.
             return { procurement, product };
         });
 
+        broadcastEvent(SSE_EVENTS.PROCUREMENT_CHANGED);
+        broadcastEvent(SSE_EVENTS.PRODUCT_UPDATED, { productId });
         res.status(201).json(result);
     } catch (error) {
         console.error('Error creating procurement:', error);
@@ -83,6 +86,7 @@ router.delete('/bulk', authenticate, authorize(['super_admin'], PERMISSIONS.LOGI
             return res.status(400).json({ error: 'IDs requis' });
         }
         const { count } = await prisma.procurement.deleteMany({ where: { id: { in: ids } } });
+        broadcastEvent(SSE_EVENTS.PROCUREMENT_CHANGED);
         res.json({ deleted: count });
     } catch (error) {
         console.error('Error deleting procurements:', error);
@@ -94,6 +98,7 @@ router.delete('/bulk', authenticate, authorize(['super_admin'], PERMISSIONS.LOGI
 router.delete('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.LOGISTICS_MANAGE), async (req, res) => {
     try {
         await prisma.procurement.delete({ where: { id: req.params.id } });
+        broadcastEvent(SSE_EVENTS.PROCUREMENT_CHANGED);
         res.json({ ok: true });
     } catch (error) {
         console.error('Error deleting procurement:', error);

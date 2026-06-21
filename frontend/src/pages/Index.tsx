@@ -9,6 +9,7 @@ import SEO from "@/components/SEO";
 import { productsApi } from "@/api/products";
 import { categoriesApi } from "@/api/categories";
 import { settingsApi } from "@/api/settings";
+import { promotionsApi } from "@/api/promotions";
 import { useQuery } from "@tanstack/react-query";
 import { getImageUrl } from "@/lib/image-utils";
 
@@ -105,6 +106,12 @@ const Index = () => {
     queryFn: () => settingsApi.getSettings(),
   });
 
+  const { data: publicPromotions = [] } = useQuery({
+    queryKey: ["promotions-public"],
+    queryFn: promotionsApi.getPublic,
+    enabled: promoParam,
+  });
+
   // Derive which category object is selected
   const selectedParent = useMemo(
     () => categories.find((c: any) => c.slug === categorySlug && !c.parentId) || null,
@@ -151,7 +158,14 @@ const Index = () => {
     }
 
     if (promoParam) {
-      result = result.filter((p) => p.originalPrice && p.originalPrice > p.price);
+      const volumeDiscounts = publicPromotions.filter((p) => p.type === 'VOLUME_DISCOUNT');
+      const hasGlobalVolumeDiscount = volumeDiscounts.some((p) => !p.productId);
+      const promotedProductIds = new Set(volumeDiscounts.filter((p) => p.productId).map((p) => p.productId!));
+      result = result.filter((p) =>
+        hasGlobalVolumeDiscount ||
+        (p.originalPrice && p.originalPrice > p.price) ||
+        promotedProductIds.has(p.id)
+      );
     }
 
     const sortParam = searchParams.get("sort");
@@ -195,7 +209,7 @@ const Index = () => {
     }
 
     return result;
-  }, [allProducts, activeCategoryId, searchParam, searchParams, sessionSeed]);
+  }, [allProducts, activeCategoryId, searchParam, searchParams, sessionSeed, publicPromotions]);
 
   // Infinite scroll observer — placed AFTER filteredProducts declaration to avoid TDZ error
   useEffect(() => {

@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
 import { z } from 'zod';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -55,6 +56,7 @@ router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.ROLES_MANA
             data
         });
 
+        broadcastEvent(SSE_EVENTS.ROLE_CHANGED);
         res.json(role);
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -75,6 +77,7 @@ router.put('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.ROLES_MA
             data
         });
 
+        broadcastEvent(SSE_EVENTS.ROLE_CHANGED);
         res.json(role);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update role' });
@@ -100,6 +103,7 @@ router.delete('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.ROLES
 
         await prisma.role.delete({ where: { id } });
 
+        broadcastEvent(SSE_EVENTS.ROLE_CHANGED);
         res.json({ message: 'Role deleted' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete role' });

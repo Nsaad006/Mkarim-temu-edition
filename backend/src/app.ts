@@ -21,6 +21,7 @@ import wholesalersRouter from './routes/wholesalers';
 import rolesRouter from './routes/roles';
 import eventsRouter from './routes/events';
 import activityLogsRouter from './routes/activityLogs';
+import promotionsRouter from './routes/promotions';
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/wholesalers', wholesalersRouter);
 app.use('/api/roles', rolesRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/logs', activityLogsRouter);
+app.use('/api/promotions', promotionsRouter);
 
 // Health check
 app.get('/health', (req, res) => {

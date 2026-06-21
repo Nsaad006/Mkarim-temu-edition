@@ -12,6 +12,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import { productsApi } from "@/api/products";
+import { promotionsApi } from "@/api/promotions";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -25,39 +26,49 @@ import SEO from "@/components/SEO";
 import { getImageUrl } from "@/lib/image-utils";
 import { Clock } from "lucide-react";
 
-/* ── Countdown hook (localStorage-persisted per product, 2–6 days) ── */
-const useCountdown = (productId: string) => {
+/* ── Countdown hook ── */
+const useCountdown = (productId: string, expiresAt?: string | null, createdAt?: string | null) => {
   const storageKey = `cdx_${productId}`;
-  const MAX_SECS = 6 * 24 * 3600;
+
+  const secsUntil = (iso: string) =>
+    Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000));
 
   const [totalSecs, setTotalSecs] = useState<number>(() => {
+    if (expiresAt) return secsUntil(expiresAt);
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
-        const expiry = parseInt(stored, 10);
-        const remaining = Math.floor((expiry - Date.now()) / 1000);
+        const remaining = Math.floor((parseInt(stored, 10) - Date.now()) / 1000);
         if (remaining > 0) return remaining;
         return 0;
       }
     } catch {}
-    // First visit: random 2–6 days
     const days = 2 + Math.random() * 4;
     const expiryMs = Date.now() + days * 24 * 3600 * 1000;
     try { localStorage.setItem(storageKey, String(Math.round(expiryMs))); } catch {}
     return Math.round(days * 24 * 3600);
   });
 
+  // Sync to real expiry when promotion data loads
   useEffect(() => {
-    if (totalSecs <= 0) return;
+    if (expiresAt) setTotalSecs(secsUntil(expiresAt));
+  }, [expiresAt]);
+
+  // Always-running tick
+  useEffect(() => {
     const t = setInterval(() => setTotalSecs(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const maxSecs = expiresAt && createdAt
+    ? Math.max(1, Math.floor((new Date(expiresAt).getTime() - new Date(createdAt).getTime()) / 1000))
+    : 6 * 24 * 3600;
 
   const d = Math.floor(totalSecs / 86400);
   const h = String(Math.floor((totalSecs % 86400) / 3600)).padStart(2, "0");
   const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, "0");
   const s = String(totalSecs % 60).padStart(2, "0");
-  return { d, h, m, s, expired: totalSecs === 0, totalSecs, maxSecs: MAX_SECS };
+  return { d, h, m, s, expired: totalSecs === 0, totalSecs, maxSecs };
 };
 
 const ProductDetailPage = () => {
@@ -67,7 +78,6 @@ const ProductDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [activeVariantImage, setActiveVariantImage] = useState<string | null>(null);
-  const countdown = useCountdown(id || 'default');
 
   const { data: product, isLoading: isProductLoading } = useQuery({
     queryKey: ['product', id],
@@ -89,6 +99,25 @@ const ProductDetailPage = () => {
     queryFn: () => productsApi.getAll({ published: true }),
     enabled: !!product,
   });
+
+  const { data: publicPromotions = [] } = useQuery({
+    queryKey: ['promotions-public'],
+    queryFn: promotionsApi.getPublic,
+    enabled: !!product,
+  });
+
+  const applicablePromotion = useMemo(() => {
+    if (!product) return null;
+    return publicPromotions.find(
+      (p) => p.type === 'VOLUME_DISCOUNT' && (!p.productId || p.productId === product.id)
+    ) || null;
+  }, [publicPromotions, product]);
+
+  const countdown = useCountdown(
+    id || 'default',
+    applicablePromotion?.expiresAt ?? null,
+    applicablePromotion?.createdAt ?? null,
+  );
 
   const [relatedVisible, setRelatedVisible] = useState(10);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -380,8 +409,22 @@ const ProductDetailPage = () => {
                 </div>
               )}
 
-              {/* Countdown timer — shown only for discounted products */}
-              {discount > 0 && (
+              {/* Volume discount banner */}
+              {applicablePromotion && (
+                <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 text-xs font-semibold px-3 py-2 rounded-lg mb-3">
+                  <Tag className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {applicablePromotion.name} — Achetez {applicablePromotion.minQuantity}+ unités et économisez{" "}
+                    {applicablePromotion.discountType === "PERCENT"
+                      ? `${applicablePromotion.discountValue}%`
+                      : `${applicablePromotion.discountValue} ${currency}`}{" "}
+                    par article
+                  </span>
+                </div>
+              )}
+
+              {/* Countdown timer — shown for discounted products or active promotions with expiry */}
+              {(discount > 0 || (applicablePromotion && applicablePromotion.expiresAt)) && (
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="flex items-center gap-1.5 font-semibold text-orange-600 dark:text-orange-400">

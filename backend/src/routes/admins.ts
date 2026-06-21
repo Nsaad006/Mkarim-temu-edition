@@ -5,6 +5,7 @@ import prisma from '../lib/prisma';
 import { authenticate, authorize } from './auth';
 import { PERMISSIONS } from '../constants/permissions';
 import bcrypt from 'bcryptjs';
+import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
 
 const router = Router();
 
@@ -104,6 +105,7 @@ router.post('/', authenticate, authorize(['super_admin'], PERMISSIONS.USERS_MANA
             }
         });
 
+        broadcastEvent(SSE_EVENTS.ADMIN_USER_CHANGED);
         res.status(201).json(newAdmin);
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -135,6 +137,7 @@ router.delete('/:id', authenticate, authorize(['super_admin'], PERMISSIONS.USERS
             where: { id }
         });
 
+        broadcastEvent(SSE_EVENTS.ADMIN_USER_CHANGED);
         res.json({ message: 'Admin deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete admin' });
@@ -160,6 +163,7 @@ router.patch('/:id/status', authenticate, authorize(['super_admin'], PERMISSIONS
             }
         });
 
+        broadcastEvent(SSE_EVENTS.ADMIN_USER_CHANGED);
         res.json(updatedAdmin);
     } catch (error) {
         if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2025') {
@@ -205,6 +209,7 @@ router.patch('/:id/role', authenticate, authorize(['super_admin'], PERMISSIONS.U
             }
         });
 
+        broadcastEvent(SSE_EVENTS.ADMIN_USER_CHANGED);
         res.json(updatedAdmin);
     } catch (error) {
         console.error("Error updating role:", error);
@@ -244,6 +249,7 @@ router.patch('/:id/categories', authenticate, authorize(['super_admin'], PERMISS
             }
         });
 
+        broadcastEvent(SSE_EVENTS.ADMIN_USER_CHANGED);
         res.json(updatedAdmin);
     } catch (error) {
         console.error("Error updating categories:", error);

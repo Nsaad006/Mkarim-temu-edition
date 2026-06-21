@@ -26,14 +26,16 @@ const createOrderSchema = z.object({
     phone: z.string().regex(phoneRegex, 'Merci de saisir un numéro de téléphone marocain valide (Ex: 06XXXXXXXX)'),
     city: z.string().min(2, "Merci de sélectionner votre ville"),
     address: z.string().optional().or(z.literal("")),
-    bypassStockCheck: z.boolean().optional()
+    bypassStockCheck: z.boolean().optional(),
+    promoCode: z.string().optional(),
 });
 
 const updateOrderItemsSchema = z.object({
     items: z.array(z.object({
         productId: z.string(),
         quantity: z.number().int().positive(),
-        price: z.number().positive()
+        price: z.number().positive(),
+        selectedVariants: z.record(z.string(), z.string()).optional()
     })).min(1, 'Votre panier est vide')
 });
 
@@ -74,7 +76,30 @@ router.post('/', async (req, res) => {
             }
 
             // Use provided price (admin manual order) or product price from DB
-            const finalPrice = item.price ?? product.price;
+            let finalPrice = item.price ?? product.price;
+
+            // Apply volume discount if no manual price was provided
+            if (!item.price) {
+                const volumePromo = await prisma.promotion.findFirst({
+                    where: {
+                        type: 'VOLUME_DISCOUNT',
+                        active: true,
+                        minQuantity: { lte: item.quantity },
+                        OR: [{ productId: null }, { productId: item.productId }],
+                        AND: [
+                            { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }
+                        ]
+                    },
+                    orderBy: { discountValue: 'desc' }
+                });
+                if (volumePromo) {
+                    const disc = volumePromo.discountType === 'PERCENT'
+                        ? Math.round(finalPrice * volumePromo.discountValue / 100)
+                        : Math.round(volumePromo.discountValue);
+                    finalPrice = Math.max(0, finalPrice - disc);
+                }
+            }
+
             total += finalPrice * item.quantity;
 
             orderItems.push({
@@ -86,9 +111,36 @@ router.post('/', async (req, res) => {
                     : {})
             });
 
-            // NOTE: Stock is NOT decremented here anymore. 
+            // NOTE: Stock is NOT decremented here anymore.
             // It will be decremented only when status changes to CONFIRMED.
         }
+
+        // Apply promo code discount
+        let promoDiscount = 0;
+        let appliedPromoCode: string | null = null;
+        if (validatedData.promoCode) {
+            const promo = await prisma.promotion.findFirst({
+                where: {
+                    code: { equals: validatedData.promoCode, mode: 'insensitive' },
+                    type: 'PROMO_CODE',
+                    active: true,
+                    AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }]
+                }
+            });
+            if (promo && !(promo.maxUses && promo.usedCount >= promo.maxUses)
+                && !(promo.minOrderTotal && total < promo.minOrderTotal)) {
+                promoDiscount = promo.discountType === 'PERCENT'
+                    ? Math.round(total * promo.discountValue / 100)
+                    : Math.round(promo.discountValue);
+                appliedPromoCode = promo.code;
+                // Increment usage counter
+                await prisma.promotion.update({
+                    where: { id: promo.id },
+                    data: { usedCount: { increment: 1 } }
+                });
+            }
+        }
+        const finalTotal = Math.max(0, total - promoDiscount);
 
         // Create or update customer record for persistent tracking
         const customer = await prisma.customer.upsert({
@@ -117,7 +169,9 @@ router.post('/', async (req, res) => {
                 phone: validatedData.phone,
                 city: validatedData.city,
                 address: validatedData.address || "",
-                total: total,
+                total: finalTotal,
+                discount: promoDiscount,
+                promoCode: appliedPromoCode,
                 status: 'PENDING',
                 items: {
                     create: orderItems
@@ -286,7 +340,7 @@ router.put('/:id/items', authenticate, authorize(['super_admin', 'editor', 'comm
 
         // Calculate new total and prepare items data
         let total = 0;
-        const newItemsData: { productId: string; quantity: number; price: number }[] = [];
+        const newItemsData: { productId: string; quantity: number; price: number; selectedVariants?: Record<string, string> }[] = [];
         const itemsForEmail: any[] = [];
 
         for (const item of validatedData.items) {
@@ -302,7 +356,10 @@ router.put('/:id/items', authenticate, authorize(['super_admin', 'editor', 'comm
             newItemsData.push({
                 productId: item.productId,
                 quantity: item.quantity,
-                price: item.price
+                price: item.price,
+                ...(item.selectedVariants && Object.keys(item.selectedVariants).length > 0
+                    ? { selectedVariants: item.selectedVariants }
+                    : {})
             });
             itemsForEmail.push({
                 productId: item.productId,

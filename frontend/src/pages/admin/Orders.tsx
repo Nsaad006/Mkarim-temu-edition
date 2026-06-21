@@ -243,7 +243,7 @@ const Orders = () => {
     });
 
     const updateItemsMutation = useMutation({
-        mutationFn: ({ id, items }: { id: string; items: { productId: string; quantity: number; price: number }[] }) =>
+        mutationFn: ({ id, items }: { id: string; items: { productId: string; quantity: number; price: number; selectedVariants?: Record<string, string> }[] }) =>
             ordersApi.updateItems(id, items),
         onSuccess: (updatedOrder, variables) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -294,7 +294,10 @@ const Orders = () => {
             items: editItems.map(item => ({
                 productId: item.productId || item.product?.id,
                 quantity: item.quantity,
-                price: item.price
+                price: item.price,
+                selectedVariants: item.selectedVariants && Object.keys(item.selectedVariants).length > 0
+                    ? item.selectedVariants
+                    : undefined,
             }))
         });
     };
@@ -325,14 +328,25 @@ const Orders = () => {
                     : item
             ));
         } else {
+            const variants: any[] = Array.isArray((prod as any).variants) ? (prod as any).variants : [];
+            const selectedVariants: Record<string, string> = {};
+            variants.forEach((v: any) => { selectedVariants[v.type] = ""; });
+
             setEditItems([...editItems, {
                 productId: prod.id,
                 quantity: 1,
                 price: prod.price,
-                product: prod
+                product: prod,
+                selectedVariants,
             }]);
         }
         setNewProductSelect("");
+    };
+
+    const updateEditItemVariant = (idx: number, variantType: string, value: string) => {
+        const newItems = [...editItems];
+        newItems[idx].selectedVariants = { ...newItems[idx].selectedVariants, [variantType]: value };
+        setEditItems(newItems);
     };
 
     const removeEditItem = (idx: number) => {
@@ -1124,6 +1138,28 @@ const Orders = () => {
                                                                 ))}
                                                             </div>
                                                         )}
+                                                        {isEditingOrder && (() => {
+                                                            const prod = products.find((p: any) => p.id === (item.productId || item.product?.id));
+                                                            const productVariants: any[] = Array.isArray((prod as any)?.variants) ? (prod as any).variants : [];
+                                                            return productVariants.map((variant: any) => (
+                                                                <div key={variant.type} className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-xs text-muted-foreground w-14 shrink-0">{variant.type}:</span>
+                                                                    <Select
+                                                                        value={item.selectedVariants?.[variant.type] || ""}
+                                                                        onValueChange={(val) => updateEditItemVariant(idx, variant.type, val)}
+                                                                    >
+                                                                        <SelectTrigger className="h-7 text-xs w-28">
+                                                                            <SelectValue placeholder="Choisir..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {(variant.options || []).map((opt: string) => (
+                                                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                            ));
+                                                        })()}
                                                     </div>
                                                 </div>
 

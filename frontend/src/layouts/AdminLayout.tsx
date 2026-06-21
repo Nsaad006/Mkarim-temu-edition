@@ -18,7 +18,8 @@ import {
     Search,
     Truck,
     Briefcase,
-    BookOpen
+    BookOpen,
+    Tag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ const sidebarItems = [
     { icon: BarChart3, label: "Analyses", path: "/admin/analytics", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
     { icon: ShieldCheck, label: "Utilisateurs", path: "/admin/users", roles: ["super_admin"], permission: PERMISSIONS.USERS_VIEW },
     { icon: ShieldCheck, label: "Rôles", path: "/admin/roles", roles: ["super_admin"], permission: PERMISSIONS.ROLES_VIEW },
+    { icon: Tag, label: "Promotions", path: "/admin/promotions", roles: ["super_admin", "editor"], permission: PERMISSIONS.SETTINGS_VIEW },
     { icon: BookOpen, label: "Logs", path: "/admin/logs", roles: ["super_admin"], permission: PERMISSIONS.ANALYTICS_VIEW },
     { icon: Settings, label: "Paramètres", path: "/admin/settings", roles: ["super_admin"], permission: PERMISSIONS.SETTINGS_VIEW },
 ];
