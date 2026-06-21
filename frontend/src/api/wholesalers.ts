@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
+import apiClient from '@/lib/api-client';
 
 export interface Wholesaler {
     id: string;
@@ -49,96 +47,61 @@ export interface WholesaleOrderItem {
     };
 }
 
-const getAuthHeader = () => {
-    const token = localStorage.getItem('auth_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
 export const wholesalersApi = {
     getAll: async (search?: string) => {
         const params = search ? { search } : {};
-        const response = await axios.get<Wholesaler[]>(`${API_URL}/wholesalers`, {
-            params,
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data } = await apiClient.get<Wholesaler[]>('/api/wholesalers', { params });
+        return data;
     },
 
     getAllOrders: async () => {
-        const response = await axios.get<WholesaleOrder[]>(`${API_URL}/wholesalers/orders`, {
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data } = await apiClient.get<WholesaleOrder[]>('/api/wholesalers/orders');
+        return data;
     },
 
     getById: async (id: string) => {
-        const response = await axios.get<Wholesaler>(`${API_URL}/wholesalers/${id}`, {
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data } = await apiClient.get<Wholesaler>(`/api/wholesalers/${id}`);
+        return data;
     },
 
     create: async (data: Omit<Wholesaler, 'id' | 'createdAt' | 'orders'>) => {
-        const response = await axios.post<Wholesaler>(`${API_URL}/wholesalers`, data, {
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data: result } = await apiClient.post<Wholesaler>('/api/wholesalers', data);
+        return result;
     },
 
     update: async (id: string, data: Partial<Omit<Wholesaler, 'id' | 'createdAt' | 'orders'>>) => {
-        const response = await axios.put<Wholesaler>(`${API_URL}/wholesalers/${id}`, data, {
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data: result } = await apiClient.put<Wholesaler>(`/api/wholesalers/${id}`, data);
+        return result;
     },
 
     delete: async (id: string) => {
-        const response = await axios.delete(`${API_URL}/wholesalers/${id}`, {
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data } = await apiClient.delete(`/api/wholesalers/${id}`);
+        return data;
     },
 
     createOrder: async (wholesalerId: string, data: { items: { productId: string; quantity: number; unitPrice: number }[]; advanceAmount: number }) => {
-        const response = await axios.post<WholesaleOrder>(`${API_URL}/wholesalers/${wholesalerId}/orders`, data, {
-            headers: getAuthHeader()
-        });
-        return response.data;
+        const { data: result } = await apiClient.post<WholesaleOrder>(`/api/wholesalers/${wholesalerId}/orders`, data);
+        return result;
     },
 
     addPayment: async (orderId: string, amount: number, note?: string) => {
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.post(`${API_URL}/wholesalers/orders/${orderId}/payments`, { amount, note }, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        return response.data;
+        const { data } = await apiClient.post(`/api/wholesalers/orders/${orderId}/payments`, { amount, note });
+        return data;
     },
 
     updateFullOrder: async (orderId: string, data: { items: any[], advanceAmount: number }) => {
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.put(`${API_URL}/wholesalers/orders/${orderId}`, data, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        return response.data;
+        const { data: result } = await apiClient.put(`/api/wholesalers/orders/${orderId}`, data);
+        return result;
     },
 
     deleteOrder: async (orderId: string) => {
-        const token = localStorage.getItem('auth_token');
-        await axios.delete(`${API_URL}/wholesalers/orders/${orderId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        await apiClient.delete(`/api/wholesalers/orders/${orderId}`);
     },
 
     sendInvoiceEmail: async (orderId: string, pdfBlob: Blob) => {
         const formData = new FormData();
         formData.append('invoice', pdfBlob, 'facture.pdf');
-
-        const response = await axios.post(`${API_URL}/wholesalers/orders/${orderId}/email-invoice`, formData, {
-            headers: {
-                ...getAuthHeader(),
-                'Content-Type': 'multipart/form-data'
-            }
-        });
-        return response.data;
+        const { data } = await apiClient.post(`/api/wholesalers/orders/${orderId}/email-invoice`, formData);
+        return data;
     }
 };
