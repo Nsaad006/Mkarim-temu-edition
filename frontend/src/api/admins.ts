@@ -32,8 +32,8 @@ export const adminsApi = {
         const { data } = await apiClient.patch<AdminUser>(`/api/admins/${id}/role`, { role });
         return data;
     },
-    updatePassword: async (id: string, password: string): Promise<AdminUser> => {
-        const { data } = await apiClient.patch<AdminUser>(`/api/admins/${id}/password`, { password });
+    updatePassword: async (id: string, password: string, currentPassword?: string): Promise<AdminUser> => {
+        const { data } = await apiClient.patch<AdminUser>(`/api/admins/${id}/password`, { password, currentPassword });
         return data;
     },
     updateCategories: async (id: string, allowedCategories: string[]): Promise<AdminUser> => {

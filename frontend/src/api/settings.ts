@@ -104,6 +104,13 @@ export interface GlobalSettings {
     invoiceSubtitle?: string;
     invoiceAddress?: string;
     invoiceCustomerHeader?: string;
+
+    // Commission Configuration
+    commissionTrigger?: 'on_delivery' | 'on_confirmation' | 'split';
+    commissionSplitConfirmPct?: number;
+    commissionSplitDeliverPct?: number;
+    commissionCancelPolicy?: 'keep' | 'cancel_on_return' | 'grace_period';
+    commissionGraceDays?: number;
 }
 
 export const settingsApi = {

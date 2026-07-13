@@ -22,6 +22,7 @@ import rolesRouter from './routes/roles';
 import eventsRouter from './routes/events';
 import activityLogsRouter from './routes/activityLogs';
 import promotionsRouter from './routes/promotions';
+import commissionRouter from './routes/commission';
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/api/roles', rolesRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/logs', activityLogsRouter);
 app.use('/api/promotions', promotionsRouter);
+app.use('/api/commission', commissionRouter);
 
 // Health check
 app.get('/health', (req, res) => {

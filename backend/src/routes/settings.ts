@@ -164,7 +164,14 @@ router.put('/', authenticate, authorize(['super_admin', 'editor'], PERMISSIONS.S
                 ...(req.body.filterSortTitle !== undefined && { filterSortTitle: req.body.filterSortTitle }),
                 ...(req.body.filterCategoryTitle !== undefined && { filterCategoryTitle: req.body.filterCategoryTitle }),
                 ...(req.body.cartSummaryTitle !== undefined && { cartSummaryTitle: req.body.cartSummaryTitle }),
-                ...(req.body.cartSubtotalText !== undefined && { cartSubtotalText: req.body.cartSubtotalText })
+                ...(req.body.cartSubtotalText !== undefined && { cartSubtotalText: req.body.cartSubtotalText }),
+
+                // Commission Configuration
+                ...(req.body.commissionTrigger !== undefined && { commissionTrigger: req.body.commissionTrigger }),
+                ...(req.body.commissionSplitConfirmPct !== undefined && { commissionSplitConfirmPct: Number(req.body.commissionSplitConfirmPct) }),
+                ...(req.body.commissionSplitDeliverPct !== undefined && { commissionSplitDeliverPct: Number(req.body.commissionSplitDeliverPct) }),
+                ...(req.body.commissionCancelPolicy !== undefined && { commissionCancelPolicy: req.body.commissionCancelPolicy }),
+                ...(req.body.commissionGraceDays !== undefined && { commissionGraceDays: Number(req.body.commissionGraceDays) }),
             }
         });
 

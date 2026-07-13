@@ -261,7 +261,7 @@ router.patch('/:id/categories', authenticate, authorize(['super_admin'], PERMISS
 });
 
 // PATCH /api/admins/:id/password - Update admin password
-// Allowed if: caller is super_admin, has USERS_MANAGE permission, OR is changing their own password
+// Self-change: requires currentPassword. Super-admin/USERS_MANAGE changing another: no old password needed.
 router.patch('/:id/password', authenticate, async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
@@ -277,13 +277,29 @@ router.patch('/:id/password', authenticate, async (req: Request, res: Response) 
             return res.status(403).json({ error: 'Accès refusé' });
         }
 
-        const { password } = req.body;
+        const { password, currentPassword } = req.body;
         if (!password || password.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+            return res.status(400).json({ error: 'Le mot de passe doit comporter au moins 6 caractères' });
         }
 
         const admin = await prisma.admin.findUnique({ where: { id } });
         if (!admin) return res.status(404).json({ error: 'Admin not found' });
+
+        // The main admin's password can only be changed by the main admin themselves
+        if (admin.email === 'admin@mkarim.ma' && !isSelf) {
+            return res.status(403).json({ error: 'Seul l\'Admin Principal peut modifier son propre mot de passe.' });
+        }
+
+        // When changing own password, always verify the current one
+        if (isSelf) {
+            if (!currentPassword) {
+                return res.status(400).json({ error: 'Le mot de passe actuel est requis' });
+            }
+            const isValid = await bcrypt.compare(currentPassword, admin.password);
+            if (!isValid) {
+                return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+            }
+        }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 

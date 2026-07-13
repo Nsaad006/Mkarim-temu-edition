@@ -155,7 +155,8 @@ const Orders = () => {
     const userPermissions = currentUser.permissions || [];
 
     const { data: orders = [], isLoading } = useQuery({
-        queryKey: ['orders'],
+        // Include user id so agents never share each other's filtered order list
+        queryKey: ['orders', currentUser.id],
         queryFn: () => ordersApi.getAll(),
     });
 
@@ -853,7 +854,13 @@ const Orders = () => {
                                                                 onClick={() => handleStatusChange(order.id, "CONFIRMED")}
                                                                 disabled={updateStatusMutation.isPending || !canPerformAction(order, 'CONFIRMED')}
                                                             >
-                                                                Confirmer
+                                                                <span className="flex flex-col">
+                                                                    <span>Confirmer</span>
+                                                                    {(() => {
+                                                                        const comm = order.items.reduce((s: number, item: any) => s + item.quantity * (item.product?.commission || 0), 0);
+                                                                        return comm > 0 ? <span className="text-xs text-primary">+{comm.toFixed(2)} {currency} commission</span> : null;
+                                                                    })()}
+                                                                </span>
                                                             </DropdownMenuItem>
                                                         )}
                                                         {canUpdateStatus('SHIPPED') && (

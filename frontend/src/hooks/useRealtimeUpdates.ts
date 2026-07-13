@@ -57,6 +57,12 @@ export function useRealtimeUpdates() {
                             queryClient.invalidateQueries({ queryKey: ['orders'] });
                             queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
                             queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+                            queryClient.invalidateQueries({ queryKey: ['agent-commission'] });
+                            break;
+
+                        case 'COMMISSION_CHANGED':
+                            queryClient.invalidateQueries({ queryKey: ['agent-commission'] });
+                            queryClient.invalidateQueries({ queryKey: ['orders'] });
                             break;
 
                         // ── Products ──

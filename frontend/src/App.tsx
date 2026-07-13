@@ -43,6 +43,7 @@ const Procurements = lazy(() => import("./pages/admin/Procurements"));
 const Wholesalers = lazy(() => import("./pages/admin/Wholesalers"));
 const ActivityLogs = lazy(() => import("./pages/admin/ActivityLogs"));
 const Promotions = lazy(() => import("./pages/admin/Promotions"));
+const AgentDashboard = lazy(() => import("./pages/admin/AgentDashboard"));
 
 // ─── Loading fallback ────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -104,6 +105,7 @@ const App = () => (
                       <Route path="wholesalers" element={<Wholesalers />} />
                       <Route path="logs" element={<ActivityLogs />} />
                       <Route path="promotions" element={<Promotions />} />
+                      <Route path="my-dashboard" element={<AgentDashboard />} />
                       <Route path="*" element={<Dashboard />} />
                     </Route>
                   </Route>

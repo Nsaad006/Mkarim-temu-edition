@@ -239,7 +239,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', authenticate, authorize(['super_admin', 'editor', 'commercial'], [PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.PRODUCTS_STOCK_MANAGE]), async (req: any, res: Response) => {
     try {
-        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, variants, isFeatured, published, supplierId, unitCostPrice, salesCount } = req.body;
+        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, variants, isFeatured, published, supplierId, unitCostPrice, salesCount, commission } = req.body;
         if (!supplierId) return res.status(400).json({ error: 'Supplier is required for new products' });
         const initialQuantity = Number(quantity) || 0;
         const costPrice = Number(unitCostPrice) || 0;
@@ -248,7 +248,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor', 'commercial']
         const primaryImage = imageArray[0] || image || '';
         const result = await prisma.$transaction(async (tx) => {
             const newProduct = await tx.product.create({
-                data: { name, description, price: Number(price), originalPrice: originalPrice ? Number(originalPrice) : null, image: primaryImage, images: imageArray, categoryId, inStock: inStock ?? true, quantity: initialQuantity, badge, specs: specs || [], variants: variants || [], isFeatured: isFeatured ?? false, published: published ?? true, salesCount: Number(salesCount) || 0 } as any,
+                data: { name, description, price: Number(price), originalPrice: originalPrice ? Number(originalPrice) : null, image: primaryImage, images: imageArray, categoryId, inStock: inStock ?? true, quantity: initialQuantity, badge, specs: specs || [], variants: variants || [], isFeatured: isFeatured ?? false, published: published ?? true, salesCount: Number(salesCount) || 0, commission: Number(commission) || 0 } as any,
                 include: { category: true }
             });
             await tx.procurement.create({ data: { supplierId, productId: newProduct.id, quantityPurchased: initialQuantity, unitCostPrice: costPrice, totalCost: initialQuantity * costPrice, createdByAdminId: adminId } });
@@ -265,7 +265,7 @@ router.post('/', authenticate, authorize(['super_admin', 'editor', 'commercial']
 router.put('/:id', authenticate, authorize(['super_admin', 'editor', 'commercial'], [PERMISSIONS.PRODUCTS_EDIT, PERMISSIONS.PRODUCTS_STOCK_MANAGE]), async (req: Request, res: Response) => {
     try {
         const id = req.params.id;
-        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, variants, isFeatured, published, supplierId, unitCostPrice, salesCount, password } = req.body;
+        const { name, description, price, originalPrice, image, images, categoryId, inStock, quantity, badge, specs, variants, isFeatured, published, supplierId, unitCostPrice, salesCount, password, commission } = req.body;
         const adminId = (req as any).user?.id;
         const userPerms = (req as any).user?.permissions || [];
         const existingProduct = await prisma.product.findUnique({ where: { id }, include: { procurements: { orderBy: { purchaseDate: 'desc' }, take: 1 } } });
@@ -295,7 +295,8 @@ router.put('/:id', authenticate, authorize(['super_admin', 'editor', 'commercial
             ...(variants !== undefined && { variants: variants || [] }),
             ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
             ...(published !== undefined && { published: Boolean(published) }),
-            ...(salesCount !== undefined && { salesCount: Number(salesCount) })
+            ...(salesCount !== undefined && { salesCount: Number(salesCount) }),
+            ...(commission !== undefined && { commission: Number(commission) })
         } as any;
         if (images !== undefined) {
             const imageArray = Array.isArray(images) ? images : (images ? [images] : []);

@@ -31,6 +31,7 @@ import {
 import { ordersApi } from "@/api/orders";
 import { statsApi } from "@/api/stats";
 import { settingsApi } from "@/api/settings";
+import { commissionApi } from "@/api/commission";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -135,6 +136,14 @@ const Dashboard = () => {
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const isStaff = ["super_admin", "editor"].includes(user.role);
+    const isSuperAdmin = user.role === "super_admin";
+
+    const nowDate = new Date();
+    const { data: globalCommission } = useQuery({
+        queryKey: ['global-commission', nowDate.getMonth() + 1, nowDate.getFullYear()],
+        queryFn: () => commissionApi.getAllAgents(nowDate.getMonth() + 1, nowDate.getFullYear()),
+        enabled: isSuperAdmin,
+    });
 
     const dailyRevenueHistory = summary?.revenueHistory || [];
     const cityData = summary?.salesByCity || [];
@@ -493,6 +502,45 @@ const Dashboard = () => {
                     </Table>
                 </div>
             </div>
+
+            {/* Global Commission Overview — super admin only */}
+            {isSuperAdmin && globalCommission && globalCommission.agents.length > 0 && (
+                <div className="bg-card rounded-xl border border-border p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <DollarSign className="w-5 h-5 text-primary" />
+                            Commissions Agents — {new Date().toLocaleString('fr-FR', { month: 'long', year: 'numeric' })}
+                        </h2>
+                        <Link to="/admin/users">
+                            <Button variant="outline" size="sm">Gérer <ArrowRight className="ml-2 w-4 h-4" /></Button>
+                        </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Agent</TableHead>
+                                    <TableHead>Commandes confirmées</TableHead>
+                                    <TableHead>Commission gagnée</TableHead>
+                                    <TableHead>Déjà payé</TableHead>
+                                    <TableHead>À payer</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {globalCommission.agents.map((agent: any) => (
+                                    <TableRow key={agent.id}>
+                                        <TableCell className="font-medium">{agent.name}</TableCell>
+                                        <TableCell>{agent.confirmedOrdersCount}</TableCell>
+                                        <TableCell>{agent.totalEarned.toFixed(2)} {currency}</TableCell>
+                                        <TableCell className="text-green-600">{agent.totalPaid.toFixed(2)} {currency}</TableCell>
+                                        <TableCell className="font-semibold text-primary">{agent.pendingPayment.toFixed(2)} {currency}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AxiosError } from "axios";
-import { Plus, Trash2, Mail, Shield, Pencil } from "lucide-react";
+import { Plus, Trash2, Mail, Shield, Pencil, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import apiClient from "@/lib/api-client";
 import {
     Table,
@@ -32,16 +32,37 @@ import {
 } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminsApi, AdminUser } from "@/api/admins";
+import { commissionApi } from "@/api/commission";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { logEvent } from "@/lib/logger";
+import { useSettings } from "@/context/SettingsContext";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const MONTH_NAMES = [
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+];
 
 const AdminUsers = () => {
+    const { settings } = useSettings();
+    const currency = settings?.currency || "DH";
+    const now = new Date();
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [originalRole, setOriginalRole] = useState<{ role: string; roleId: string | null }>({ role: "", roleId: null });
     const [newPassword, setNewPassword] = useState("");
+
+    // Commission panel state
+    const [commissionUser, setCommissionUser] = useState<AdminUser | null>(null);
+    const [commMonth, setCommMonth] = useState(now.getMonth() + 1);
+    const [commYear, setCommYear] = useState(now.getFullYear());
+    const [payNote, setPayNote] = useState("");
+    const [payAmount, setPayAmount] = useState("");
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState({
         name: "",
@@ -73,6 +94,25 @@ const AdminUsers = () => {
             const { data } = await apiClient.get<any[]>('/api/categories');
             return data;
         },
+    });
+
+    // Commission data for selected agent
+    const { data: commData, isLoading: commLoading } = useQuery({
+        queryKey: ['agent-commission-admin', commissionUser?.id, commMonth, commYear],
+        queryFn: () => commissionApi.getAgentStats(commissionUser!.id, commMonth, commYear),
+        enabled: !!commissionUser,
+    });
+
+    const payMutation = useMutation({
+        mutationFn: (payload: { amount: number; month: number; year: number; note?: string }) =>
+            commissionApi.payAgent(commissionUser!.id, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['agent-commission-admin'] });
+            setPayAmount("");
+            setPayNote("");
+            toast({ title: "Paiement enregistré", description: "La commission a été marquée comme payée." });
+        },
+        onError: () => toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" })
     });
 
     // Create admin
@@ -272,6 +312,18 @@ const AdminUsers = () => {
                                             />
                                         </TableCell>
                                         <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Commissions"
+                                                onClick={() => {
+                                                    setCommissionUser(user);
+                                                    setCommMonth(now.getMonth() + 1);
+                                                    setCommYear(now.getFullYear());
+                                                }}
+                                            >
+                                                <DollarSign className="w-4 h-4 text-primary" />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -517,6 +569,157 @@ const AdminUsers = () => {
                                     ) : "Enregistrer"}
                                 </Button>
                             </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Commission Panel Dialog */}
+            <Dialog open={!!commissionUser} onOpenChange={(open) => { if (!open) setCommissionUser(null); }}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Commissions — {commissionUser?.name}</DialogTitle>
+                        <DialogDescription>Statistiques et paiements de commission</DialogDescription>
+                    </DialogHeader>
+
+                    {/* Month navigator */}
+                    <div className="flex items-center gap-2 justify-center">
+                        <Button variant="outline" size="icon" onClick={() => {
+                            if (commMonth === 1) { setCommMonth(12); setCommYear(y => y - 1); }
+                            else setCommMonth(m => m - 1);
+                        }}><ChevronLeft className="w-4 h-4" /></Button>
+                        <span className="text-sm font-medium w-36 text-center">{MONTH_NAMES[commMonth - 1]} {commYear}</span>
+                        <Button variant="outline" size="icon" onClick={() => {
+                            if (commMonth === 12) { setCommMonth(1); setCommYear(y => y + 1); }
+                            else setCommMonth(m => m + 1);
+                        }}><ChevronRight className="w-4 h-4" /></Button>
+                    </div>
+
+                    {commLoading ? (
+                        <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                    ) : commData && (
+                        <div className="space-y-4">
+                            {/* Stats */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <Card>
+                                    <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Commandes confirmées</CardTitle></CardHeader>
+                                    <CardContent><p className="text-xl font-bold">{commData.ordersConfirmed}</p></CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Commandes livrées</CardTitle></CardHeader>
+                                    <CardContent><p className="text-xl font-bold">{commData.ordersDelivered}</p></CardContent>
+                                </Card>
+                                <Card className="border-primary/30 bg-primary/5">
+                                    <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">À payer</CardTitle></CardHeader>
+                                    <CardContent><p className="text-xl font-bold text-primary">{commData.pendingPayment.toFixed(2)} {currency}</p></CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="flex gap-4 text-sm">
+                                <span className="text-muted-foreground">Gagné: <strong>{commData.totalEarned.toFixed(2)} {currency}</strong></span>
+                                <span className="text-muted-foreground">Payé: <strong className="text-green-600">{commData.totalPaid.toFixed(2)} {currency}</strong></span>
+                            </div>
+
+                            {/* Pay form */}
+                            {commData.pendingPayment > 0 && (
+                                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                                    <p className="text-sm font-medium">Enregistrer un paiement</p>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder={`Montant (max ${commData.pendingPayment.toFixed(2)} ${currency})`}
+                                            value={payAmount}
+                                            onChange={e => setPayAmount(e.target.value)}
+                                            className="flex-1"
+                                        />
+                                        <Input
+                                            placeholder="Note (optionnel)"
+                                            value={payNote}
+                                            onChange={e => setPayNote(e.target.value)}
+                                            className="flex-1"
+                                        />
+                                        <Button
+                                            disabled={payMutation.isPending || !payAmount || parseFloat(payAmount) <= 0}
+                                            onClick={() => payMutation.mutate({
+                                                amount: parseFloat(payAmount),
+                                                month: commMonth,
+                                                year: commYear,
+                                                note: payNote || undefined
+                                            })}
+                                        >
+                                            {payMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Payer"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Commission records */}
+                            {commData.records.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium mb-2">Détail des commissions</p>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Commande</TableHead>
+                                                <TableHead>Client</TableHead>
+                                                <TableHead>Commission</TableHead>
+                                                <TableHead>Statut</TableHead>
+                                                <TableHead>Date</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {commData.records.map(rec => (
+                                                <TableRow key={rec.id}>
+                                                    <TableCell className="font-medium text-xs">{rec.order.orderNumber}</TableCell>
+                                                    <TableCell className="text-sm">{rec.order.customerName}</TableCell>
+                                                    <TableCell className="font-semibold text-primary text-sm">{rec.amount.toFixed(2)} {currency}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline" className={
+                                                            rec.status === 'PAID' ? "text-green-600 border-green-500/20" :
+                                                            rec.status === 'CANCELLED' ? "text-red-500 border-red-500/20" :
+                                                            "text-yellow-600 border-yellow-500/20"
+                                                        }>
+                                                            {rec.status === 'PAID' ? 'Payé' : rec.status === 'CANCELLED' ? 'Annulé' : 'En attente'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-muted-foreground">
+                                                        {format(new Date(rec.createdAt), "dd MMM", { locale: fr })}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+
+                            {/* Payment history */}
+                            {commData.payments.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium mb-2">Paiements effectués</p>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Montant</TableHead>
+                                                <TableHead>Note</TableHead>
+                                                <TableHead>Date</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {commData.payments.map(p => (
+                                                <TableRow key={p.id}>
+                                                    <TableCell className="font-semibold text-green-600">+{p.amount.toFixed(2)} {currency}</TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">{p.note || "—"}</TableCell>
+                                                    <TableCell className="text-xs text-muted-foreground">
+                                                        {format(new Date(p.createdAt), "dd MMM yyyy", { locale: fr })}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
                         </div>
                     )}
                 </DialogContent>

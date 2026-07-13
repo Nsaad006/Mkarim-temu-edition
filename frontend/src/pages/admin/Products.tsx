@@ -111,6 +111,7 @@ const AdminProducts = () => {
         supplierId: "",
         unitCostPrice: "",
         salesCount: "0",
+        commission: "0",
         isFeatured: false,
         published: true,
     });
@@ -370,6 +371,7 @@ const AdminProducts = () => {
             supplierId: "",
             unitCostPrice: "",
             salesCount: "0",
+            commission: "0",
             isFeatured: false,
             published: true,
         });
@@ -413,6 +415,7 @@ const AdminProducts = () => {
             supplierId: (product as any).supplierId || (product as any).procurements?.[0]?.supplierId || "",
             unitCostPrice: (product as any).weightedAverageCost?.toString() || "",
             salesCount: (product as any).salesCount?.toString() || "0",
+            commission: (product as any).commission?.toString() || "0",
             isFeatured: (product as any).isFeatured || false,
             published: product.published ?? true,
         });
@@ -461,6 +464,7 @@ const AdminProducts = () => {
             supplierId: formData.supplierId,
             unitCostPrice: formData.unitCostPrice,
             salesCount: parseInt(formData.salesCount) || 0,
+            commission: parseFloat(formData.commission) || 0,
             isFeatured: formData.isFeatured,
             published: formData.published,
             image: formData.images[0] || "",
@@ -1184,6 +1188,18 @@ const AdminProducts = () => {
                                     min="0"
                                     value={formData.salesCount}
                                     onChange={(e) => setFormData({ ...formData, salesCount: e.target.value })}
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Commission agent (DH/unité)</Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={formData.commission}
+                                    onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
                                     placeholder="0"
                                 />
                             </div>

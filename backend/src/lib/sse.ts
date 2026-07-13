@@ -96,6 +96,9 @@ export const SSE_EVENTS = {
     ADMIN_USER_CHANGED:   'ADMIN_USER_CHANGED',
     ROLE_CHANGED:         'ROLE_CHANGED',
 
+    // Commission
+    COMMISSION_CHANGED:   'COMMISSION_CHANGED',
+
     // Stats / generic
     STATS_UPDATED:        'STATS_UPDATED',
 };

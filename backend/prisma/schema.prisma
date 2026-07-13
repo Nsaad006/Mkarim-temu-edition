@@ -31,7 +31,8 @@ model Product {
   published     Boolean  @default(true)
   salesCount    Int      @default(0)
   deletedAt     DateTime?
-  
+  commission    Float    @default(0)
+
   category      Category    @relation(fields: [categoryId], references: [id])
   orderItems    OrderItem[]
   procurements  Procurement[]
@@ -56,25 +57,29 @@ model Category {
 }
 
 model Order {
-  id           String      @id @default(uuid())
-  orderNumber  String      @unique
-  customerId   String?     // Optional link to persistent customer record
-  customerName String
-  email        String?     // Optional customer email
-  phone        String
-  city         String
-  address      String
-  status       OrderStatus @default(PENDING)
-  returnReason String?     // Reason for return
-  total        Int
-  discount     Int         @default(0)
-  promoCode    String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id               String      @id @default(uuid())
+  orderNumber      String      @unique
+  customerId       String?
+  customerName     String
+  email            String?
+  phone            String
+  city             String
+  address          String
+  status           OrderStatus @default(PENDING)
+  returnReason     String?
+  total            Int
+  discount         Int         @default(0)
+  promoCode        String?
+  confirmedById    String?
+  itemsUpdatedAt   DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
-  customer     Customer?   @relation(fields: [customerId], references: [id])
-  items        OrderItem[]
-  returnedItems ReturnedItem[]
+  customer          Customer?         @relation(fields: [customerId], references: [id])
+  confirmedBy       Admin?            @relation("ConfirmedOrders", fields: [confirmedById], references: [id])
+  items             OrderItem[]
+  returnedItems     ReturnedItem[]
+  commissionRecord  CommissionRecord?
 }
 
 model Customer {
@@ -163,8 +168,50 @@ model Admin {
   allowedCategories String[] @default([])
   createdAt DateTime @default(now())
 
-  procurements Procurement[]
-  capitalEntries CapitalEntry[]
+  procurements       Procurement[]
+  capitalEntries     CapitalEntry[]
+  confirmedOrders    Order[]             @relation("ConfirmedOrders")
+  commissionRecords  CommissionRecord[]
+  commissionPayments CommissionPayment[]
+}
+
+enum CommissionStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model CommissionRecord {
+  id        String           @id @default(uuid())
+  agentId   String
+  orderId   String           @unique
+  amount    Float
+  status    CommissionStatus @default(PENDING)
+  month     Int
+  year      Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  agent  Admin  @relation(fields: [agentId], references: [id])
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([agentId, month, year])
+}
+
+model CommissionPayment {
+  id        String   @id @default(uuid())
+  agentId   String
+  amount    Float
+  month     Int
+  year      Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  agent  Admin  @relation(fields: [agentId], references: [id])
+
+  @@index([agentId])
+  @@index([agentId, month, year])
 }
 
 model Supplier {
@@ -314,6 +361,21 @@ model Settings {
   emailAppPassword   String    @default("")
   emailAdminReceiver String    @default("")
   emailEnabled       Boolean   @default(false)
+
+  // Commission System Configuration
+  // Trigger: when is commission earned?
+  //   on_delivery     → only when order is DELIVERED (default)
+  //   on_confirmation → when agent confirms the order
+  //   split           → partial at confirmation + remainder at delivery
+  commissionTrigger         String  @default("on_delivery")
+  commissionSplitConfirmPct Float   @default(30)   // % paid at confirmation (split mode only)
+  commissionSplitDeliverPct Float   @default(70)   // % paid at delivery    (split mode only)
+  // Cancel policy: what happens to commission when order is cancelled/returned?
+  //   keep            → commission stays regardless (default)
+  //   cancel_on_return → commission cancelled on CANCELLED or RETOUR
+  //   grace_period    → cancelled only if returned within N days of commission creation
+  commissionCancelPolicy    String  @default("keep")
+  commissionGraceDays       Int     @default(7)
 
   updatedAt         DateTime @updatedAt
   createdAt         DateTime @default(now())

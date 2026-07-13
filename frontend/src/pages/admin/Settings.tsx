@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Save, Loader2, Store, Phone, CreditCard, Mail, FileText, KeyRound } from "lucide-react";
+import { Save, Loader2, Store, Phone, CreditCard, Mail, FileText, KeyRound, DollarSign } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsApi, GlobalSettings } from "@/api/settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,33 +17,38 @@ const Settings = () => {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<Partial<GlobalSettings>>({});
 
-    // Password change state (for logged-in super admin)
-    const [pwdForm, setPwdForm] = useState({ newPassword: "", confirmPassword: "" });
+    // Password change state (for logged-in admin)
+    const [pwdForm, setPwdForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
     const currentUser = (() => { try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; } })();
 
     const changePasswordMutation = useMutation({
-        mutationFn: (newPwd: string) => adminsApi.updatePassword(currentUser.id, newPwd),
+        mutationFn: ({ newPwd, currentPwd }: { newPwd: string; currentPwd: string }) =>
+            adminsApi.updatePassword(currentUser.id, newPwd, currentPwd),
         onSuccess: () => {
             logEvent({ action: "ADMIN_USER_PASSWORD_CHANGED", metadata: { userId: currentUser.id } });
-            setPwdForm({ newPassword: "", confirmPassword: "" });
+            setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
             toast({ title: "Mot de passe modifié", description: "Votre mot de passe a été mis à jour avec succès." });
         },
-        onError: () => {
-            toast({ title: "Erreur", description: "Impossible de modifier le mot de passe.", variant: "destructive" });
+        onError: (error: any) => {
+            const msg = error?.response?.data?.error || "Impossible de modifier le mot de passe.";
+            toast({ title: "Erreur", description: msg, variant: "destructive" });
         },
     });
 
-    const handleChangePassword = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleChangePassword = () => {
+        if (!pwdForm.currentPassword) {
+            toast({ title: "Erreur", description: "Veuillez saisir votre mot de passe actuel.", variant: "destructive" });
+            return;
+        }
         if (pwdForm.newPassword.length < 6) {
-            toast({ title: "Erreur", description: "Le mot de passe doit comporter au moins 6 caractères.", variant: "destructive" });
+            toast({ title: "Erreur", description: "Le nouveau mot de passe doit comporter au moins 6 caractères.", variant: "destructive" });
             return;
         }
         if (pwdForm.newPassword !== pwdForm.confirmPassword) {
             toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" });
             return;
         }
-        changePasswordMutation.mutate(pwdForm.newPassword);
+        changePasswordMutation.mutate({ newPwd: pwdForm.newPassword, currentPwd: pwdForm.currentPassword });
     };
 
     const { data: settings, isLoading } = useQuery({
@@ -52,7 +57,16 @@ const Settings = () => {
     });
 
     useEffect(() => {
-        if (settings) setFormData(settings);
+        if (settings) {
+            setFormData({
+                commissionTrigger: 'on_delivery',
+                commissionCancelPolicy: 'keep',
+                commissionSplitConfirmPct: 30,
+                commissionSplitDeliverPct: 70,
+                commissionGraceDays: 7,
+                ...settings,
+            });
+        }
     }, [settings]);
 
     const mutation = useMutation({
@@ -67,8 +81,7 @@ const Settings = () => {
         }
     });
 
-    const handleSave = (e: React.FormEvent | React.MouseEvent) => {
-        e.preventDefault();
+    const handleSave = () => {
         mutation.mutate(formData);
     };
 
@@ -89,7 +102,7 @@ const Settings = () => {
                 <p className="text-muted-foreground text-sm mt-1">Configuration globale de votre boutique</p>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-6">
+            <div className="space-y-6">
                 <Tabs defaultValue="general" className="w-full">
                     <TabsList className="flex flex-wrap h-auto gap-2 bg-transparent p-0">
                         <TabsTrigger value="general" className={tabClass}><Store className="w-4 h-4" />Boutique</TabsTrigger>
@@ -97,6 +110,7 @@ const Settings = () => {
                         <TabsTrigger value="checkout" className={tabClass}><CreditCard className="w-4 h-4" />Paiement</TabsTrigger>
                         <TabsTrigger value="email" className={tabClass}><Mail className="w-4 h-4" />Email</TabsTrigger>
                         <TabsTrigger value="invoice" className={tabClass}><FileText className="w-4 h-4" />Facture</TabsTrigger>
+                        <TabsTrigger value="commission" className={tabClass}><DollarSign className="w-4 h-4" />Commissions</TabsTrigger>
                         <TabsTrigger value="account" className={tabClass}><KeyRound className="w-4 h-4" />Mon Compte</TabsTrigger>
                     </TabsList>
 
@@ -503,6 +517,165 @@ const Settings = () => {
                         </TabsContent>
 
                         {/* ── COMPTE TAB ──────────────────────────────────── */}
+                        {/* ── COMMISSIONS TAB ────────────────────────────────── */}
+                        <TabsContent value="commission" className="space-y-6 m-0">
+                            {(() => {
+                                // Resolved values with defaults matching the DB schema defaults
+                                const trigger = formData.commissionTrigger ?? 'on_delivery';
+                                const cancelPolicy = formData.commissionCancelPolicy ?? 'keep';
+                                const splitConfirm = formData.commissionSplitConfirmPct ?? 30;
+                                const splitDeliver = formData.commissionSplitDeliverPct ?? 70;
+                                const graceDays = formData.commissionGraceDays ?? 7;
+
+                                return (
+                                    <>
+                                        {/* Trigger */}
+                                        <div className="bg-card rounded-xl border border-border p-6 space-y-5">
+                                            <div>
+                                                <h2 className="text-lg font-semibold border-b pb-2">Déclencheur de commission</h2>
+                                                <p className="text-sm text-muted-foreground mt-1">À quel moment l'agent gagne-t-il sa commission ?</p>
+                                            </div>
+
+                                            <div className="grid gap-3">
+                                                {([
+                                                    { value: 'on_delivery', label: 'À la livraison uniquement', desc: "Commission calculée seulement quand la commande est marquée LIVRÉE. Mode le plus sécurisé." },
+                                                    { value: 'on_confirmation', label: 'À la confirmation', desc: "Commission calculée dès que l'agent confirme la commande." },
+                                                    { value: 'split', label: 'Partagée (confirmation + livraison)', desc: "Un % à la confirmation, le reste à la livraison. Idéal pour motiver et sécuriser." },
+                                                ] as const).map(opt => (
+                                                    <label
+                                                        key={opt.value}
+                                                        className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                                                            trigger === opt.value
+                                                                ? 'border-primary bg-primary/5'
+                                                                : 'border-border hover:border-primary/40'
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name="commissionTrigger"
+                                                            value={opt.value}
+                                                            checked={trigger === opt.value}
+                                                            onChange={() => setFormData({ ...formData, commissionTrigger: opt.value })}
+                                                            className="mt-0.5 accent-primary"
+                                                        />
+                                                        <div>
+                                                            <p className="font-medium text-sm">{opt.label}</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+
+                                            {/* Split percentages */}
+                                            {trigger === 'split' && (
+                                                <div className="border border-dashed border-primary/30 bg-primary/5 rounded-lg p-4 space-y-4">
+                                                    <p className="text-sm font-medium">Répartition du split</p>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label>% à la confirmation</Label>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    max={100}
+                                                                    value={splitConfirm}
+                                                                    onChange={e => {
+                                                                        const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                                                                        setFormData({ ...formData, commissionSplitConfirmPct: v, commissionSplitDeliverPct: 100 - v });
+                                                                    }}
+                                                                    className="w-24"
+                                                                />
+                                                                <span className="text-sm text-muted-foreground">%</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>% à la livraison</Label>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    max={100}
+                                                                    value={splitDeliver}
+                                                                    onChange={e => {
+                                                                        const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                                                                        setFormData({ ...formData, commissionSplitDeliverPct: v, commissionSplitConfirmPct: 100 - v });
+                                                                    }}
+                                                                    className="w-24"
+                                                                />
+                                                                <span className="text-sm text-muted-foreground">%</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Total : {splitConfirm + splitDeliver}% — les deux valeurs s'ajustent automatiquement pour totaliser 100%.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Cancel policy */}
+                                        <div className="bg-card rounded-xl border border-border p-6 space-y-5">
+                                            <div>
+                                                <h2 className="text-lg font-semibold border-b pb-2">Politique d'annulation</h2>
+                                                <p className="text-sm text-muted-foreground mt-1">Que se passe-t-il avec la commission si la commande est annulée ou retournée ?</p>
+                                            </div>
+
+                                            <div className="grid gap-3">
+                                                {([
+                                                    { value: 'keep', label: 'Conserver la commission', desc: "L'annulation ou le retour ne supprime pas la commission déjà gagnée." },
+                                                    { value: 'cancel_on_return', label: 'Annuler la commission', desc: "La commission est annulée dès que la commande est annulée ou retournée." },
+                                                    { value: 'grace_period', label: 'Période de grâce', desc: "La commission est annulée seulement si le retour a lieu dans un délai défini après la création de la commission." },
+                                                ] as const).map(opt => (
+                                                    <label
+                                                        key={opt.value}
+                                                        className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                                                            cancelPolicy === opt.value
+                                                                ? 'border-primary bg-primary/5'
+                                                                : 'border-border hover:border-primary/40'
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name="commissionCancelPolicy"
+                                                            value={opt.value}
+                                                            checked={cancelPolicy === opt.value}
+                                                            onChange={() => setFormData({ ...formData, commissionCancelPolicy: opt.value })}
+                                                            className="mt-0.5 accent-primary"
+                                                        />
+                                                        <div>
+                                                            <p className="font-medium text-sm">{opt.label}</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+
+                                            {/* Grace days */}
+                                            {cancelPolicy === 'grace_period' && (
+                                                <div className="border border-dashed border-primary/30 bg-primary/5 rounded-lg p-4 space-y-2">
+                                                    <Label>Nombre de jours de grâce</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={90}
+                                                            value={graceDays}
+                                                            onChange={e => setFormData({ ...formData, commissionGraceDays: Math.max(1, Number(e.target.value)) })}
+                                                            className="w-24"
+                                                        />
+                                                        <span className="text-sm text-muted-foreground">jours après la création de la commission</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Un retour effectué après ce délai ne supprimera pas la commission.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </TabsContent>
+
                         <TabsContent value="account" className="space-y-6 m-0">
                             <div className="bg-card rounded-xl border border-border p-6 space-y-4">
                                 <div className="flex items-center gap-3 pb-2 border-b">
@@ -516,7 +689,17 @@ const Settings = () => {
                                 </div>
 
                                 <h2 className="text-base font-semibold pt-1">Changer le mot de passe</h2>
-                                <form onSubmit={handleChangePassword} className="space-y-4 max-w-sm">
+                                <div className="space-y-4 max-w-sm">
+                                    <div className="space-y-2">
+                                        <Label>Mot de passe actuel</Label>
+                                        <Input
+                                            type="password"
+                                            placeholder="Votre mot de passe actuel"
+                                            value={pwdForm.currentPassword}
+                                            onChange={(e) => setPwdForm({ ...pwdForm, currentPassword: e.target.value })}
+                                            autoComplete="current-password"
+                                        />
+                                    </div>
                                     <div className="space-y-2">
                                         <Label>Nouveau mot de passe</Label>
                                         <Input
@@ -524,26 +707,26 @@ const Settings = () => {
                                             placeholder="Minimum 6 caractères"
                                             value={pwdForm.newPassword}
                                             onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
-                                            required
+                                            autoComplete="new-password"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Confirmer le mot de passe</Label>
+                                        <Label>Confirmer le nouveau mot de passe</Label>
                                         <Input
                                             type="password"
-                                            placeholder="Répétez le mot de passe"
+                                            placeholder="Répétez le nouveau mot de passe"
                                             value={pwdForm.confirmPassword}
                                             onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
-                                            required
+                                            autoComplete="new-password"
                                         />
                                     </div>
-                                    <Button type="submit" disabled={changePasswordMutation.isPending} className="gap-2">
+                                    <Button type="button" onClick={handleChangePassword} disabled={changePasswordMutation.isPending} className="gap-2">
                                         {changePasswordMutation.isPending
                                             ? <><Loader2 className="w-4 h-4 animate-spin" /> Modification...</>
                                             : <><KeyRound className="w-4 h-4" /> Modifier le mot de passe</>
                                         }
                                     </Button>
-                                </form>
+                                </div>
                             </div>
                         </TabsContent>
                     </div>
@@ -562,7 +745,7 @@ const Settings = () => {
                         Enregistrer les modifications
                     </Button>
                 </div>
-            </form>
+            </div>
         </div>
     );
 };

@@ -26,10 +26,11 @@ export const ordersApi = {
     },
 
     // Get all orders (admin)
-    getAll: async (filters?: { status?: string; city?: string }): Promise<Order[]> => {
+    getAll: async (filters?: { status?: string; city?: string; confirmedByMe?: boolean }): Promise<Order[]> => {
         const params = new URLSearchParams();
         if (filters?.status) params.append('status', filters.status);
         if (filters?.city) params.append('city', filters.city);
+        if (filters?.confirmedByMe) params.append('confirmedByMe', 'true');
 
         const { data } = await apiClient.get<Order[]>(`/api/orders?${params}`);
         return data;

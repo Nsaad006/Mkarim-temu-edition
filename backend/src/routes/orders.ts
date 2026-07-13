@@ -50,6 +50,7 @@ function generateOrderNumber(): string {
 // import { sendOrderEmails, sendOrderUpdatedEmails } from '../lib/email';
 import { sendOrderEmails, sendOrderUpdatedEmails } from '../lib/email';
 import { broadcastEvent, SSE_EVENTS } from '../lib/sse';
+import { handleConfirmCommission, handleDeliverCommission, handleCancelCommission } from '../lib/commission';
 
 // POST /api/orders - Create new COD order (Multi-item)
 router.post('/', async (req, res) => {
@@ -228,7 +229,7 @@ router.get('/', authenticate, authorize(
     ]
 ), async (req: Request, res: Response) => {
     try {
-        const { status, city } = req.query;
+        const { status, city, confirmedByMe } = req.query;
         const user = (req as any).user; // Get authenticated user
 
         const where: Prisma.OrderWhereInput = {};
@@ -240,7 +241,37 @@ router.get('/', authenticate, authorize(
                 in: ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETOUR']
             };
         }
-        // Commercial and other roles can see all orders
+
+        // Commercial agents (and dynamic roles with ONLY confirm permission) see orders
+        // filtered to their allowedCategories. Users who also hold broad admin permissions
+        // (products, categories, analytics, etc.) are treated as full admins and see everything.
+        const BROAD_ADMIN_PERMS = [
+            PERMISSIONS.PRODUCTS_VIEW, PERMISSIONS.CATEGORIES_VIEW,
+            PERMISSIONS.ANALYTICS_VIEW, PERMISSIONS.USERS_VIEW,
+            PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.CUSTOMERS_VIEW,
+        ];
+        const hasBroadAccess = BROAD_ADMIN_PERMS.some(p => user.permissions?.includes(p));
+        const isCommercialAgent = !hasBroadAccess && (
+            user.role === 'commercial' ||
+            (user.permissions?.includes(PERMISSIONS.ORDERS_CONFIRM) &&
+             !['super_admin', 'editor', 'viewer', 'magasinier'].includes(user.role))
+        );
+        if (isCommercialAgent) {
+            const agentProfile = await prisma.admin.findUnique({
+                where: { id: user.id },
+                select: { allowedCategories: true }
+            });
+            if (agentProfile?.allowedCategories?.length) {
+                where.items = {
+                    some: { product: { categoryId: { in: agentProfile.allowedCategories } } }
+                };
+            }
+        }
+
+        // Filter to only orders confirmed by the requesting user
+        if (confirmedByMe === 'true') {
+            where.confirmedById = user.id;
+        }
 
         if (status) {
             // If magasinier, ensure they can only filter within their allowed statuses
@@ -445,6 +476,7 @@ router.put('/:id/items', authenticate, authorize(['super_admin', 'editor', 'comm
                 where: { id },
                 data: {
                     total,
+                    itemsUpdatedAt: new Date(),
                     items: {
                         create: newItemsData
                     }
@@ -753,12 +785,13 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
                 console.log(`Order ${currentOrder.orderNumber}: Stock restored.`);
             }
 
-            // Update order status
+            // Update order status (and set confirmedById when confirming)
             const updatedOrder = await tx.order.update({
                 where: { id },
                 data: {
                     status,
-                    returnReason: status === 'RETOUR' ? returnReason : currentOrder.returnReason
+                    returnReason: status === 'RETOUR' ? returnReason : currentOrder.returnReason,
+                    ...(status === 'CONFIRMED' ? { confirmedById: user.id } : {})
                 },
                 include: {
                     items: {
@@ -771,6 +804,20 @@ router.patch('/:id/status', authenticate, authorize(['super_admin', 'editor', 'c
 
             return updatedOrder;
         });
+
+        // Commission side-effects (outside transaction — non-critical)
+        // Behaviour is driven by the commission settings (trigger + cancel policy).
+        try {
+            if (status === 'CONFIRMED') {
+                await handleConfirmCommission(id, user.id);
+            } else if (status === 'DELIVERED' && currentOrder.confirmedById) {
+                await handleDeliverCommission(id, currentOrder.confirmedById);
+            } else if (status === 'CANCELLED' || status === 'RETOUR') {
+                await handleCancelCommission(id);
+            }
+        } catch (commissionError) {
+            console.error('Commission side-effect error:', commissionError);
+        }
 
         // Broadcast to all connected admins
         const actor = (req as any).user;

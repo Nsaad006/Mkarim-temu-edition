@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -19,7 +19,8 @@ import {
     Truck,
     Briefcase,
     BookOpen,
-    Tag
+    Tag,
+    DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +28,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { authApi } from "@/api/auth";
 import { logEvent } from "@/lib/logger";
 import { PERMISSIONS } from "@/constants/permissions";
+import { useQueryClient } from "@tanstack/react-query";
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Tableau de bord", path: "/admin", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.ANALYTICS_VIEW },
+    { icon: DollarSign, label: "Mes Commissions", path: "/admin/my-dashboard", roles: ["commercial"], permission: PERMISSIONS.ORDERS_CONFIRM, excludeRoles: ["super_admin", "editor", "viewer"] },
     { icon: ShoppingBag, label: "Commandes", path: "/admin/orders", roles: ["super_admin", "editor", "viewer", "commercial", "magasinier"], permission: [PERMISSIONS.ORDERS_VIEW, PERMISSIONS.ORDERS_MANAGE, PERMISSIONS.ORDERS_EDIT, PERMISSIONS.ORDERS_CONFIRM, PERMISSIONS.ORDERS_SHIP, PERMISSIONS.ORDERS_DELIVER, PERMISSIONS.ORDERS_CANCEL, PERMISSIONS.ORDERS_RETURN] },
     { icon: Briefcase, label: "Grossistes", path: "/admin/wholesalers", roles: ["super_admin", "editor"], permission: PERMISSIONS.LOGISTICS_VIEW },
     { icon: Package, label: "Produits", path: "/admin/products", roles: ["super_admin", "editor", "viewer"], permission: PERMISSIONS.PRODUCTS_VIEW },
@@ -52,6 +55,7 @@ const AdminLayout = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const location = useLocation();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     // Real-time sync: invalidates queries when any admin performs a mutation
     useRealtimeUpdates();
@@ -68,29 +72,36 @@ const AdminLayout = () => {
     const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : { name: "Admin", role: "super_admin", permissions: [] };
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         logEvent({ action: "ADMIN_LOGOUT" });
         authApi.logout();
+        queryClient.clear(); // wipe all cached data so the next user starts fresh
         navigate("/login");
-    };
+    }, [navigate, queryClient]);
 
-    const filteredSidebarItems = sidebarItems.filter(item => {
-        // Legacy Role Match
+    const permissionsKey = user.permissions?.join(',') ?? '';
+
+    const filteredSidebarItems = useMemo(() => sidebarItems.filter((item: any) => {
+        if (item.excludeRoles?.includes(user.role)) return false;
         if (item.roles.includes(user.role)) return true;
-        // Permission Match
         if (item.permission) {
+            const perms: string[] = permissionsKey ? permissionsKey.split(',') : [];
             if (Array.isArray(item.permission)) {
-                if (item.permission.some(p => user.permissions?.includes(p))) return true;
+                if (item.permission.some((p: string) => perms.includes(p))) return true;
             } else {
-                if (user.permissions?.includes(item.permission)) return true;
+                if (perms.includes(item.permission)) return true;
             }
         }
         return false;
-    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [user.role, permissionsKey]);
 
     // Auto-redirect from Dashboard if not authorized, or any unauthorized protected path
     useEffect(() => {
-        // The dashboard is at path "/admin"
+        // Commission dashboard is always accessible to any authenticated user who can see it in their sidebar
+        // Skip redirect check for this route to prevent race conditions
+        if (location.pathname === '/admin/my-dashboard') return;
+
         const isAuthorizedForCurrentPath = filteredSidebarItems.some(item => {
             if (location.pathname === item.path) return true;
             if (item.path !== "/admin" && location.pathname.startsWith(item.path + "/")) return true;
